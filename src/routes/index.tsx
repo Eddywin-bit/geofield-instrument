@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2 } from "lucide-react";
-import { loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
+import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
+import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,40 +27,111 @@ type Fix = {
   engineering: string;
 };
 
-const DEMO_FIX: Fix = {
-  unit: "Tarkwaian Banket Series",
-  belt: "Ashanti Greenstone Belt",
-  lat: 6.3361,
-  lng: -2.0042,
-  accuracy: 4.2,
-  expectedRocks: [
-    "Quartz-pebble conglomerate",
-    "Quartzite",
-    "Phyllite interbeds",
-    "Sericite schist",
-  ],
-  expectedStructures: [
-    "NE-trending bedding (035–050°)",
-    "Reverse faulting along Ashanti Trend",
-    "Bedding-parallel shear zones",
-  ],
-  mineralization:
-    "Paleoplacer Au hosted in pebble conglomerate (Banket reef). Associated pyrite ± hematite. Grades typically 1.5–8 g/t.",
-  engineering:
-    "Competent quartzite; moderate weathering in saprolite (0–25 m). Watch for shear-zone wedge failures on cuts >6 m.",
+const UNMAPPED: Pick<Fix, "belt" | "expectedRocks" | "expectedStructures" | "mineralization" | "engineering"> = {
+  belt: "Outside mapped sheets",
+  expectedRocks: [],
+  expectedStructures: [],
+  mineralization: "No mapped unit at this position. You can still log the observation; select a unit manually if known.",
+  engineering: "No engineering guidance available for an unmapped location.",
 };
 
+function fixFromUnit(unit: GeoUnit | null, lat: number, lng: number, accuracy: number): Fix {
+  if (!unit) {
+    return { unit: "Unmapped", lat, lng, accuracy, ...UNMAPPED };
+  }
+  return {
+    unit: unit.unit_name,
+    belt: unit.also_known_as,
+    lat,
+    lng,
+    accuracy,
+    expectedRocks: unit.expected_rocks,
+    expectedStructures: unit.expected_features,
+    mineralization: unit.mineral_note,
+    engineering: unit.engineering_note,
+  };
+}
+
+// Persist current fix across screens so /log can attach real context.
+const FIX_KEY = "geofield.currentFix.v1";
+export function readCurrentFix(): Fix | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(FIX_KEY);
+    return raw ? (JSON.parse(raw) as Fix) : null;
+  } catch {
+    return null;
+  }
+}
+function writeCurrentFix(f: Fix) {
+  try {
+    window.localStorage.setItem(FIX_KEY, JSON.stringify(f));
+  } catch {
+    /* ignore */
+  }
+}
+
 function LocateScreen() {
-  const [state, setState] = useState<"idle" | "locating" | "found">("idle");
+  const [state, setState] = useState<"idle" | "locating" | "found" | "error">("idle");
   const [fix, setFix] = useState<Fix | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [units, setUnits] = useState<GeoUnit[]>([]);
+  const [showPicker, setShowPicker] = useState(false);
+
+  const [, force] = useState(0);
+  useEffect(() => {
+    void hydrateLogs().then(() => force((n) => n + 1));
+    void loadGeology().then((g) => setUnits(g.units));
+  }, []);
   const recent = loadLogs().slice(0, 3);
 
   const locate = () => {
     setState("locating");
-    setTimeout(() => {
-      setFix(DEMO_FIX);
-      setState("found");
-    }, 1400);
+    setError(null);
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setError("Geolocation not available on this device.");
+      setState("error");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        try {
+          const geo = await loadGeology();
+          const name = findUnitAt(longitude, latitude, geo.geo);
+          const unit = unitByName(geo.units, name);
+          const next = fixFromUnit(unit, latitude, longitude, accuracy);
+          setFix(next);
+          writeCurrentFix(next);
+          setState("found");
+        } catch (e) {
+          setError("Could not load geology data.");
+          setState("error");
+        }
+      },
+      (err) => {
+        const msg =
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission denied. Enable GPS access to continue."
+            : err.code === err.POSITION_UNAVAILABLE
+            ? "GPS position unavailable. Move to open sky and retry."
+            : err.code === err.TIMEOUT
+            ? "GPS timed out. Retry with a clearer view of the sky."
+            : "Could not acquire GPS fix.";
+        setError(msg);
+        setState("error");
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+    );
+  };
+
+  const pickUnit = (u: GeoUnit) => {
+    const base = fix ?? { lat: 0, lng: 0, accuracy: 0 };
+    const next = fixFromUnit(u, base.lat, base.lng, base.accuracy);
+    setFix(next);
+    writeCurrentFix(next);
+    setState("found");
+    setShowPicker(false);
   };
 
   return (
@@ -93,7 +165,15 @@ function LocateScreen() {
               </>
             )}
           </button>
-          <button className="w-full mt-3 h-12 rounded-lg border border-border bg-panel text-foreground text-sm font-semibold tracking-wide hover:bg-panel-2">
+          {state === "error" && error && (
+            <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+          <button
+            onClick={() => setShowPicker(true)}
+            className="w-full mt-3 h-12 rounded-lg border border-border bg-panel text-foreground text-sm font-semibold tracking-wide hover:bg-panel-2"
+          >
             SELECT UNIT MANUALLY
           </button>
         </div>
@@ -128,9 +208,38 @@ function LocateScreen() {
           <Collapsible title="Engineering Notes">
             <p className="text-sm leading-relaxed text-foreground/90">{fix.engineering}</p>
           </Collapsible>
-          <button className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2">
+          <button
+            onClick={() => setShowPicker(true)}
+            className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2"
+          >
             SELECT UNIT MANUALLY
           </button>
+        </div>
+      )}
+
+      {showPicker && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 flex items-end"
+          onClick={() => setShowPicker(false)}
+        >
+          <div
+            className="w-full bg-panel border-t border-border rounded-t-lg p-4 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="label-instrument mb-3">Select Geological Unit</div>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {units.map((u) => (
+                <button
+                  key={u.unit_name}
+                  onClick={() => pickUnit(u)}
+                  className="w-full text-left px-3 py-3 rounded-md border border-border bg-panel-2 hover:bg-panel"
+                >
+                  <div className="text-sm font-bold">{u.unit_name}</div>
+                  <div className="text-xs text-muted-foreground">{u.also_known_as}</div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -143,6 +252,9 @@ function LocateScreen() {
           {recent.map((l) => (
             <RecentRow key={l.id} log={l} />
           ))}
+          {recent.length === 0 && (
+            <div className="text-xs text-muted-foreground px-1">No observations yet.</div>
+          )}
         </div>
       </div>
     </AppLayout>
@@ -150,6 +262,7 @@ function LocateScreen() {
 }
 
 function FixCard({ fix, onRelocate }: { fix: Fix; onRelocate: () => void }) {
+  const bars = Math.max(1, Math.min(5, Math.round(6 - Math.min(fix.accuracy, 30) / 6)));
   return (
     <div className="rounded-lg border border-border bg-panel overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
@@ -177,8 +290,8 @@ function FixCard({ fix, onRelocate }: { fix: Fix; onRelocate: () => void }) {
           <div>
             <div className="label-instrument">Position</div>
             <div className="mono text-xs mt-1 leading-snug">
-              {formatCoord(fix.lat)} N<br />
-              {formatCoord(fix.lng)} W
+              {formatCoord(fix.lat)} {fix.lat >= 0 ? "N" : "S"}<br />
+              {formatCoord(fix.lng)} {fix.lng >= 0 ? "E" : "W"}
             </div>
           </div>
           <div>
@@ -188,7 +301,7 @@ function FixCard({ fix, onRelocate }: { fix: Fix; onRelocate: () => void }) {
               {[1, 2, 3, 4, 5].map((b) => (
                 <span
                   key={b}
-                  className={`h-1.5 w-4 rounded-sm ${b <= 4 ? "bg-success" : "bg-border"}`}
+                  className={`h-1.5 w-4 rounded-sm ${b <= bars ? "bg-success" : "bg-border"}`}
                 />
               ))}
             </div>

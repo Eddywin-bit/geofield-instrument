@@ -1,3 +1,5 @@
+import localforage from "localforage";
+
 export type LogEntry = {
   id: string;
   timestamp: number;
@@ -7,71 +9,67 @@ export type LogEntry = {
   lng: number;
   accuracy: number;
   note: string;
-  photo?: string; // data URL or placeholder
+  photo?: string; // data URL
   hasVoice?: boolean;
 };
 
 const KEY = "geofield.logs.v1";
 
-export function loadLogs(): LogEntry[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return seed();
-    return JSON.parse(raw) as LogEntry[];
-  } catch {
-    return [];
+let store: LocalForage | null = null;
+function getStore(): LocalForage {
+  if (!store) {
+    store = localforage.createInstance({
+      name: "geofield",
+      storeName: "logs",
+      description: "GeoField Companion offline logs",
+    });
   }
+  return store;
+}
+
+// In-memory mirror so synchronous callers (existing UI) keep working.
+let memoryCache: LogEntry[] = [];
+let hydrated = false;
+let hydratePromise: Promise<LogEntry[]> | null = null;
+
+export function hydrateLogs(): Promise<LogEntry[]> {
+  if (hydrated) return Promise.resolve(memoryCache);
+  if (hydratePromise) return hydratePromise;
+  hydratePromise = (async () => {
+    try {
+      const v = await getStore().getItem<LogEntry[]>(KEY);
+      memoryCache = Array.isArray(v) ? v : [];
+    } catch {
+      memoryCache = [];
+    }
+    hydrated = true;
+    return memoryCache;
+  })();
+  return hydratePromise;
+}
+
+// Kick off hydration eagerly in the browser.
+if (typeof window !== "undefined") {
+  void hydrateLogs();
+}
+
+export function loadLogs(): LogEntry[] {
+  // Best-effort sync read from in-memory cache. Hydration runs on import.
+  if (!hydrated && typeof window !== "undefined") {
+    void hydrateLogs();
+  }
+  return memoryCache;
 }
 
 export function saveLogs(logs: LogEntry[]) {
+  memoryCache = logs;
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(logs));
+  void getStore().setItem(KEY, logs);
 }
 
 export function addLog(entry: LogEntry) {
-  const logs = loadLogs();
-  logs.unshift(entry);
-  saveLogs(logs);
-}
-
-function seed(): LogEntry[] {
-  const now = Date.now();
-  const demo: LogEntry[] = [
-    {
-      id: "seed-1",
-      timestamp: now - 1000 * 60 * 45,
-      unit: "Tarkwaian Banket Series",
-      belt: "Ashanti Belt",
-      lat: 6.3361,
-      lng: -2.0042,
-      accuracy: 4.2,
-      note: "Quartz-pebble conglomerate outcrop; pyrite stringers visible along bedding.",
-      hasVoice: true,
-    },
-    {
-      id: "seed-2",
-      timestamp: now - 1000 * 60 * 60 * 5,
-      unit: "Birimian Metavolcanics",
-      belt: "Sefwi Belt",
-      lat: 6.214,
-      lng: -2.341,
-      accuracy: 6.8,
-      note: "Sheared mafic volcanic, chlorite-altered. Foliation 045/72NW.",
-    },
-    {
-      id: "seed-3",
-      timestamp: now - 1000 * 60 * 60 * 27,
-      unit: "Birimian Metasediments",
-      belt: "Kibi-Winneba Belt",
-      lat: 6.012,
-      lng: -1.412,
-      accuracy: 5.1,
-      note: "Graphitic phyllite, intensely folded. Possible structural trap.",
-    },
-  ];
-  saveLogs(demo);
-  return demo;
+  const next = [entry, ...memoryCache];
+  saveLogs(next);
 }
 
 export function formatCoord(n: number) {

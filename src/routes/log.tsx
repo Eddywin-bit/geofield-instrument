@@ -1,30 +1,54 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
-import { Camera, Mic, MicOff, Check, MapPin } from "lucide-react";
+import { Camera, Mic, Check, MapPin } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
+import { readCurrentFix } from "./index";
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
   component: LogScreen,
 });
 
+type Ctx = {
+  unit: string;
+  belt: string;
+  lat: number;
+  lng: number;
+  accuracy: number;
+  timestamp: number;
+};
+
 function LogScreen() {
   const navigate = useNavigate();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
-  const [hasPhoto, setHasPhoto] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [hasVoice, setHasVoice] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // simulated current context
-  const ctx = {
-    unit: "Tarkwaian Banket Series",
-    belt: "Ashanti Belt",
-    lat: 6.3361,
-    lng: -2.0042,
-    accuracy: 4.2,
-    timestamp: Date.now(),
+  const [ctx, setCtx] = useState<Ctx>(() => {
+    const f = readCurrentFix();
+    return {
+      unit: f?.unit ?? "Unmapped",
+      belt: f?.belt ?? "—",
+      lat: f?.lat ?? 0,
+      lng: f?.lng ?? 0,
+      accuracy: f?.accuracy ?? 0,
+      timestamp: Date.now(),
+    };
+  });
+
+  // Refresh timestamp on mount
+  useEffect(() => {
+    setCtx((c) => ({ ...c, timestamp: Date.now() }));
+  }, []);
+
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhoto(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsDataURL(file);
   };
 
   const save = () => {
@@ -38,9 +62,10 @@ function LogScreen() {
       lng: ctx.lng,
       accuracy: ctx.accuracy,
       note: note || "(no note)",
-      hasVoice,
+      photo: photo ?? undefined,
+      hasVoice: false,
     });
-    setTimeout(() => navigate({ to: "/my-logs" }), 500);
+    setTimeout(() => navigate({ to: "/my-logs" }), 400);
   };
 
   return (
@@ -60,7 +85,11 @@ function LogScreen() {
         </div>
         <div className="p-4 space-y-2">
           <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="Unit" value={ctx.unit} />
-          <Row label="Position" value={`${formatCoord(ctx.lat)} N · ${formatCoord(ctx.lng)} W`} mono />
+          <Row
+            label="Position"
+            value={`${formatCoord(ctx.lat)} ${ctx.lat >= 0 ? "N" : "S"} · ${formatCoord(ctx.lng)} ${ctx.lng >= 0 ? "E" : "W"}`}
+            mono
+          />
           <Row label="Accuracy" value={`± ${ctx.accuracy.toFixed(1)} m`} mono />
           <Row label="Time" value={formatTime(ctx.timestamp)} mono />
         </div>
@@ -68,38 +97,40 @@ function LogScreen() {
 
       {/* Capture actions */}
       <div className="px-4 mt-4 grid grid-cols-2 gap-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={onPickPhoto}
+        />
         <CaptureTile
-          active={hasPhoto}
-          onClick={() => setHasPhoto((v) => !v)}
+          active={!!photo}
+          onClick={() => fileRef.current?.click()}
           icon={<Camera className="h-7 w-7" strokeWidth={2.2} />}
           label="PHOTO"
-          status={hasPhoto ? "Captured" : "Tap to capture"}
+          status={photo ? "Captured" : "Tap to capture"}
         />
         <CaptureTile
-          active={hasVoice}
-          onClick={() => {
-            if (recording) {
-              setRecording(false);
-              setHasVoice(true);
-            } else {
-              setRecording(true);
-              setTimeout(() => {
-                setRecording(false);
-                setHasVoice(true);
-              }, 1500);
-            }
-          }}
-          icon={
-            recording ? (
-              <MicOff className="h-7 w-7 animate-pulse" strokeWidth={2.2} />
-            ) : (
-              <Mic className="h-7 w-7" strokeWidth={2.2} />
-            )
-          }
-          label={recording ? "RECORDING" : "VOICE"}
-          status={hasVoice ? "0:08 saved" : recording ? "Tap to stop" : "Tap to record"}
+          active={false}
+          disabled
+          onClick={() => {}}
+          icon={<Mic className="h-7 w-7" strokeWidth={2.2} />}
+          label="VOICE"
+          status="Coming soon"
         />
       </div>
+
+      {photo && (
+        <div className="px-4 mt-3">
+          <img
+            src={photo}
+            alt="Observation"
+            className="w-full h-40 object-cover rounded-lg border border-border"
+          />
+        </div>
+      )}
 
       {/* Short note */}
       <div className="px-4 mt-3">
@@ -155,19 +186,24 @@ function CaptureTile({
   label,
   status,
   active,
+  disabled,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   status: string;
   active: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={`h-28 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${
-        active
+        disabled
+          ? "bg-panel border-border text-muted-foreground opacity-60 cursor-not-allowed"
+          : active
           ? "bg-primary/10 border-primary text-primary"
           : "bg-panel border-border text-foreground hover:bg-panel-2"
       }`}

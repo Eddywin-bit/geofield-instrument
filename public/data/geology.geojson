@@ -1,0 +1,9 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type":"Feature","properties":{"unit_name":"Birimian Sediments"},"geometry":{"type":"Polygon","coordinates":[[[-1.75,6.55],[-1.55,6.55],[-1.55,6.80],[-1.75,6.80],[-1.75,6.55]]]}},
+    {"type":"Feature","properties":{"unit_name":"Birimian Volcanics"},"geometry":{"type":"Polygon","coordinates":[[[-1.95,6.40],[-1.75,6.40],[-1.75,6.75],[-1.95,6.75],[-1.95,6.40]]]}},
+    {"type":"Feature","properties":{"unit_name":"Tarkwaian Group"},"geometry":{"type":"Polygon","coordinates":[[[-2.05,6.15],[-1.85,6.15],[-1.85,6.45],[-2.05,6.45],[-2.05,6.15]]]}},
+    {"type":"Feature","properties":{"unit_name":"Voltaian Sandstone"},"geometry":{"type":"Polygon","coordinates":[[[-1.55,6.60],[-1.20,6.60],[-1.20,7.00],[-1.55,7.00],[-1.55,6.60]]]}}
+  ]
+}

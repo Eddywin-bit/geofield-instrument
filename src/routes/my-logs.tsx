@@ -104,8 +104,12 @@ function LogCard({ log }: { log: LogEntry }) {
         <div className="w-1 bg-primary" />
         <div className="flex-1 p-3 min-w-0">
           <div className="flex items-start gap-3">
-            <div className="h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0">
-              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+            <div className="h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
+              {log.photo ? (
+                <img src={log.photo} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">

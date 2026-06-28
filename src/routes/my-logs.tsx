@@ -46,7 +46,6 @@ function MyLogsScreen() {
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-baseline justify-between">
           <h1 className="text-2xl font-bold tracking-tight">My Logs</h1>
-          <span className="label-instrument">SCREEN 03</span>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
           <span className="mono">{logs.length}</span> observations · stored on device

@@ -138,7 +138,7 @@ function LogCard({ log }: { log: LogEntry }) {
           </div>
           {open && (
             <div className="mt-3 pt-3 border-t border-border space-y-2">
-              <Detail label="Position" value={`${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}`} />
+              <Detail label="Position" value={log.lat !== null && log.lng !== null ? `${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}` : "Position unknown"} />
               <Detail label="Belt" value={log.belt} />
               <div>
                 <div className="label-instrument">Note</div>

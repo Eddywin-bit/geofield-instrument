@@ -3,11 +3,13 @@ import { Crosshair, FileText, Layers, Map, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function AppLayout({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isMap = pathname === "/map";
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <StatusBar />
       <main className="flex-1 pb-32">{children}</main>
-      <QuickLogFab />
+      {!isMap && <QuickLogFab />}
       <BottomNav />
     </div>
   );

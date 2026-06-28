@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { Search, Image as ImageIcon, Mic } from "lucide-react";
 import {
   formatDateGroup,
   formatTime,
+  hydrateLogs,
   loadLogs,
   type LogEntry,
 } from "../lib/logs-store";
@@ -16,6 +17,10 @@ export const Route = createFileRoute("/my-logs")({
 
 function MyLogsScreen() {
   const [query, setQuery] = useState("");
+  const [, force] = useState(0);
+  useEffect(() => {
+    void hydrateLogs().then(() => force((n) => n + 1));
+  }, []);
   const logs = loadLogs();
 
   const filtered = useMemo(

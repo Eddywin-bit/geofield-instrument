@@ -139,7 +139,6 @@ function LocateScreen() {
       <div className="px-4 pt-4 pb-6">
         <div className="flex items-baseline justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Locate</h1>
-          <span className="label-instrument">SCREEN 01</span>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
           Identify geological unit at your position.

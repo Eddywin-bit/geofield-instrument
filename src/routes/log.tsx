@@ -129,7 +129,6 @@ function LogScreen() {
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-baseline justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Log Observation</h1>
-          <span className="label-instrument">SCREEN 02</span>
         </div>
       </div>
 

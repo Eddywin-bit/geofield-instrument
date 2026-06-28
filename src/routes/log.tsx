@@ -4,6 +4,7 @@ import { AppLayout } from "../components/AppLayout";
 import { Camera, Mic, Check, MapPin } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";
+import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
@@ -13,11 +14,15 @@ export const Route = createFileRoute("/log")({
 type Ctx = {
   unit: string;
   belt: string;
-  lat: number;
-  lng: number;
-  accuracy: number;
+  lat: number | null;
+  lng: number | null;
+  accuracy: number | null;
   timestamp: number;
 };
+
+function hasRealFix(c: { lat: number | null; lng: number | null }) {
+  return c.lat !== null && c.lng !== null && !(c.lat === 0 && c.lng === 0);
+}
 
 function LogScreen() {
   const navigate = useNavigate();
@@ -25,22 +30,60 @@ function LogScreen() {
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const [ctx, setCtx] = useState<Ctx>(() => {
     const f = readCurrentFix();
+    const hasFix = !!f && !(f.lat === 0 && f.lng === 0);
     return {
       unit: f?.unit ?? "Unmapped",
       belt: f?.belt ?? "—",
-      lat: f?.lat ?? 0,
-      lng: f?.lng ?? 0,
-      accuracy: f?.accuracy ?? 0,
+      lat: hasFix ? f!.lat : null,
+      lng: hasFix ? f!.lng : null,
+      accuracy: hasFix ? f!.accuracy : null,
       timestamp: Date.now(),
     };
   });
 
-  // Refresh timestamp on mount
+  // Live clock for the Time field
   useEffect(() => {
-    setCtx((c) => ({ ...c, timestamp: Date.now() }));
+    const id = setInterval(() => setCtx((c) => ({ ...c, timestamp: Date.now() })), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Auto-acquire fix if we don't have a real one
+  useEffect(() => {
+    if (hasRealFix(ctx)) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        try {
+          const geo = await loadGeology();
+          const name = findUnitAt(longitude, latitude, geo.geo);
+          const unit = unitByName(geo.units, name);
+          setCtx((c) => ({
+            ...c,
+            lat: latitude,
+            lng: longitude,
+            accuracy,
+            unit: unit?.unit_name ?? "Unmapped",
+            belt: unit?.also_known_as ?? "Outside mapped sheets",
+          }));
+        } catch {
+          setCtx((c) => ({ ...c, lat: latitude, lng: longitude, accuracy }));
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocating(false);
+        setCtx((c) => ({ ...c, lat: null, lng: null, accuracy: null }));
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +111,19 @@ function LogScreen() {
     setTimeout(() => navigate({ to: "/my-logs" }), 400);
   };
 
+  const positionDisplay =
+    ctx.lat !== null && ctx.lng !== null
+      ? `${formatCoord(ctx.lat)} ${ctx.lat >= 0 ? "N" : "S"} · ${formatCoord(ctx.lng)} ${ctx.lng >= 0 ? "E" : "W"}`
+      : locating
+      ? "Locating…"
+      : "—";
+
+  const accuracyDisplay =
+    ctx.accuracy !== null ? `± ${ctx.accuracy.toFixed(1)} m` : locating ? "Locating…" : "—";
+
+  const positionMuted = ctx.lat === null || ctx.lng === null;
+  const accuracyMuted = ctx.accuracy === null;
+
   return (
     <AppLayout>
       <div className="px-4 pt-4 pb-3">
@@ -85,12 +141,8 @@ function LogScreen() {
         </div>
         <div className="p-4 space-y-2">
           <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="Unit" value={ctx.unit} />
-          <Row
-            label="Position"
-            value={`${formatCoord(ctx.lat)} ${ctx.lat >= 0 ? "N" : "S"} · ${formatCoord(ctx.lng)} ${ctx.lng >= 0 ? "E" : "W"}`}
-            mono
-          />
-          <Row label="Accuracy" value={`± ${ctx.accuracy.toFixed(1)} m`} mono />
+          <Row label="Position" value={positionDisplay} mono muted={positionMuted} />
+          <Row label="Accuracy" value={accuracyDisplay} mono muted={accuracyMuted} />
           <Row label="Time" value={formatTime(ctx.timestamp)} mono />
         </div>
       </div>
@@ -164,11 +216,13 @@ function Row({
   value,
   icon,
   mono,
+  muted,
 }: {
   label: string;
   value: string;
   icon?: React.ReactNode;
   mono?: boolean;
+  muted?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -176,7 +230,13 @@ function Row({
         {icon}
         <span className="label-instrument">{label}</span>
       </div>
-      <span className={`text-sm font-semibold text-right truncate ${mono ? "mono" : ""}`}>{value}</span>
+      <span
+        className={`text-sm font-semibold text-right truncate ${mono ? "mono" : ""} ${
+          muted ? "text-muted-foreground" : ""
+        }`}
+      >
+        {value}
+      </span>
     </div>
   );
 }

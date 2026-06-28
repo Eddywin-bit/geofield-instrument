@@ -131,7 +131,7 @@ function LogCard({ log }: { log: LogEntry }) {
                   </span>
                 )}
                 <span className="mono text-[10px] text-muted-foreground">
-                  ± {log.accuracy.toFixed(1)} m
+                  {log.accuracy !== null ? `± ${log.accuracy.toFixed(1)} m` : "± — m"}
                 </span>
               </div>
             </div>

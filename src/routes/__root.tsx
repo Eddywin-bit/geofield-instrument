@@ -115,6 +115,43 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const host = window.location.hostname;
+    const isPreview =
+      host.startsWith("id-preview--") ||
+      host.startsWith("preview--") ||
+      host === "lovableproject.com" ||
+      host.endsWith(".lovableproject.com") ||
+      host === "lovableproject-dev.com" ||
+      host.endsWith(".lovableproject-dev.com") ||
+      host === "beta.lovable.dev" ||
+      host.endsWith(".beta.lovable.dev");
+    const inIframe = (() => {
+      try { return window.self !== window.top; } catch { return true; }
+    })();
+    const killSwitch = new URLSearchParams(window.location.search).get("sw") === "off";
+    const isProd = import.meta.env.PROD;
+
+    if (!isProd || isPreview || inIframe || killSwitch) {
+      // Make sure no SW lingers in dev/preview.
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((r) => {
+            if (r.active?.scriptURL.endsWith("/sw.js")) r.unregister();
+          });
+        }).catch(() => {});
+      }
+      return;
+    }
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

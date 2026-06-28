@@ -1,0 +1,153 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { AppLayout } from "../components/AppLayout";
+import { Search, Image as ImageIcon, Mic } from "lucide-react";
+import {
+  formatDateGroup,
+  formatTime,
+  loadLogs,
+  type LogEntry,
+} from "../lib/logs-store";
+
+export const Route = createFileRoute("/my-logs")({
+  head: () => ({ meta: [{ title: "GeoField — My Logs" }] }),
+  component: MyLogsScreen,
+});
+
+function MyLogsScreen() {
+  const [query, setQuery] = useState("");
+  const logs = loadLogs();
+
+  const filtered = useMemo(
+    () =>
+      logs.filter((l) =>
+        (l.unit + " " + l.note).toLowerCase().includes(query.toLowerCase()),
+      ),
+    [logs, query],
+  );
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, LogEntry[]>();
+    for (const l of filtered) {
+      const k = formatDateGroup(l.timestamp);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(l);
+    }
+    return Array.from(map.entries());
+  }, [filtered]);
+
+  return (
+    <AppLayout>
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">My Logs</h1>
+          <span className="label-instrument">SCREEN 03</span>
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">
+          <span className="mono">{logs.length}</span> observations · stored on device
+        </p>
+      </div>
+
+      <div className="px-4">
+        <div className="flex items-center gap-2 h-12 px-3 rounded-lg bg-panel border border-border focus-within:border-primary">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by unit or keyword…"
+            className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-6">
+        {grouped.length === 0 && (
+          <div className="px-4 py-16 text-center">
+            <p className="label-instrument">No logs</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Capture an observation from the Log screen.
+            </p>
+          </div>
+        )}
+        {grouped.map(([date, items]) => (
+          <section key={date}>
+            <div className="px-4 flex items-center gap-3 mb-2">
+              <span className="label-instrument">{date}</span>
+              <div className="flex-1 h-px bg-border" />
+              <span className="mono text-[11px] text-muted-foreground">{items.length}</span>
+            </div>
+            <div className="space-y-2 px-4">
+              {items.map((l) => (
+                <LogCard key={l.id} log={l} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </AppLayout>
+  );
+}
+
+function LogCard({ log }: { log: LogEntry }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <button
+      onClick={() => setOpen((v) => !v)}
+      className="w-full text-left rounded-lg border border-border bg-panel overflow-hidden"
+    >
+      <div className="flex items-stretch">
+        <div className="w-1 bg-primary" />
+        <div className="flex-1 p-3 min-w-0">
+          <div className="flex items-start gap-3">
+            <div className="h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0">
+              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-bold truncate">{log.unit}</div>
+                <span className="mono text-[11px] text-muted-foreground shrink-0">
+                  {formatTime(log.timestamp)}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                {log.belt}
+              </div>
+              <div className="text-xs mt-1.5 line-clamp-1 text-foreground/90">
+                {log.note}
+              </div>
+              <div className="flex items-center gap-3 mt-2">
+                {log.hasVoice && (
+                  <span className="flex items-center gap-1 text-[10px] text-primary">
+                    <Mic className="h-3 w-3" /> VOICE
+                  </span>
+                )}
+                <span className="mono text-[10px] text-muted-foreground">
+                  ± {log.accuracy.toFixed(1)} m
+                </span>
+              </div>
+            </div>
+          </div>
+          {open && (
+            <div className="mt-3 pt-3 border-t border-border space-y-2">
+              <Detail label="Position" value={`${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}`} />
+              <Detail label="Belt" value={log.belt} />
+              <div>
+                <div className="label-instrument">Note</div>
+                <p className="text-sm mt-1 leading-relaxed">{log.note}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="label-instrument">{label}</span>
+      <span className="mono text-xs">{value}</span>
+    </div>
+  );
+}

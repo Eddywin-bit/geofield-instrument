@@ -5,9 +5,9 @@ export type LogEntry = {
   timestamp: number;
   unit: string;
   belt: string;
-  lat: number;
-  lng: number;
-  accuracy: number;
+  lat: number | null;
+  lng: number | null;
+  accuracy: number | null;
   note: string;
   photo?: string; // data URL
   hasVoice?: boolean;

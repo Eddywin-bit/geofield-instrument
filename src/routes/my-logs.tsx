@@ -131,14 +131,14 @@ function LogCard({ log }: { log: LogEntry }) {
                   </span>
                 )}
                 <span className="mono text-[10px] text-muted-foreground">
-                  ± {log.accuracy.toFixed(1)} m
+                  {log.accuracy !== null ? `± ${log.accuracy.toFixed(1)} m` : "± — m"}
                 </span>
               </div>
             </div>
           </div>
           {open && (
             <div className="mt-3 pt-3 border-t border-border space-y-2">
-              <Detail label="Position" value={`${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}`} />
+              <Detail label="Position" value={log.lat !== null && log.lng !== null ? `${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}` : "Position unknown"} />
               <Detail label="Belt" value={log.belt} />
               <div>
                 <div className="label-instrument">Note</div>

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Crosshair, FileText, Layers, Plus } from "lucide-react";
+import { Crosshair, FileText, Layers, Map, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -46,10 +46,11 @@ function BottomNav() {
     { to: "/", label: "LOCATE", icon: Crosshair, exact: true },
     { to: "/log", label: "LOG", icon: FileText, exact: false },
     { to: "/my-logs", label: "MY LOGS", icon: Layers, exact: false },
+    { to: "/map", label: "MAP", icon: Map, exact: false },
   ] as const;
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-panel border-t border-border pb-[env(safe-area-inset-bottom)]">
-      <div className="grid grid-cols-3">
+      <div className="grid grid-cols-4">
         {items.map((it) => {
           const active = it.exact ? pathname === it.to : pathname.startsWith(it.to);
           const Icon = it.icon;

@@ -1,0 +1,12 @@
+{
+  "name": "GeoField Companion",
+  "short_name": "GeoField",
+  "description": "Offline-first geological field companion for exploration teams in Ghana.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121417",
+  "theme_color": "#121417",
+  "icons": []
+}

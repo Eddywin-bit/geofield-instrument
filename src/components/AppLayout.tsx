@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Crosshair, FileText, Layers, Plus } from "lucide-react";
+import { Crosshair, FileText, Layers, Map, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function AppLayout({ children }: { children: ReactNode }) {

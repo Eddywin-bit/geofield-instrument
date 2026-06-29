@@ -110,17 +110,20 @@ function LocateScreen() {
     setLiveAccuracy(null);
 
     acqRef.current = acquireFix({
-      onUpdate: async (accuracy, coords) => {
+      onUpdate: (accuracy, coords) => {
         setLiveAccuracy(accuracy);
-        try {
-          const geo = await loadGeology();
-          const name = findUnitAt(coords.longitude, coords.latitude, geo.geo);
-          const unit = unitByName(geo.units, name);
-          setFix(fixFromUnit(unit, coords.latitude, coords.longitude, accuracy));
-          setState((s) => (s === "locating" ? "locating" : s));
-        } catch {
-          /* keep waiting */
-        }
+        // Do NOT resolve geology during acquisition — position hasn't converged.
+        setFix({
+          unit: "Identifying…",
+          belt: "—",
+          lat: coords.latitude,
+          lng: coords.longitude,
+          accuracy,
+          expectedRocks: [],
+          expectedStructures: [],
+          mineralization: "",
+          engineering: "",
+        });
       },
       onSettle: async (best) => {
         try {

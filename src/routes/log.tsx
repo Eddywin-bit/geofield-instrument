@@ -221,13 +221,22 @@ function LogScreen() {
 
       {photo && (
         <div className="px-4 mt-3">
-          <img
-            src={photo}
-            alt="Observation"
-            className="w-full h-40 object-cover rounded-lg border border-border"
-          />
+          <button
+            type="button"
+            onClick={() => setViewing(true)}
+            className="block w-full rounded-lg border border-border bg-black/40 overflow-hidden"
+            aria-label="Open photo full screen"
+          >
+            <img
+              src={photo}
+              alt="Observation"
+              className="w-full h-40 object-contain"
+            />
+          </button>
         </div>
       )}
+      {viewing && photo && <ImageViewer src={photo} onClose={() => setViewing(false)} />}
+
 
       {/* Short note */}
       <div className="px-4 mt-3">

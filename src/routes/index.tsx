@@ -88,6 +88,7 @@ function LocateScreen() {
   const [error, setError] = useState<string | null>(null);
   const [units, setUnits] = useState<GeoUnit[]>([]);
   const [showPicker, setShowPicker] = useState(false);
+  const [showManual, setShowManual] = useState(false);
   const acqRef = useRef<Acquisition | null>(null);
 
   const [, force] = useState(0);

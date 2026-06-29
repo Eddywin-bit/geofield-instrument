@@ -375,12 +375,6 @@ function FixCard({
             ) : (
               <>
                 <div className={`mono text-xs mt-1 ${toneText}`}>± {displayAccuracy.toFixed(1)} m</div>
-                {isAveraged && fix.sampleCount ? (
-                  <div className="mono text-[10px] text-muted-foreground mt-0.5">
-                    averaged from {fix.sampleCount} fixes
-                    {fix.lowConfidence ? " · low confidence" : ""}
-                  </div>
-                ) : null}
                 <div className="mt-1 flex gap-0.5">
                   {[1, 2, 3, 4, 5].map((b) => (
                     <span

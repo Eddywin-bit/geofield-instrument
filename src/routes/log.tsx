@@ -31,6 +31,7 @@ function hasRealFix(c: { lat: number | null; lng: number | null }) {
 
 function LogScreen() {
   const navigate = useNavigate();
+  const fresh = Route.useSearch({ select: (s) => s.fresh === true });
   const fileRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
@@ -38,7 +39,7 @@ function LogScreen() {
   const [locating, setLocating] = useState(false);
 
   const [ctx, setCtx] = useState<Ctx>(() => {
-    const f = readCurrentFix();
+    const f = fresh ? null : readCurrentFix();
     const hasFix = !!f && !(f.lat === 0 && f.lng === 0);
     return {
       unit: f?.unit ?? "Unmapped",

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
 import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
@@ -14,6 +14,10 @@ import {
 
 export const Route = createFileRoute("/my-logs")({
   head: () => ({ meta: [{ title: "GeoField — My Logs" }] }),
+  validateSearch: (search: Record<string, unknown>): { open?: string } => {
+    const open = search.open;
+    return typeof open === "string" && open.length > 0 ? { open } : {};
+  },
   component: MyLogsScreen,
 });
 

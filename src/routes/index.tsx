@@ -341,11 +341,6 @@ function FixCard({
           <span className={`label-instrument ${acquiring ? "text-primary" : "text-success"}`}>
             {acquiring ? "ACQUIRING…" : isManual ? "MANUAL ENTRY" : "FIX ACQUIRED"}
           </span>
-          {isAveraged && !acquiring && (
-            <span className="ml-1 px-1.5 py-0.5 rounded-sm border border-primary/60 text-primary mono text-[10px] tracking-[0.12em]">
-              HIGH-PRECISION
-            </span>
-          )}
         </div>
         <button
           onClick={onRelocate}

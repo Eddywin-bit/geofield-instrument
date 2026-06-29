@@ -5,6 +5,7 @@ import { Camera, Mic, Check, MapPin } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
+import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
@@ -51,38 +52,63 @@ function LogScreen() {
     return () => clearInterval(id);
   }, []);
 
+  const acqRef = useRef<Acquisition | null>(null);
+
   // Auto-acquire fix if we don't have a real one
   useEffect(() => {
     if (hasRealFix(ctx)) return;
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
+    acqRef.current?.stop();
+    acqRef.current = acquireFix({
+      onUpdate: async (accuracy, coords) => {
         try {
           const geo = await loadGeology();
-          const name = findUnitAt(longitude, latitude, geo.geo);
+          const name = findUnitAt(coords.longitude, coords.latitude, geo.geo);
           const unit = unitByName(geo.units, name);
           setCtx((c) => ({
             ...c,
-            lat: latitude,
-            lng: longitude,
+            lat: coords.latitude,
+            lng: coords.longitude,
             accuracy,
+            unit: unit?.unit_name ?? c.unit,
+            belt: unit?.also_known_as ?? c.belt,
+          }));
+        } catch {
+          setCtx((c) => ({ ...c, lat: coords.latitude, lng: coords.longitude, accuracy }));
+        }
+      },
+      onSettle: async (best) => {
+        try {
+          const geo = await loadGeology();
+          const name = findUnitAt(best.longitude, best.latitude, geo.geo);
+          const unit = unitByName(geo.units, name);
+          setCtx((c) => ({
+            ...c,
+            lat: best.latitude,
+            lng: best.longitude,
+            accuracy: best.accuracy,
             unit: unit?.unit_name ?? "Unmapped",
             belt: unit?.also_known_as ?? "Outside mapped sheets",
           }));
         } catch {
-          setCtx((c) => ({ ...c, lat: latitude, lng: longitude, accuracy }));
+          setCtx((c) => ({
+            ...c,
+            lat: best.latitude,
+            lng: best.longitude,
+            accuracy: best.accuracy,
+          }));
         } finally {
           setLocating(false);
         }
       },
-      () => {
+      onError: () => {
         setLocating(false);
         setCtx((c) => ({ ...c, lat: null, lng: null, accuracy: null }));
       },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
-    );
+    });
+    return () => {
+      acqRef.current?.stop();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -123,6 +149,7 @@ function LogScreen() {
 
   const positionMuted = ctx.lat === null || ctx.lng === null;
   const accuracyMuted = ctx.accuracy === null;
+  const accuracyClass = ctx.accuracy !== null ? accuracyToneClass(ctx.accuracy) : "";
 
   return (
     <AppLayout>
@@ -141,7 +168,7 @@ function LogScreen() {
         <div className="p-4 space-y-2">
           <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="Unit" value={ctx.unit} />
           <Row label="Position" value={positionDisplay} mono muted={positionMuted} />
-          <Row label="Accuracy" value={accuracyDisplay} mono muted={accuracyMuted} />
+          <Row label="Accuracy" value={accuracyDisplay} mono muted={accuracyMuted} valueClass={accuracyClass} />
           <Row label="Time" value={formatTime(ctx.timestamp)} mono />
         </div>
       </div>
@@ -216,12 +243,14 @@ function Row({
   icon,
   mono,
   muted,
+  valueClass,
 }: {
   label: string;
   value: string;
   icon?: React.ReactNode;
   mono?: boolean;
   muted?: boolean;
+  valueClass?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -232,7 +261,7 @@ function Row({
       <span
         className={`text-sm font-semibold text-right truncate ${mono ? "mono" : ""} ${
           muted ? "text-muted-foreground" : ""
-        }`}
+        } ${valueClass ?? ""}`}
       >
         {value}
       </span>

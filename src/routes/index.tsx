@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2 } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
 import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
+import { acquireFix, accuracyToneClass, accuracyBarClass, type Acquisition } from "../lib/geo-acquire";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -74,55 +75,70 @@ function writeCurrentFix(f: Fix) {
 function LocateScreen() {
   const [state, setState] = useState<"idle" | "locating" | "found" | "error">("idle");
   const [fix, setFix] = useState<Fix | null>(null);
+  const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [units, setUnits] = useState<GeoUnit[]>([]);
   const [showPicker, setShowPicker] = useState(false);
+  const acqRef = useRef<Acquisition | null>(null);
 
   const [, force] = useState(0);
   useEffect(() => {
     void hydrateLogs().then(() => force((n) => n + 1));
     void loadGeology().then((g) => setUnits(g.units));
+    return () => {
+      acqRef.current?.stop();
+    };
   }, []);
   const recent = loadLogs().slice(0, 3);
 
   const locate = () => {
+    acqRef.current?.stop();
     setState("locating");
     setError(null);
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setError("Geolocation not available on this device.");
-      setState("error");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
+    setFix(null);
+    setLiveAccuracy(null);
+
+    acqRef.current = acquireFix({
+      onUpdate: async (accuracy, coords) => {
+        setLiveAccuracy(accuracy);
         try {
           const geo = await loadGeology();
-          const name = findUnitAt(longitude, latitude, geo.geo);
+          const name = findUnitAt(coords.longitude, coords.latitude, geo.geo);
           const unit = unitByName(geo.units, name);
-          const next = fixFromUnit(unit, latitude, longitude, accuracy);
+          setFix(fixFromUnit(unit, coords.latitude, coords.longitude, accuracy));
+          setState((s) => (s === "locating" ? "locating" : s));
+        } catch {
+          /* keep waiting */
+        }
+      },
+      onSettle: async (best) => {
+        try {
+          const geo = await loadGeology();
+          const name = findUnitAt(best.longitude, best.latitude, geo.geo);
+          const unit = unitByName(geo.units, name);
+          const next = fixFromUnit(unit, best.latitude, best.longitude, best.accuracy);
           setFix(next);
+          setLiveAccuracy(best.accuracy);
           writeCurrentFix(next);
           setState("found");
-        } catch (e) {
+        } catch {
           setError("Could not load geology data.");
           setState("error");
         }
       },
-      (err) => {
+      onError: (err) => {
         const msg =
-          err.code === err.PERMISSION_DENIED
+          "code" in err && (err as GeolocationPositionError).code === 1
             ? "Location permission denied. Enable GPS access to continue."
-            : err.code === err.POSITION_UNAVAILABLE
+            : "code" in err && (err as GeolocationPositionError).code === 2
             ? "GPS position unavailable. Move to open sky and retry."
-            : err.code === err.TIMEOUT
+            : "code" in err && (err as GeolocationPositionError).code === 3
             ? "GPS timed out. Retry with a clearer view of the sky."
-            : "Could not acquire GPS fix.";
+            : (err as Error).message || "Could not acquire GPS fix.";
         setError(msg);
         setState("error");
       },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
-    );
+    });
   };
 
   const pickUnit = (u: GeoUnit) => {
@@ -145,7 +161,7 @@ function LocateScreen() {
         </p>
       </div>
 
-      {state !== "found" && (
+      {!fix && (
         <div className="px-4">
           <button
             onClick={locate}
@@ -155,7 +171,7 @@ function LocateScreen() {
             {state === "locating" ? (
               <>
                 <Loader2 className="h-7 w-7 animate-spin" />
-                ACQUIRING GPS…
+                {liveAccuracy === null ? "LOCATING…" : `ACQUIRING · ± ${liveAccuracy.toFixed(1)} M`}
               </>
             ) : (
               <>
@@ -178,9 +194,19 @@ function LocateScreen() {
         </div>
       )}
 
-      {state === "found" && fix && (
+      {fix && (
         <div className="px-4 space-y-3">
-          <FixCard fix={fix} onRelocate={() => setState("idle")} />
+          <FixCard
+            fix={fix}
+            acquiring={state === "locating"}
+            liveAccuracy={liveAccuracy}
+            onRelocate={() => {
+              acqRef.current?.stop();
+              setFix(null);
+              setLiveAccuracy(null);
+              setState("idle");
+            }}
+          />
           <Collapsible title="Expected Rocks" count={fix.expectedRocks.length}>
             <ul className="space-y-2">
               {fix.expectedRocks.map((r) => (
@@ -260,14 +286,30 @@ function LocateScreen() {
   );
 }
 
-function FixCard({ fix, onRelocate }: { fix: Fix; onRelocate: () => void }) {
-  const bars = Math.max(1, Math.min(5, Math.round(6 - Math.min(fix.accuracy, 30) / 6)));
+function FixCard({
+  fix,
+  acquiring,
+  liveAccuracy,
+  onRelocate,
+}: {
+  fix: Fix;
+  acquiring?: boolean;
+  liveAccuracy?: number | null;
+  onRelocate: () => void;
+}) {
+  const displayAccuracy =
+    acquiring && liveAccuracy !== null && liveAccuracy !== undefined ? liveAccuracy : fix.accuracy;
+  const bars = Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
+  const toneText = accuracyToneClass(displayAccuracy);
+  const toneBar = accuracyBarClass(displayAccuracy);
   return (
     <div className="rounded-lg border border-border bg-panel overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-success" />
-          <span className="label-instrument text-success">FIX ACQUIRED</span>
+          <span className={`h-2 w-2 rounded-full ${acquiring ? "bg-primary animate-pulse" : "bg-success"}`} />
+          <span className={`label-instrument ${acquiring ? "text-primary" : "text-success"}`}>
+            {acquiring ? "ACQUIRING…" : "FIX ACQUIRED"}
+          </span>
         </div>
         <button
           onClick={onRelocate}
@@ -295,12 +337,12 @@ function FixCard({ fix, onRelocate }: { fix: Fix; onRelocate: () => void }) {
           </div>
           <div>
             <div className="label-instrument">Accuracy</div>
-            <div className="mono text-xs mt-1">± {fix.accuracy.toFixed(1)} m</div>
+            <div className={`mono text-xs mt-1 ${toneText}`}>± {displayAccuracy.toFixed(1)} m</div>
             <div className="mt-1 flex gap-0.5">
               {[1, 2, 3, 4, 5].map((b) => (
                 <span
                   key={b}
-                  className={`h-1.5 w-4 rounded-sm ${b <= bars ? "bg-success" : "bg-border"}`}
+                  className={`h-1.5 w-4 rounded-sm ${b <= bars ? toneBar : "bg-border"}`}
                 />
               ))}
             </div>

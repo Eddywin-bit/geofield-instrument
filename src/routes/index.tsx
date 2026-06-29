@@ -285,8 +285,9 @@ function LocateScreen() {
               </Collapsible>
               <Collapsible title="Engineering Notes">
                 <p className="text-sm leading-relaxed text-foreground/90">{fix.engineering}</p>
-
-          </Collapsible>
+              </Collapsible>
+            </>
+          )}
           <button
             onClick={() => setShowPicker(true)}
             className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2"

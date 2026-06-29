@@ -9,6 +9,9 @@ import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acqu
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
+  validateSearch: (search: Record<string, unknown>): { fresh?: boolean } => ({
+    fresh: search.fresh === true || search.fresh === "true" ? true : undefined,
+  }),
   component: LogScreen,
 });
 

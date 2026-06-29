@@ -289,31 +289,6 @@ function LocateScreen() {
       />
 
 
-      {showPicker && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 flex items-end"
-          onClick={() => setShowPicker(false)}
-        >
-          <div
-            className="w-full bg-panel border-t border-border rounded-t-lg p-4 pb-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="label-instrument mb-3">Select Geological Unit</div>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              {units.map((u) => (
-                <button
-                  key={u.unit_name}
-                  onClick={() => pickUnit(u)}
-                  className="w-full text-left px-3 py-3 rounded-md border border-border bg-panel-2 hover:bg-panel"
-                >
-                  <div className="text-sm font-bold">{u.unit_name}</div>
-                  <div className="text-xs text-muted-foreground">{u.also_known_as}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="mt-8 px-4">
         <div className="flex items-center justify-between mb-2">

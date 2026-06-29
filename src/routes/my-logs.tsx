@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
-import { Search, Image as ImageIcon, Mic } from "lucide-react";
+import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
 import {
+  deleteLog,
   formatDateGroup,
   formatTime,
   hydrateLogs,

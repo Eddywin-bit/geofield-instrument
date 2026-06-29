@@ -5,6 +5,7 @@ import { Camera, Mic, Check, MapPin } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
+import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),

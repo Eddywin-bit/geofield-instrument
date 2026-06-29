@@ -1,4 +1,6 @@
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import booleanIntersects from "@turf/boolean-intersects";
+import buffer from "@turf/buffer";
 import { point } from "@turf/helpers";
 
 export type GeoUnit = {
@@ -48,4 +50,30 @@ export function findUnitAt(lng: number, lat: number, geo: GeoJSON.FeatureCollect
 export function unitByName(units: GeoUnit[], name: string | null): GeoUnit | null {
   if (!name) return null;
   return units.find((u) => u.unit_name === name) ?? null;
+}
+
+export function nearbyUnits(
+  lng: number,
+  lat: number,
+  accuracyMeters: number,
+  geo: GeoJSON.FeatureCollection,
+): string[] {
+  if (!Number.isFinite(accuracyMeters) || accuracyMeters <= 0) return [];
+  const pt = point([lng, lat]);
+  const buf = buffer(pt, accuracyMeters / 1000, { units: "kilometers" });
+  if (!buf) return [];
+  const names = new Set<string>();
+  for (const f of geo.features) {
+    const g = f.geometry;
+    if (g.type !== "Polygon" && g.type !== "MultiPolygon") continue;
+    try {
+      if (booleanIntersects(buf, f as GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>)) {
+        const name = f.properties?.unit_name as string | undefined;
+        if (name) names.add(name);
+      }
+    } catch {
+      /* skip */
+    }
+  }
+  return Array.from(names);
 }

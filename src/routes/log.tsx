@@ -16,6 +16,43 @@ export const Route = createFileRoute("/log")({
   component: LogScreen,
 });
 
+const MAX_EDGE = 1600;
+function downscaleImage(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const { width, height } = img;
+        const scale = Math.min(1, MAX_EDGE / Math.max(width, height));
+        const w = Math.round(width * scale);
+        const h = Math.round(height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        const data = canvas.toDataURL("image/jpeg", 0.8);
+        URL.revokeObjectURL(url);
+        resolve(data);
+      } catch {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
 type Ctx = {
   unit: string;
   belt: string;
@@ -136,15 +173,7 @@ function LogScreen() {
   const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    const readers = Array.from(files).map(
-      (file) =>
-        new Promise<string | null>((resolve) => {
-          const r = new FileReader();
-          r.onload = () => resolve(typeof r.result === "string" ? r.result : null);
-          r.onerror = () => resolve(null);
-          r.readAsDataURL(file);
-        }),
-    );
+    const readers = Array.from(files).map((file) => downscaleImage(file));
     void Promise.all(readers).then((results) => {
       const added = results.filter((s): s is string => !!s);
       if (added.length) setPhotos((prev) => [...prev, ...added]);

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
-import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
+import { loadGeology, findUnitAt, unitByName, nearbyUnits, type GeoUnit } from "../lib/geology";
 import { acquireFix, accuracyToneClass, accuracyBarClass, type Acquisition } from "../lib/geo-acquire";
 import { ManualCoordsSheet, type ManualCoords } from "../components/ManualCoordsSheet";
 
@@ -28,6 +28,7 @@ type Fix = {
   expectedStructures: string[];
   mineralization: string;
   engineering: string;
+  nearby?: string[];
 };
 
 const UNMAPPED: Pick<Fix, "belt" | "expectedRocks" | "expectedStructures" | "mineralization" | "engineering"> = {
@@ -127,6 +128,10 @@ function LocateScreen() {
           const name = findUnitAt(best.longitude, best.latitude, geo.geo);
           const unit = unitByName(geo.units, name);
           const next = fixFromUnit(unit, best.latitude, best.longitude, best.accuracy);
+          if (typeof best.accuracy === "number" && Number.isFinite(best.accuracy)) {
+            const overlaps = nearbyUnits(best.longitude, best.latitude, best.accuracy, geo.geo);
+            if (overlaps.length > 1) next.nearby = overlaps;
+          }
           setFix(next);
           setLiveAccuracy(best.accuracy);
           writeCurrentFix(next);
@@ -242,6 +247,14 @@ function LocateScreen() {
               setState("idle");
             }}
           />
+          {fix.nearby && fix.nearby.length > 1 && (
+            <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
+              <div className="label-instrument text-primary mb-1">Possible contact nearby</div>
+              <div className="text-foreground/90">
+                Your GPS accuracy circle overlaps: <span className="font-semibold">{fix.nearby.join(", ")}</span>. Move a few metres or select the unit manually to confirm.
+              </div>
+            </div>
+          )}
           <Collapsible title="Expected Rocks" count={fix.expectedRocks.length}>
             <ul className="space-y-2">
               {fix.expectedRocks.map((r) => (

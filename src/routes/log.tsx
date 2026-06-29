@@ -168,7 +168,7 @@ function LogScreen() {
         <div className="p-4 space-y-2">
           <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="Unit" value={ctx.unit} />
           <Row label="Position" value={positionDisplay} mono muted={positionMuted} />
-          <Row label="Accuracy" value={accuracyDisplay} mono muted={accuracyMuted} />
+          <Row label="Accuracy" value={accuracyDisplay} mono muted={accuracyMuted} valueClass={accuracyClass} />
           <Row label="Time" value={formatTime(ctx.timestamp)} mono />
         </div>
       </div>

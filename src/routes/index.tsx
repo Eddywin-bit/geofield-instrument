@@ -247,6 +247,14 @@ function LocateScreen() {
               setState("idle");
             }}
           />
+          {fix.nearby && fix.nearby.length > 1 && (
+            <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
+              <div className="label-instrument text-primary mb-1">Possible contact nearby</div>
+              <div className="text-foreground/90">
+                Your GPS accuracy circle overlaps: <span className="font-semibold">{fix.nearby.join(", ")}</span>. Move a few metres or select the unit manually to confirm.
+              </div>
+            </div>
+          )}
           <Collapsible title="Expected Rocks" count={fix.expectedRocks.length}>
             <ul className="space-y-2">
               {fix.expectedRocks.map((r) => (

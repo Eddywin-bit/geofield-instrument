@@ -38,6 +38,7 @@ function LogScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [viewing, setViewing] = useState(false);
 
   const [ctx, setCtx] = useState<Ctx>(() => {
     const f = fresh ? null : readCurrentFix();

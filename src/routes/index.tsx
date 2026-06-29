@@ -297,7 +297,8 @@ function FixCard({
   liveAccuracy?: number | null;
   onRelocate: () => void;
 }) {
-  const displayAccuracy = acquiring && liveAccuracy !== null ? liveAccuracy : fix.accuracy;
+  const displayAccuracy =
+    acquiring && liveAccuracy !== null && liveAccuracy !== undefined ? liveAccuracy : fix.accuracy;
   const bars = Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
   const toneText = accuracyToneClass(displayAccuracy);
   const toneBar = accuracyBarClass(displayAccuracy);

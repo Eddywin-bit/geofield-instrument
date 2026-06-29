@@ -22,6 +22,7 @@ export const Route = createFileRoute("/my-logs")({
 });
 
 function MyLogsScreen() {
+  const { open: openId } = Route.useSearch();
   const [query, setQuery] = useState("");
   const [, force] = useState(0);
   useEffect(() => {

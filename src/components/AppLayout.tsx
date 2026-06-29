@@ -33,6 +33,7 @@ function QuickLogFab() {
   return (
     <Link
       to="/log"
+      search={{ fresh: true }}
       className="fixed right-4 bottom-24 z-40 h-14 px-5 rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/40 flex items-center gap-2 font-bold tracking-wide active:scale-95 transition-transform"
       aria-label="Quick log"
     >

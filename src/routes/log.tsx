@@ -9,6 +9,9 @@ import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acqu
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
+  validateSearch: (search: Record<string, unknown>): { fresh?: boolean } => ({
+    fresh: search.fresh === true || search.fresh === "true" ? true : undefined,
+  }),
   component: LogScreen,
 });
 
@@ -28,6 +31,7 @@ function hasRealFix(c: { lat: number | null; lng: number | null }) {
 
 function LogScreen() {
   const navigate = useNavigate();
+  const fresh = Route.useSearch({ select: (s) => s.fresh === true });
   const fileRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
@@ -35,7 +39,7 @@ function LogScreen() {
   const [locating, setLocating] = useState(false);
 
   const [ctx, setCtx] = useState<Ctx>(() => {
-    const f = readCurrentFix();
+    const f = fresh ? null : readCurrentFix();
     const hasFix = !!f && !(f.lat === 0 && f.lng === 0);
     return {
       unit: f?.unit ?? "Unmapped",
@@ -56,9 +60,14 @@ function LogScreen() {
 
   const acqRef = useRef<Acquisition | null>(null);
 
-  // Auto-acquire fix if we don't have a real one
+  // Auto-acquire fix if we don't have a real one, or always when `fresh` is set
   useEffect(() => {
-    if (hasRealFix(ctx)) return;
+    if (!fresh && hasRealFix(ctx)) return;
+    if (fresh) {
+      setCtx((c) => ({ ...c, lat: null, lng: null, accuracy: null, manual: false }));
+      // Clear the fresh flag so a reload doesn't re-trigger
+      navigate({ to: "/log", search: {}, replace: true });
+    }
     setLocating(true);
     acqRef.current?.stop();
     acqRef.current = acquireFix({

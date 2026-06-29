@@ -9,7 +9,8 @@ export type LogEntry = {
   lng: number | null;
   accuracy: number | null;
   note: string;
-  photo?: string; // data URL
+  photo?: string; // legacy single photo (data URL) — kept for backward compat
+  photos?: string[]; // new: multiple photos (data URLs)
   voice?: string; // data URL (audio)
   hasVoice?: boolean;
 };

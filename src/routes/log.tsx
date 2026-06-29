@@ -35,10 +35,10 @@ function LogScreen() {
   const fresh = Route.useSearch({ select: (s) => s.fresh === true });
   const fileRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
-  const [viewing, setViewing] = useState(false);
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [voice, setVoice] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordSec, setRecordSec] = useState(0);
@@ -134,11 +134,23 @@ function LogScreen() {
   }, []);
 
   const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(typeof reader.result === "string" ? reader.result : null);
-    reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const readers = Array.from(files).map(
+      (file) =>
+        new Promise<string | null>((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(typeof r.result === "string" ? r.result : null);
+          r.onerror = () => resolve(null);
+          r.readAsDataURL(file);
+        }),
+    );
+    void Promise.all(readers).then((results) => {
+      const added = results.filter((s): s is string => !!s);
+      if (added.length) setPhotos((prev) => [...prev, ...added]);
+    });
+    // allow re-selecting same file
+    e.target.value = "";
   };
 
   const stopRecording = () => {
@@ -223,7 +235,7 @@ function LogScreen() {
       lng: ctx.lng,
       accuracy: ctx.accuracy,
       note: note || "(no note)",
-      photo: photo ?? undefined,
+      photos: photos.length > 0 ? photos : undefined,
       voice: voice ?? undefined,
       hasVoice: !!voice,
     });
@@ -279,15 +291,16 @@ function LogScreen() {
           type="file"
           accept="image/*"
           capture="environment"
+          multiple
           className="hidden"
           onChange={onPickPhoto}
         />
         <CaptureTile
-          active={!!photo}
+          active={photos.length > 0}
           onClick={() => fileRef.current?.click()}
           icon={<Camera className="h-7 w-7" strokeWidth={2.2} />}
           label="PHOTO"
-          status={photo ? "Captured" : "Tap to capture"}
+          status={photos.length > 0 ? `${photos.length} photo${photos.length === 1 ? "" : "s"}` : "Tap to capture"}
         />
         <CaptureTile
           active={!!voice || recording}
@@ -336,23 +349,45 @@ function LogScreen() {
         </div>
       )}
 
-      {photo && (
+      {photos.length > 0 && (
         <div className="px-4 mt-3">
-          <button
-            type="button"
-            onClick={() => setViewing(true)}
-            className="block w-full rounded-lg border border-border bg-black/40 overflow-hidden"
-            aria-label="Open photo full screen"
-          >
-            <img
-              src={photo}
-              alt="Observation"
-              className="w-full h-40 object-contain"
-            />
-          </button>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {photos.map((p, i) => (
+              <div
+                key={i}
+                className="relative h-20 w-20 shrink-0 rounded-md border border-border bg-panel-2 overflow-hidden"
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewingIndex(i)}
+                  aria-label={`Open photo ${i + 1} full screen`}
+                  className="block h-full w-full"
+                >
+                  <img src={p} alt="" className="h-full w-full object-cover" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhotos((prev) => prev.filter((_, idx) => idx !== i));
+                  }}
+                  aria-label={`Remove photo ${i + 1}`}
+                  className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/70 border border-white/20 text-white flex items-center justify-center"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-      {viewing && photo && <ImageViewer src={photo} onClose={() => setViewing(false)} />}
+      {viewingIndex !== null && photos.length > 0 && (
+        <ImageViewer
+          images={photos}
+          startIndex={viewingIndex}
+          onClose={() => setViewingIndex(null)}
+        />
+      )}
 
 
       {/* Short note */}

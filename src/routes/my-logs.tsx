@@ -97,7 +97,10 @@ function MyLogsScreen() {
 function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [viewing, setViewing] = useState(false);
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+
+  const effectivePhotos: string[] = log.photos ?? (log.photo ? [log.photo] : []);
+  const photoCount = effectivePhotos.length;
 
   const handleDelete = () => {
     deleteLog(log.id);
@@ -121,21 +124,26 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
         <div className="w-1 bg-primary" />
         <div className="flex-1 p-3 min-w-0">
           <div className="flex items-start gap-3">
-            <div className="h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
-              {log.photo ? (
+            <div className="relative h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
+              {photoCount > 0 ? (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setViewing(true);
+                    setViewingIndex(0);
                   }}
                   aria-label="Open photo full screen"
                   className="h-full w-full block"
                 >
-                  <img src={log.photo} alt="" className="h-full w-full object-cover" />
+                  <img src={effectivePhotos[0]} alt="" className="h-full w-full object-cover" />
                 </button>
               ) : (
                 <ImageIcon className="h-5 w-5 text-muted-foreground" />
+              )}
+              {photoCount > 1 && (
+                <span className="absolute bottom-0.5 right-0.5 mono text-[9px] font-bold px-1 rounded-sm bg-black/75 text-white border border-white/20">
+                  {photoCount}
+                </span>
               )}
             </div>
             <div className="min-w-0 flex-1">
@@ -170,24 +178,25 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
             >
               <Detail label="Position" value={log.lat !== null && log.lng !== null ? `${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}` : "Position unknown"} />
               <Detail label="Belt" value={log.belt} />
-              {log.photo && (
+              {photoCount > 0 && (
                 <div>
-                  <div className="label-instrument mb-1">Photo</div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setViewing(true);
-                    }}
-                    className="block w-full rounded-md border border-border bg-black/40 overflow-hidden"
-                    aria-label="Open photo full screen"
-                  >
-                    <img
-                      src={log.photo}
-                      alt="Observation"
-                      className="w-full max-h-72 object-contain"
-                    />
-                  </button>
+                  <div className="label-instrument mb-1">{photoCount > 1 ? "Photos" : "Photo"}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {effectivePhotos.map((p, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewingIndex(i);
+                        }}
+                        className="h-20 w-20 rounded-md border border-border bg-black/40 overflow-hidden"
+                        aria-label={`Open photo ${i + 1} full screen`}
+                      >
+                        <img src={p} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {log.voice && (
@@ -246,7 +255,13 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
           )}
         </div>
       </div>
-      {viewing && log.photo && <ImageViewer src={log.photo} onClose={() => setViewing(false)} />}
+      {viewingIndex !== null && photoCount > 0 && (
+        <ImageViewer
+          images={effectivePhotos}
+          startIndex={viewingIndex}
+          onClose={() => setViewingIndex(null)}
+        />
+      )}
     </div>
   );
 }

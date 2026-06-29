@@ -141,6 +141,77 @@ function LogScreen() {
     reader.readAsDataURL(file);
   };
 
+  const stopRecording = () => {
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") {
+      try { rec.stop(); } catch { /* ignore */ }
+    }
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+  };
+
+  const releaseMic = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    recorderRef.current = null;
+  };
+
+  const startRecording = async () => {
+    setVoiceError(null);
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setVoiceError("Microphone not available on this device.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", ""];
+      const mime = candidates.find((m) => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      recorderRef.current = rec;
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") setVoice(reader.result);
+        };
+        reader.readAsDataURL(blob);
+        releaseMic();
+        setRecording(false);
+      };
+      rec.start();
+      setRecording(true);
+      setRecordSec(0);
+      recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
+    } catch {
+      setVoiceError("Microphone permission denied.");
+      releaseMic();
+    }
+  };
+
+  const toggleVoice = () => {
+    if (recording) stopRecording();
+    else void startRecording();
+  };
+
+  const clearVoice = () => {
+    setVoice(null);
+    setVoiceError(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopRecording();
+      releaseMic();
+    };
+  }, []);
+
   const save = () => {
     setSaving(true);
     addLog({
@@ -153,7 +224,8 @@ function LogScreen() {
       accuracy: ctx.accuracy,
       note: note || "(no note)",
       photo: photo ?? undefined,
-      hasVoice: false,
+      voice: voice ?? undefined,
+      hasVoice: !!voice,
     });
     setTimeout(() => navigate({ to: "/my-logs" }), 400);
   };

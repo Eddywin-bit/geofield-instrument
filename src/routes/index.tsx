@@ -174,6 +174,64 @@ function LocateScreen() {
       },
     });
   };
+  const startHighPrecision = () => {
+    acqRef.current?.stop();
+    hpRef.current?.cancel();
+    setState("hp");
+    setError(null);
+    setFix(null);
+    setLiveAccuracy(null);
+    setHpProgress({ samples: 0, elapsed: 0, runningAccuracy: null, bestAccuracy: null });
+
+    hpRef.current = acquireHighPrecisionFix({
+      onProgress: (p) => {
+        setHpProgress({
+          samples: p.sampleCount,
+          elapsed: p.elapsedSec,
+          runningAccuracy: p.runningAccuracy,
+          bestAccuracy: p.bestAccuracy,
+        });
+      },
+      onComplete: async (r) => {
+        try {
+          const geo = await loadGeology();
+          const name = findUnitAt(r.longitude, r.latitude, geo.geo);
+          const unit = unitByName(geo.units, name);
+          const next = fixFromUnit(unit, r.latitude, r.longitude, r.accuracy);
+          next.averaged = true;
+          next.sampleCount = r.sampleCount;
+          if (r.lowConfidence) next.lowConfidence = true;
+          if (Number.isFinite(r.accuracy)) {
+            const overlaps = nearbyUnits(r.longitude, r.latitude, r.accuracy, geo.geo);
+            if (overlaps.length > 1) next.nearby = overlaps;
+          }
+          setFix(next);
+          setLiveAccuracy(r.accuracy);
+          writeCurrentFix(next);
+          setHpProgress(null);
+          setState("found");
+        } catch {
+          setError("Could not load geology data.");
+          setHpProgress(null);
+          setState("error");
+        }
+      },
+      onError: (err) => {
+        const msg =
+          "code" in err && (err as GeolocationPositionError).code === 1
+            ? "Location permission denied. Enable GPS access to continue."
+            : (err as Error).message || "Could not acquire GPS samples.";
+        setError(msg);
+        setHpProgress(null);
+        setState("error");
+      },
+    });
+  };
+
+  const finishHighPrecisionEarly = () => {
+    hpRef.current?.cancel();
+  };
+
 
 
   const handleManual = async (c: ManualCoords) => {

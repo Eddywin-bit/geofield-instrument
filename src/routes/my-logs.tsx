@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
 import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
@@ -14,10 +14,15 @@ import {
 
 export const Route = createFileRoute("/my-logs")({
   head: () => ({ meta: [{ title: "GeoField — My Logs" }] }),
+  validateSearch: (search: Record<string, unknown>): { open?: string } => {
+    const open = search.open;
+    return typeof open === "string" && open.length > 0 ? { open } : {};
+  },
   component: MyLogsScreen,
 });
 
 function MyLogsScreen() {
+  const { open: openId } = Route.useSearch();
   const [query, setQuery] = useState("");
   const [, force] = useState(0);
   useEffect(() => {
@@ -84,7 +89,13 @@ function MyLogsScreen() {
             </div>
             <div className="space-y-2 px-4">
               {items.map((l) => (
-                <LogCard key={l.id} log={l} onDeleted={() => force((n) => n + 1)} />
+                <LogCard
+                  key={l.id}
+                  log={l}
+                  initialOpen={l.id === openId}
+                  autoScroll={l.id === openId}
+                  onDeleted={() => force((n) => n + 1)}
+                />
               ))}
             </div>
           </section>
@@ -94,10 +105,19 @@ function MyLogsScreen() {
   );
 }
 
-function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
-  const [open, setOpen] = useState(false);
+function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; initialOpen?: boolean; autoScroll?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
   const [confirming, setConfirming] = useState(false);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (autoScroll && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [autoScroll]);
+
+
 
   const effectivePhotos: string[] = log.photos ?? (log.photo ? [log.photo] : []);
   const photoCount = effectivePhotos.length;
@@ -109,6 +129,7 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
 
   return (
     <div
+      ref={cardRef}
       role="button"
       tabIndex={0}
       onClick={() => setOpen((v) => !v)}

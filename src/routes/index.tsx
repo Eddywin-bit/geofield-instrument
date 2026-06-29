@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard } from "lucide-react";
@@ -110,17 +110,20 @@ function LocateScreen() {
     setLiveAccuracy(null);
 
     acqRef.current = acquireFix({
-      onUpdate: async (accuracy, coords) => {
+      onUpdate: (accuracy, coords) => {
         setLiveAccuracy(accuracy);
-        try {
-          const geo = await loadGeology();
-          const name = findUnitAt(coords.longitude, coords.latitude, geo.geo);
-          const unit = unitByName(geo.units, name);
-          setFix(fixFromUnit(unit, coords.latitude, coords.longitude, accuracy));
-          setState((s) => (s === "locating" ? "locating" : s));
-        } catch {
-          /* keep waiting */
-        }
+        // Do NOT resolve geology during acquisition — position hasn't converged.
+        setFix({
+          unit: "Identifying…",
+          belt: "—",
+          lat: coords.latitude,
+          lng: coords.longitude,
+          accuracy,
+          expectedRocks: [],
+          expectedStructures: [],
+          mineralization: "",
+          engineering: "",
+        });
       },
       onSettle: async (best) => {
         try {
@@ -247,7 +250,7 @@ function LocateScreen() {
               setState("idle");
             }}
           />
-          {fix.nearby && fix.nearby.length > 1 && (
+          {state === "found" && fix.nearby && fix.nearby.length > 1 && (
             <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
               <div className="label-instrument text-primary mb-1">Possible contact nearby</div>
               <div className="text-foreground/90">
@@ -255,32 +258,36 @@ function LocateScreen() {
               </div>
             </div>
           )}
-          <Collapsible title="Expected Rocks" count={fix.expectedRocks.length}>
-            <ul className="space-y-2">
-              {fix.expectedRocks.map((r) => (
-                <li key={r} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ul>
-          </Collapsible>
-          <Collapsible title="Expected Structures" count={fix.expectedStructures.length}>
-            <ul className="space-y-2">
-              {fix.expectedStructures.map((r) => (
-                <li key={r} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ul>
-          </Collapsible>
-          <Collapsible title="Mineralization Notes">
-            <p className="text-sm leading-relaxed text-foreground/90">{fix.mineralization}</p>
-          </Collapsible>
-          <Collapsible title="Engineering Notes">
-            <p className="text-sm leading-relaxed text-foreground/90">{fix.engineering}</p>
-          </Collapsible>
+          {state === "found" && (
+            <>
+              <Collapsible title="Expected Rocks" count={fix.expectedRocks.length}>
+                <ul className="space-y-2">
+                  {fix.expectedRocks.map((r) => (
+                    <li key={r} className="flex items-start gap-2 text-sm">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Collapsible>
+              <Collapsible title="Expected Structures" count={fix.expectedStructures.length}>
+                <ul className="space-y-2">
+                  {fix.expectedStructures.map((r) => (
+                    <li key={r} className="flex items-start gap-2 text-sm">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Collapsible>
+              <Collapsible title="Mineralization Notes">
+                <p className="text-sm leading-relaxed text-foreground/90">{fix.mineralization}</p>
+              </Collapsible>
+              <Collapsible title="Engineering Notes">
+                <p className="text-sm leading-relaxed text-foreground/90">{fix.engineering}</p>
+              </Collapsible>
+            </>
+          )}
           <button
             onClick={() => setShowPicker(true)}
             className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2"
@@ -387,11 +394,13 @@ function FixCard({
       <div className="p-4 space-y-3">
         <div>
           <div className="label-instrument">Geological Unit</div>
-          <div className="text-lg font-bold leading-tight mt-1">{fix.unit}</div>
+          <div className="text-lg font-bold leading-tight mt-1">
+            {acquiring ? "Identifying…" : fix.unit}
+          </div>
         </div>
         <div>
           <div className="label-instrument">Belt / Formation</div>
-          <div className="text-sm mt-1">{fix.belt}</div>
+          <div className="text-sm mt-1">{acquiring ? "—" : fix.belt}</div>
         </div>
         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
           <div>
@@ -460,13 +469,18 @@ function Collapsible({
 
 function RecentRow({ log }: { log: LogEntry }) {
   return (
-    <div className="flex items-center gap-3 px-3 h-14 rounded-md border border-border bg-panel">
+    <Link
+      to="/my-logs"
+      search={{ open: log.id }}
+      className="flex items-center gap-3 px-3 h-14 rounded-md border border-border bg-panel active:bg-panel-2 hover:bg-panel-2 transition-colors"
+    >
       <MapPin className="h-4 w-4 text-primary shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold truncate">{log.unit}</div>
         <div className="text-[11px] text-muted-foreground truncate">{log.note}</div>
       </div>
       <span className="mono text-[11px] text-muted-foreground shrink-0">{formatTime(log.timestamp)}</span>
-    </div>
+    </Link>
   );
 }
+

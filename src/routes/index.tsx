@@ -161,7 +161,7 @@ function LocateScreen() {
         </p>
       </div>
 
-      {state !== "found" && (
+      {!fix && (
         <div className="px-4">
           <button
             onClick={locate}
@@ -171,7 +171,7 @@ function LocateScreen() {
             {state === "locating" ? (
               <>
                 <Loader2 className="h-7 w-7 animate-spin" />
-                ACQUIRING GPS…
+                {liveAccuracy === null ? "LOCATING…" : `ACQUIRING · ± ${liveAccuracy.toFixed(1)} M`}
               </>
             ) : (
               <>
@@ -194,9 +194,19 @@ function LocateScreen() {
         </div>
       )}
 
-      {state === "found" && fix && (
+      {fix && (
         <div className="px-4 space-y-3">
-          <FixCard fix={fix} onRelocate={() => setState("idle")} />
+          <FixCard
+            fix={fix}
+            acquiring={state === "locating"}
+            liveAccuracy={liveAccuracy}
+            onRelocate={() => {
+              acqRef.current?.stop();
+              setFix(null);
+              setLiveAccuracy(null);
+              setState("idle");
+            }}
+          />
           <Collapsible title="Expected Rocks" count={fix.expectedRocks.length}>
             <ul className="space-y-2">
               {fix.expectedRocks.map((r) => (

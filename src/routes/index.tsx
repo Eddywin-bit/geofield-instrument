@@ -229,7 +229,12 @@ function LocateScreen() {
   };
 
   const finishHighPrecisionEarly = () => {
+    const enough = (hpProgress?.samples ?? 0) >= 5;
     hpRef.current?.cancel();
+    if (!enough) {
+      setState("idle");
+      setHpProgress(null);
+    }
   };
 
 

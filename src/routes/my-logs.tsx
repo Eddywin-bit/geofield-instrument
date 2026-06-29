@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
+import { ImageViewer } from "../components/ImageViewer";
 import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
 import {
   deleteLog,

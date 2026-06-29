@@ -1,16 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
-import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard, Target, X } from "lucide-react";
+import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
 import { loadGeology, findUnitAt, unitByName, nearbyUnits, type GeoUnit } from "../lib/geology";
 import {
   acquireFix,
-  acquireHighPrecisionFix,
   accuracyToneClass,
   accuracyBarClass,
   type Acquisition,
-  type HighPrecisionAcquisition,
 } from "../lib/geo-acquire";
 import { ManualCoordsSheet, type ManualCoords } from "../components/ManualCoordsSheet";
 

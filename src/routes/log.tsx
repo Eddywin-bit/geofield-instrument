@@ -60,9 +60,14 @@ function LogScreen() {
 
   const acqRef = useRef<Acquisition | null>(null);
 
-  // Auto-acquire fix if we don't have a real one
+  // Auto-acquire fix if we don't have a real one, or always when `fresh` is set
   useEffect(() => {
-    if (hasRealFix(ctx)) return;
+    if (!fresh && hasRealFix(ctx)) return;
+    if (fresh) {
+      setCtx((c) => ({ ...c, lat: null, lng: null, accuracy: null, manual: false }));
+      // Clear the fresh flag so a reload doesn't re-trigger
+      navigate({ to: "/log", search: {}, replace: true });
+    }
     setLocating(true);
     acqRef.current?.stop();
     acqRef.current = acquireFix({

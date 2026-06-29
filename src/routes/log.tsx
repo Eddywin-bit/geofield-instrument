@@ -136,15 +136,7 @@ function LogScreen() {
   const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    const readers = Array.from(files).map(
-      (file) =>
-        new Promise<string | null>((resolve) => {
-          const r = new FileReader();
-          r.onload = () => resolve(typeof r.result === "string" ? r.result : null);
-          r.onerror = () => resolve(null);
-          r.readAsDataURL(file);
-        }),
-    );
+    const readers = Array.from(files).map((file) => downscaleImage(file));
     void Promise.all(readers).then((results) => {
       const added = results.filter((s): s is string => !!s);
       if (added.length) setPhotos((prev) => [...prev, ...added]);

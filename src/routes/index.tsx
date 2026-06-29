@@ -316,7 +316,11 @@ function FixCard({
 }) {
   const displayAccuracy =
     acquiring && liveAccuracy !== null && liveAccuracy !== undefined ? liveAccuracy : fix.accuracy;
-  const bars = Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
+  const isManual = !!fix.manual && displayAccuracy === null;
+  const bars =
+    displayAccuracy === null
+      ? 0
+      : Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
   const toneText = accuracyToneClass(displayAccuracy);
   const toneBar = accuracyBarClass(displayAccuracy);
   return (
@@ -325,7 +329,7 @@ function FixCard({
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${acquiring ? "bg-primary animate-pulse" : "bg-success"}`} />
           <span className={`label-instrument ${acquiring ? "text-primary" : "text-success"}`}>
-            {acquiring ? "ACQUIRING…" : "FIX ACQUIRED"}
+            {acquiring ? "ACQUIRING…" : isManual ? "MANUAL ENTRY" : "FIX ACQUIRED"}
           </span>
         </div>
         <button
@@ -354,19 +358,22 @@ function FixCard({
           </div>
           <div>
             <div className="label-instrument">Accuracy</div>
-            <div className={`mono text-xs mt-1 ${toneText}`}>± {displayAccuracy.toFixed(1)} m</div>
-            <div className="mt-1 flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((b) => (
-                <span
-                  key={b}
-                  className={`h-1.5 w-4 rounded-sm ${b <= bars ? toneBar : "bg-border"}`}
-                />
-              ))}
-            </div>
+            {displayAccuracy === null ? (
+              <div className="mono text-xs mt-1 text-muted-foreground">Manual entry</div>
+            ) : (
+              <>
+                <div className={`mono text-xs mt-1 ${toneText}`}>± {displayAccuracy.toFixed(1)} m</div>
+                <div className="mt-1 flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((b) => (
+                    <span
+                      key={b}
+                      className={`h-1.5 w-4 rounded-sm ${b <= bars ? toneBar : "bg-border"}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        </div>
-      </div>
-    </div>
   );
 }
 

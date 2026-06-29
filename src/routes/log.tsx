@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
-import { Camera, Mic, Check, MapPin } from "lucide-react";
+import { Camera, Mic, Check, MapPin, Square, X } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
@@ -39,6 +39,14 @@ function LogScreen() {
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [viewing, setViewing] = useState(false);
+  const [voice, setVoice] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordSec, setRecordSec] = useState(0);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [ctx, setCtx] = useState<Ctx>(() => {
     const f = fresh ? null : readCurrentFix();

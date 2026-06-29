@@ -289,7 +289,7 @@ function LocateScreen() {
             className={`w-full h-11 rounded-lg text-sm font-semibold tracking-wide flex items-center justify-center gap-2 ${
               state === "found" && !fix.manual && typeof fix.accuracy === "number" && fix.accuracy > 30
                 ? "border border-primary bg-primary/10 hover:bg-primary/20"
-                : "border border-border bg-panel hover:bg-panel-2"
+                : "border border-primary/70 bg-primary/5 text-foreground hover:bg-primary/10"
             }`}
           >
             <Keyboard className="h-4 w-4 text-primary" />

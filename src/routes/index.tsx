@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
-import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
+import { loadGeology, findUnitAt, unitByName, nearbyUnits, type GeoUnit } from "../lib/geology";
 import { acquireFix, accuracyToneClass, accuracyBarClass, type Acquisition } from "../lib/geo-acquire";
 import { ManualCoordsSheet, type ManualCoords } from "../components/ManualCoordsSheet";
 
@@ -28,6 +28,7 @@ type Fix = {
   expectedStructures: string[];
   mineralization: string;
   engineering: string;
+  nearby?: string[];
 };
 
 const UNMAPPED: Pick<Fix, "belt" | "expectedRocks" | "expectedStructures" | "mineralization" | "engineering"> = {
@@ -127,6 +128,10 @@ function LocateScreen() {
           const name = findUnitAt(best.longitude, best.latitude, geo.geo);
           const unit = unitByName(geo.units, name);
           const next = fixFromUnit(unit, best.latitude, best.longitude, best.accuracy);
+          if (typeof best.accuracy === "number" && Number.isFinite(best.accuracy)) {
+            const overlaps = nearbyUnits(best.longitude, best.latitude, best.accuracy, geo.geo);
+            if (overlaps.length > 1) next.nearby = overlaps;
+          }
           setFix(next);
           setLiveAccuracy(best.accuracy);
           writeCurrentFix(next);

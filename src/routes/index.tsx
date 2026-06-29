@@ -22,7 +22,8 @@ type Fix = {
   belt: string;
   lat: number;
   lng: number;
-  accuracy: number;
+  accuracy: number | null;
+  manual?: boolean;
   expectedRocks: string[];
   expectedStructures: string[];
   mineralization: string;
@@ -37,9 +38,15 @@ const UNMAPPED: Pick<Fix, "belt" | "expectedRocks" | "expectedStructures" | "min
   engineering: "No engineering guidance available for an unmapped location.",
 };
 
-function fixFromUnit(unit: GeoUnit | null, lat: number, lng: number, accuracy: number): Fix {
+function fixFromUnit(
+  unit: GeoUnit | null,
+  lat: number,
+  lng: number,
+  accuracy: number | null,
+  manual = false,
+): Fix {
   if (!unit) {
-    return { unit: "Unmapped", lat, lng, accuracy, ...UNMAPPED };
+    return { unit: "Unmapped", lat, lng, accuracy, manual, ...UNMAPPED };
   }
   return {
     unit: unit.unit_name,
@@ -47,6 +54,7 @@ function fixFromUnit(unit: GeoUnit | null, lat: number, lng: number, accuracy: n
     lat,
     lng,
     accuracy,
+    manual,
     expectedRocks: unit.expected_rocks,
     expectedStructures: unit.expected_features,
     mineralization: unit.mineral_note,

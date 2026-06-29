@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
-import { Camera, Mic, Check, MapPin } from "lucide-react";
+import { Camera, Mic, Check, MapPin, Square, X } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
@@ -39,6 +39,14 @@ function LogScreen() {
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [viewing, setViewing] = useState(false);
+  const [voice, setVoice] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordSec, setRecordSec] = useState(0);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [ctx, setCtx] = useState<Ctx>(() => {
     const f = fresh ? null : readCurrentFix();
@@ -133,6 +141,77 @@ function LogScreen() {
     reader.readAsDataURL(file);
   };
 
+  const stopRecording = () => {
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") {
+      try { rec.stop(); } catch { /* ignore */ }
+    }
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+  };
+
+  const releaseMic = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    recorderRef.current = null;
+  };
+
+  const startRecording = async () => {
+    setVoiceError(null);
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setVoiceError("Microphone not available on this device.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", ""];
+      const mime = candidates.find((m) => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      recorderRef.current = rec;
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") setVoice(reader.result);
+        };
+        reader.readAsDataURL(blob);
+        releaseMic();
+        setRecording(false);
+      };
+      rec.start();
+      setRecording(true);
+      setRecordSec(0);
+      recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
+    } catch {
+      setVoiceError("Microphone permission denied.");
+      releaseMic();
+    }
+  };
+
+  const toggleVoice = () => {
+    if (recording) stopRecording();
+    else void startRecording();
+  };
+
+  const clearVoice = () => {
+    setVoice(null);
+    setVoiceError(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopRecording();
+      releaseMic();
+    };
+  }, []);
+
   const save = () => {
     setSaving(true);
     addLog({
@@ -145,7 +224,8 @@ function LogScreen() {
       accuracy: ctx.accuracy,
       note: note || "(no note)",
       photo: photo ?? undefined,
-      hasVoice: false,
+      voice: voice ?? undefined,
+      hasVoice: !!voice,
     });
     setTimeout(() => navigate({ to: "/my-logs" }), 400);
   };
@@ -210,14 +290,51 @@ function LogScreen() {
           status={photo ? "Captured" : "Tap to capture"}
         />
         <CaptureTile
-          active={false}
-          disabled
-          onClick={() => {}}
-          icon={<Mic className="h-7 w-7" strokeWidth={2.2} />}
-          label="VOICE"
-          status="Coming soon"
+          active={!!voice || recording}
+          onClick={toggleVoice}
+          icon={
+            recording ? (
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-destructive animate-pulse" />
+                <Square className="h-6 w-6" strokeWidth={2.2} fill="currentColor" />
+              </span>
+            ) : (
+              <Mic className="h-7 w-7" strokeWidth={2.2} />
+            )
+          }
+          label={recording ? "RECORDING" : "VOICE"}
+          status={
+            recording
+              ? `${recordSec}s · tap to stop`
+              : voice
+              ? "Captured"
+              : "Tap to record"
+          }
         />
       </div>
+
+      {(voice || voiceError) && (
+        <div className="px-4 mt-3 space-y-2">
+          {voiceError && (
+            <div className="rounded-md border border-destructive/60 bg-destructive/5 p-2 text-xs text-destructive">
+              {voiceError}
+            </div>
+          )}
+          {voice && (
+            <div className="rounded-lg border border-border bg-panel p-3 flex items-center gap-3">
+              <audio src={voice} controls className="flex-1 min-w-0" />
+              <button
+                type="button"
+                onClick={clearVoice}
+                aria-label="Discard recording"
+                className="h-9 w-9 shrink-0 rounded-md border border-border text-muted-foreground flex items-center justify-center hover:bg-panel-2"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {photo && (
         <div className="px-4 mt-3">

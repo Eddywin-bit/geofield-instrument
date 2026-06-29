@@ -1,8 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -15,12 +19,14 @@ export function ImageViewer({ src, onClose }: { src: string; onClose: () => void
     };
   }, [onClose]);
 
-  return (
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       onClick={onClose}
-      className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
+      className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center"
     >
       <button
         type="button"
@@ -38,7 +44,7 @@ export function ImageViewer({ src, onClose }: { src: string; onClose: () => void
         alt="Observation"
         className="max-h-screen max-w-full object-contain select-none"
       />
-
-    </div>
+    </div>,
+    document.body,
   );
 }

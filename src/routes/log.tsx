@@ -349,23 +349,45 @@ function LogScreen() {
         </div>
       )}
 
-      {photo && (
+      {photos.length > 0 && (
         <div className="px-4 mt-3">
-          <button
-            type="button"
-            onClick={() => setViewing(true)}
-            className="block w-full rounded-lg border border-border bg-black/40 overflow-hidden"
-            aria-label="Open photo full screen"
-          >
-            <img
-              src={photo}
-              alt="Observation"
-              className="w-full h-40 object-contain"
-            />
-          </button>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {photos.map((p, i) => (
+              <div
+                key={i}
+                className="relative h-20 w-20 shrink-0 rounded-md border border-border bg-panel-2 overflow-hidden"
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewingIndex(i)}
+                  aria-label={`Open photo ${i + 1} full screen`}
+                  className="block h-full w-full"
+                >
+                  <img src={p} alt="" className="h-full w-full object-cover" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhotos((prev) => prev.filter((_, idx) => idx !== i));
+                  }}
+                  aria-label={`Remove photo ${i + 1}`}
+                  className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/70 border border-white/20 text-white flex items-center justify-center"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-      {viewing && photo && <ImageViewer src={photo} onClose={() => setViewing(false)} />}
+      {viewingIndex !== null && photos.length > 0 && (
+        <ImageViewer
+          images={photos}
+          startIndex={viewingIndex}
+          onClose={() => setViewingIndex(null)}
+        />
+      )}
 
 
       {/* Short note */}

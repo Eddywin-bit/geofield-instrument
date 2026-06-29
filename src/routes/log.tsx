@@ -290,14 +290,51 @@ function LogScreen() {
           status={photo ? "Captured" : "Tap to capture"}
         />
         <CaptureTile
-          active={false}
-          disabled
-          onClick={() => {}}
-          icon={<Mic className="h-7 w-7" strokeWidth={2.2} />}
-          label="VOICE"
-          status="Coming soon"
+          active={!!voice || recording}
+          onClick={toggleVoice}
+          icon={
+            recording ? (
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-destructive animate-pulse" />
+                <Square className="h-6 w-6" strokeWidth={2.2} fill="currentColor" />
+              </span>
+            ) : (
+              <Mic className="h-7 w-7" strokeWidth={2.2} />
+            )
+          }
+          label={recording ? "RECORDING" : "VOICE"}
+          status={
+            recording
+              ? `${recordSec}s · tap to stop`
+              : voice
+              ? "Captured"
+              : "Tap to record"
+          }
         />
       </div>
+
+      {(voice || voiceError) && (
+        <div className="px-4 mt-3 space-y-2">
+          {voiceError && (
+            <div className="rounded-md border border-destructive/60 bg-destructive/5 p-2 text-xs text-destructive">
+              {voiceError}
+            </div>
+          )}
+          {voice && (
+            <div className="rounded-lg border border-border bg-panel p-3 flex items-center gap-3">
+              <audio src={voice} controls className="flex-1 min-w-0" />
+              <button
+                type="button"
+                onClick={clearVoice}
+                aria-label="Discard recording"
+                className="h-9 w-9 shrink-0 rounded-md border border-border text-muted-foreground flex items-center justify-center hover:bg-panel-2"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {photo && (
         <div className="px-4 mt-3">

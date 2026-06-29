@@ -286,14 +286,29 @@ function LocateScreen() {
   );
 }
 
-function FixCard({ fix, onRelocate }: { fix: Fix; onRelocate: () => void }) {
-  const bars = Math.max(1, Math.min(5, Math.round(6 - Math.min(fix.accuracy, 30) / 6)));
+function FixCard({
+  fix,
+  acquiring,
+  liveAccuracy,
+  onRelocate,
+}: {
+  fix: Fix;
+  acquiring?: boolean;
+  liveAccuracy?: number | null;
+  onRelocate: () => void;
+}) {
+  const displayAccuracy = acquiring && liveAccuracy !== null ? liveAccuracy : fix.accuracy;
+  const bars = Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
+  const toneText = accuracyToneClass(displayAccuracy);
+  const toneBar = accuracyBarClass(displayAccuracy);
   return (
     <div className="rounded-lg border border-border bg-panel overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-success" />
-          <span className="label-instrument text-success">FIX ACQUIRED</span>
+          <span className={`h-2 w-2 rounded-full ${acquiring ? "bg-primary animate-pulse" : "bg-success"}`} />
+          <span className={`label-instrument ${acquiring ? "text-primary" : "text-success"}`}>
+            {acquiring ? "ACQUIRING…" : "FIX ACQUIRED"}
+          </span>
         </div>
         <button
           onClick={onRelocate}
@@ -321,12 +336,12 @@ function FixCard({ fix, onRelocate }: { fix: Fix; onRelocate: () => void }) {
           </div>
           <div>
             <div className="label-instrument">Accuracy</div>
-            <div className="mono text-xs mt-1">± {fix.accuracy.toFixed(1)} m</div>
+            <div className={`mono text-xs mt-1 ${toneText}`}>± {displayAccuracy.toFixed(1)} m</div>
             <div className="mt-1 flex gap-0.5">
               {[1, 2, 3, 4, 5].map((b) => (
                 <span
                   key={b}
-                  className={`h-1.5 w-4 rounded-sm ${b <= bars ? "bg-success" : "bg-border"}`}
+                  className={`h-1.5 w-4 rounded-sm ${b <= bars ? toneBar : "bg-border"}`}
                 />
               ))}
             </div>

@@ -134,11 +134,23 @@ function LogScreen() {
   }, []);
 
   const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(typeof reader.result === "string" ? reader.result : null);
-    reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const readers = Array.from(files).map(
+      (file) =>
+        new Promise<string | null>((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(typeof r.result === "string" ? r.result : null);
+          r.onerror = () => resolve(null);
+          r.readAsDataURL(file);
+        }),
+    );
+    void Promise.all(readers).then((results) => {
+      const added = results.filter((s): s is string => !!s);
+      if (added.length) setPhotos((prev) => [...prev, ...added]);
+    });
+    // allow re-selecting same file
+    e.target.value = "";
   };
 
   const stopRecording = () => {

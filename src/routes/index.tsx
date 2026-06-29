@@ -394,11 +394,13 @@ function FixCard({
       <div className="p-4 space-y-3">
         <div>
           <div className="label-instrument">Geological Unit</div>
-          <div className="text-lg font-bold leading-tight mt-1">{fix.unit}</div>
+          <div className="text-lg font-bold leading-tight mt-1">
+            {acquiring ? "Identifying…" : fix.unit}
+          </div>
         </div>
         <div>
           <div className="label-instrument">Belt / Formation</div>
-          <div className="text-sm mt-1">{fix.belt}</div>
+          <div className="text-sm mt-1">{acquiring ? "—" : fix.belt}</div>
         </div>
         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
           <div>

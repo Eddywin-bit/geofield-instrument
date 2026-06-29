@@ -129,6 +129,7 @@ function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { 
 
   return (
     <div
+      ref={cardRef}
       role="button"
       tabIndex={0}
       onClick={() => setOpen((v) => !v)}

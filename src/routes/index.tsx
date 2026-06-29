@@ -88,19 +88,12 @@ function writeCurrentFix(f: Fix) {
 }
 
 function LocateScreen() {
-  const [state, setState] = useState<"idle" | "locating" | "found" | "error" | "hp">("idle");
+  const [state, setState] = useState<"idle" | "locating" | "found" | "error">("idle");
   const [fix, setFix] = useState<Fix | null>(null);
   const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
-  const [hpProgress, setHpProgress] = useState<{
-    samples: number;
-    elapsed: number;
-    runningAccuracy: number | null;
-    bestAccuracy: number | null;
-  } | null>(null);
   const acqRef = useRef<Acquisition | null>(null);
-  const hpRef = useRef<HighPrecisionAcquisition | null>(null);
 
   const [, force] = useState(0);
   useEffect(() => {
@@ -108,7 +101,6 @@ function LocateScreen() {
 
     return () => {
       acqRef.current?.stop();
-      hpRef.current?.cancel();
     };
   }, []);
   const recent = loadLogs().slice(0, 3);

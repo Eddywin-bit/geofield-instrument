@@ -123,7 +123,17 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
           <div className="flex items-start gap-3">
             <div className="h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
               {log.photo ? (
-                <img src={log.photo} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setViewing(true);
+                  }}
+                  aria-label="Open photo full screen"
+                  className="h-full w-full block"
+                >
+                  <img src={log.photo} alt="" className="h-full w-full object-cover" />
+                </button>
               ) : (
                 <ImageIcon className="h-5 w-5 text-muted-foreground" />
               )}

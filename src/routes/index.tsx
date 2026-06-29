@@ -428,6 +428,7 @@ function FixCard({
       : Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
   const toneText = accuracyToneClass(displayAccuracy);
   const toneBar = accuracyBarClass(displayAccuracy);
+  const isAveraged = !!fix.averaged;
   return (
     <div className="rounded-lg border border-border bg-panel overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
@@ -436,6 +437,11 @@ function FixCard({
           <span className={`label-instrument ${acquiring ? "text-primary" : "text-success"}`}>
             {acquiring ? "ACQUIRING…" : isManual ? "MANUAL ENTRY" : "FIX ACQUIRED"}
           </span>
+          {isAveraged && !acquiring && (
+            <span className="ml-1 px-1.5 py-0.5 rounded-sm border border-primary/60 text-primary mono text-[10px] tracking-[0.12em]">
+              HIGH-PRECISION
+            </span>
+          )}
         </div>
         <button
           onClick={onRelocate}
@@ -470,6 +476,12 @@ function FixCard({
             ) : (
               <>
                 <div className={`mono text-xs mt-1 ${toneText}`}>± {displayAccuracy.toFixed(1)} m</div>
+                {isAveraged && fix.sampleCount ? (
+                  <div className="mono text-[10px] text-muted-foreground mt-0.5">
+                    averaged from {fix.sampleCount} fixes
+                    {fix.lowConfidence ? " · low confidence" : ""}
+                  </div>
+                ) : null}
                 <div className="mt-1 flex gap-0.5">
                   {[1, 2, 3, 4, 5].map((b) => (
                     <span

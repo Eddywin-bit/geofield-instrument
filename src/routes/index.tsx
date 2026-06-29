@@ -276,9 +276,21 @@ function LocateScreen() {
               </Collapsible>
             </>
           )}
+          {state === "found" && !fix.manual && typeof fix.accuracy === "number" && fix.accuracy > 30 && (
+            <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
+              <div className="label-instrument text-primary mb-1">GPS is weak here</div>
+              <div className="text-foreground/90">
+                Accuracy is low at this spot. If you have coordinates from another device (a Garmin, survey point, or a better phone), enter them for a more precise fix.
+              </div>
+            </div>
+          )}
           <button
             onClick={() => setShowManual(true)}
-            className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2 flex items-center justify-center gap-2"
+            className={`w-full h-11 rounded-lg text-sm font-semibold tracking-wide flex items-center justify-center gap-2 ${
+              state === "found" && !fix.manual && typeof fix.accuracy === "number" && fix.accuracy > 30
+                ? "border border-primary bg-primary/10 hover:bg-primary/20"
+                : "border border-border bg-panel hover:bg-panel-2"
+            }`}
           >
             <Keyboard className="h-4 w-4 text-primary" />
             ENTER COORDINATES MANUALLY

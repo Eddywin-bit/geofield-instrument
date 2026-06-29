@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
+import { ImageViewer } from "../components/ImageViewer";
 import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
 import {
   deleteLog,
@@ -96,6 +97,7 @@ function MyLogsScreen() {
 function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [viewing, setViewing] = useState(false);
 
   const handleDelete = () => {
     deleteLog(log.id);
@@ -158,10 +160,31 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
             >
               <Detail label="Position" value={log.lat !== null && log.lng !== null ? `${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}` : "Position unknown"} />
               <Detail label="Belt" value={log.belt} />
+              {log.photo && (
+                <div>
+                  <div className="label-instrument mb-1">Photo</div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewing(true);
+                    }}
+                    className="block w-full rounded-md border border-border bg-black/40 overflow-hidden"
+                    aria-label="Open photo full screen"
+                  >
+                    <img
+                      src={log.photo}
+                      alt="Observation"
+                      className="w-full max-h-72 object-contain"
+                    />
+                  </button>
+                </div>
+              )}
               <div>
                 <div className="label-instrument">Note</div>
                 <p className="text-sm mt-1 leading-relaxed">{log.note}</p>
               </div>
+
 
               <div className="pt-2">
                 {!confirming ? (
@@ -202,6 +225,7 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
           )}
         </div>
       </div>
+      {viewing && log.photo && <ImageViewer src={log.photo} onClose={() => setViewing(false)} />}
     </div>
   );
 }

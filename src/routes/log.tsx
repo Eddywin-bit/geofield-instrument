@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
+import { ImageViewer } from "../components/ImageViewer";
 import { Camera, Mic, Check, MapPin } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";
@@ -37,6 +38,7 @@ function LogScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [viewing, setViewing] = useState(false);
 
   const [ctx, setCtx] = useState<Ctx>(() => {
     const f = fresh ? null : readCurrentFix();
@@ -219,13 +221,22 @@ function LogScreen() {
 
       {photo && (
         <div className="px-4 mt-3">
-          <img
-            src={photo}
-            alt="Observation"
-            className="w-full h-40 object-cover rounded-lg border border-border"
-          />
+          <button
+            type="button"
+            onClick={() => setViewing(true)}
+            className="block w-full rounded-lg border border-border bg-black/40 overflow-hidden"
+            aria-label="Open photo full screen"
+          >
+            <img
+              src={photo}
+              alt="Observation"
+              className="w-full h-40 object-contain"
+            />
+          </button>
         </div>
       )}
+      {viewing && photo && <ImageViewer src={photo} onClose={() => setViewing(false)} />}
+
 
       {/* Short note */}
       <div className="px-4 mt-3">

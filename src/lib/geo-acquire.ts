@@ -121,10 +121,23 @@ export function accuracyToneClass(a: number | null): string {
     case "good":
       return "text-success";
     case "ok":
-      return "text-warning";
+      return "text-primary";
     case "bad":
       return "text-destructive";
     default:
       return "text-muted-foreground";
+  }
+}
+
+export function accuracyBarClass(a: number | null): string {
+  switch (accuracyTone(a)) {
+    case "good":
+      return "bg-success";
+    case "ok":
+      return "bg-primary";
+    case "bad":
+      return "bg-destructive";
+    default:
+      return "bg-border";
   }
 }

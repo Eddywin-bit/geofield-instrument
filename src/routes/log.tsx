@@ -243,12 +243,14 @@ function Row({
   icon,
   mono,
   muted,
+  valueClass,
 }: {
   label: string;
   value: string;
   icon?: React.ReactNode;
   mono?: boolean;
   muted?: boolean;
+  valueClass?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -258,6 +260,8 @@ function Row({
       </div>
       <span
         className={`text-sm font-semibold text-right truncate ${mono ? "mono" : ""} ${
+          muted ? "text-muted-foreground" : ""
+        } ${valueClass ?? ""}`}
           muted ? "text-muted-foreground" : ""
         }`}
       >

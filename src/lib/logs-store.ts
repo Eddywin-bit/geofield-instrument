@@ -72,6 +72,11 @@ export function addLog(entry: LogEntry) {
   saveLogs(next);
 }
 
+export function deleteLog(id: string) {
+  const next = memoryCache.filter((l) => l.id !== id);
+  saveLogs(next);
+}
+
 export function formatCoord(n: number) {
   const dir = n >= 0 ? "" : "-";
   const abs = Math.abs(n);

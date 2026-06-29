@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
-import { Search, Image as ImageIcon, Mic } from "lucide-react";
+import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
 import {
+  deleteLog,
   formatDateGroup,
   formatTime,
   hydrateLogs,
@@ -82,7 +83,7 @@ function MyLogsScreen() {
             </div>
             <div className="space-y-2 px-4">
               {items.map((l) => (
-                <LogCard key={l.id} log={l} />
+                <LogCard key={l.id} log={l} onDeleted={() => force((n) => n + 1)} />
               ))}
             </div>
           </section>
@@ -92,12 +93,27 @@ function MyLogsScreen() {
   );
 }
 
-function LogCard({ log }: { log: LogEntry }) {
+function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
   const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const handleDelete = () => {
+    deleteLog(log.id);
+    onDeleted();
+  };
+
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => setOpen((v) => !v)}
-      className="w-full text-left rounded-lg border border-border bg-panel overflow-hidden"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setOpen((v) => !v);
+        }
+      }}
+      className="w-full text-left rounded-lg border border-border bg-panel overflow-hidden cursor-pointer"
     >
       <div className="flex items-stretch">
         <div className="w-1 bg-primary" />
@@ -136,18 +152,57 @@ function LogCard({ log }: { log: LogEntry }) {
             </div>
           </div>
           {open && (
-            <div className="mt-3 pt-3 border-t border-border space-y-2">
+            <div
+              className="mt-3 pt-3 border-t border-border space-y-2"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Detail label="Position" value={log.lat !== null && log.lng !== null ? `${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}` : "Position unknown"} />
               <Detail label="Belt" value={log.belt} />
               <div>
                 <div className="label-instrument">Note</div>
                 <p className="text-sm mt-1 leading-relaxed">{log.note}</p>
               </div>
+
+              <div className="pt-2">
+                {!confirming ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(true)}
+                    className="h-8 px-3 rounded-md border border-destructive/60 text-destructive text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    DELETE
+                  </button>
+                ) : (
+                  <div className="rounded-md border border-destructive/60 bg-destructive/5 p-3">
+                    <p className="text-xs text-foreground/90">
+                      Delete this observation? This cannot be undone.
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConfirming(false)}
+                        className="h-8 px-3 rounded-md border border-border text-[11px] font-bold tracking-[0.18em] text-muted-foreground hover:bg-panel-2"
+                      >
+                        CANCEL
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        className="h-8 px-3 rounded-md bg-destructive text-destructive-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        DELETE
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 

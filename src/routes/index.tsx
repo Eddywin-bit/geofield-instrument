@@ -29,9 +29,6 @@ type Fix = {
   lng: number;
   accuracy: number | null;
   manual?: boolean;
-  averaged?: boolean;
-  sampleCount?: number;
-  lowConfidence?: boolean;
   expectedRocks: string[];
   expectedStructures: string[];
   mineralization: string;

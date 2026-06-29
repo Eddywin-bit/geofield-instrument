@@ -10,6 +10,7 @@ export type LogEntry = {
   accuracy: number | null;
   note: string;
   photo?: string; // data URL
+  voice?: string; // data URL (audio)
   hasVoice?: boolean;
 };
 

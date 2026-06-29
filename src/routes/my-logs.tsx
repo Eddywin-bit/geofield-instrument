@@ -225,6 +225,7 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
           )}
         </div>
       </div>
+      {viewing && log.photo && <ImageViewer src={log.photo} onClose={() => setViewing(false)} />}
     </div>
   );
 }

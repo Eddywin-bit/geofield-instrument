@@ -93,7 +93,7 @@ function LocateScreen() {
   const [, force] = useState(0);
   useEffect(() => {
     void hydrateLogs().then(() => force((n) => n + 1));
-    void loadGeology().then((g) => setUnits(g.units));
+    
     return () => {
       acqRef.current?.stop();
     };

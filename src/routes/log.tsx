@@ -262,8 +262,6 @@ function Row({
         className={`text-sm font-semibold text-right truncate ${mono ? "mono" : ""} ${
           muted ? "text-muted-foreground" : ""
         } ${valueClass ?? ""}`}
-          muted ? "text-muted-foreground" : ""
-        }`}
       >
         {value}
       </span>

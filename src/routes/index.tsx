@@ -87,15 +87,13 @@ function LocateScreen() {
   const [fix, setFix] = useState<Fix | null>(null);
   const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [units, setUnits] = useState<GeoUnit[]>([]);
-  const [showPicker, setShowPicker] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const acqRef = useRef<Acquisition | null>(null);
 
   const [, force] = useState(0);
   useEffect(() => {
     void hydrateLogs().then(() => force((n) => n + 1));
-    void loadGeology().then((g) => setUnits(g.units));
+    
     return () => {
       acqRef.current?.stop();
     };
@@ -159,14 +157,6 @@ function LocateScreen() {
     });
   };
 
-  const pickUnit = (u: GeoUnit) => {
-    const base = fix ?? { lat: 0, lng: 0, accuracy: null as number | null };
-    const next = fixFromUnit(u, base.lat, base.lng, base.accuracy, !!fix?.manual);
-    setFix(next);
-    writeCurrentFix(next);
-    setState("found");
-    setShowPicker(false);
-  };
 
   const handleManual = async (c: ManualCoords) => {
     acqRef.current?.stop();
@@ -221,12 +211,6 @@ function LocateScreen() {
               {error}
             </div>
           )}
-          <button
-            onClick={() => setShowPicker(true)}
-            className="w-full mt-3 h-12 rounded-lg border border-border bg-panel text-foreground text-sm font-semibold tracking-wide hover:bg-panel-2"
-          >
-            SELECT UNIT MANUALLY
-          </button>
           <button
             onClick={() => setShowManual(true)}
             className="w-full mt-2 h-12 rounded-lg border border-border bg-panel text-foreground text-sm font-semibold tracking-wide hover:bg-panel-2 flex items-center justify-center gap-2"
@@ -289,12 +273,6 @@ function LocateScreen() {
             </>
           )}
           <button
-            onClick={() => setShowPicker(true)}
-            className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2"
-          >
-            SELECT UNIT MANUALLY
-          </button>
-          <button
             onClick={() => setShowManual(true)}
             className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2 flex items-center justify-center gap-2"
           >
@@ -311,31 +289,6 @@ function LocateScreen() {
       />
 
 
-      {showPicker && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 flex items-end"
-          onClick={() => setShowPicker(false)}
-        >
-          <div
-            className="w-full bg-panel border-t border-border rounded-t-lg p-4 pb-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="label-instrument mb-3">Select Geological Unit</div>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              {units.map((u) => (
-                <button
-                  key={u.unit_name}
-                  onClick={() => pickUnit(u)}
-                  className="w-full text-left px-3 py-3 rounded-md border border-border bg-panel-2 hover:bg-panel"
-                >
-                  <div className="text-sm font-bold">{u.unit_name}</div>
-                  <div className="text-xs text-muted-foreground">{u.also_known_as}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="mt-8 px-4">
         <div className="flex items-center justify-between mb-2">

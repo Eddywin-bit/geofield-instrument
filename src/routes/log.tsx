@@ -35,10 +35,10 @@ function LogScreen() {
   const fresh = Route.useSearch({ select: (s) => s.fresh === true });
   const fileRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
-  const [viewing, setViewing] = useState(false);
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [voice, setVoice] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordSec, setRecordSec] = useState(0);

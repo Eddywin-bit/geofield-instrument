@@ -191,7 +191,7 @@ function LocateScreen() {
         </p>
       </div>
 
-      {!fix && state !== "hp" && (
+      {!fix && (
         <div className="px-4 space-y-2">
           <button
             onClick={locate}
@@ -216,29 +216,12 @@ function LocateScreen() {
             </div>
           )}
           <button
-            onClick={startHighPrecision}
-            disabled={state === "locating"}
-            className="w-full h-12 rounded-lg border border-primary/60 bg-panel text-foreground text-sm font-semibold tracking-[0.14em] hover:bg-panel-2 flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <Target className="h-4 w-4 text-primary" />
-            HIGH-PRECISION FIX
-          </button>
-          <button
             onClick={() => setShowManual(true)}
             className="w-full h-12 rounded-lg border border-border bg-panel text-foreground text-sm font-semibold tracking-wide hover:bg-panel-2 flex items-center justify-center gap-2"
           >
             <Keyboard className="h-4 w-4 text-primary" />
             ENTER COORDINATES MANUALLY
           </button>
-        </div>
-      )}
-
-      {state === "hp" && (
-        <div className="px-4">
-          <HighPrecisionPanel
-            progress={hpProgress}
-            onCancel={finishHighPrecisionEarly}
-          />
         </div>
       )}
 

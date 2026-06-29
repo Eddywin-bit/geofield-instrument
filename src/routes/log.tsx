@@ -147,7 +147,13 @@ function LogScreen() {
       : "—";
 
   const accuracyDisplay =
-    ctx.accuracy !== null ? `± ${ctx.accuracy.toFixed(1)} m` : locating ? "Locating…" : "—";
+    ctx.accuracy !== null
+      ? `± ${ctx.accuracy.toFixed(1)} m`
+      : ctx.manual
+      ? "Manual entry"
+      : locating
+      ? "Locating…"
+      : "—";
 
   const positionMuted = ctx.lat === null || ctx.lng === null;
   const accuracyMuted = ctx.accuracy === null;

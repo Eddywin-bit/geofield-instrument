@@ -332,7 +332,7 @@ function FixCard({
       : Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
   const toneText = accuracyToneClass(displayAccuracy);
   const toneBar = accuracyBarClass(displayAccuracy);
-  const isAveraged = !!fix.averaged;
+  
   return (
     <div className="rounded-lg border border-border bg-panel overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">

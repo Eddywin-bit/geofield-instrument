@@ -36,9 +36,9 @@ export function ImageViewer({ src, onClose }: { src: string; onClose: () => void
       <img
         src={src}
         alt="Observation"
-        onClick={(e) => e.stopPropagation()}
         className="max-h-screen max-w-full object-contain select-none"
       />
+
     </div>
   );
 }

@@ -116,7 +116,8 @@ function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { 
       cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [autoScroll]);
-  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+
+
 
   const effectivePhotos: string[] = log.photos ?? (log.photo ? [log.photo] : []);
   const photoCount = effectivePhotos.length;

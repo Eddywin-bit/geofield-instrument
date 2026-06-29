@@ -469,13 +469,18 @@ function Collapsible({
 
 function RecentRow({ log }: { log: LogEntry }) {
   return (
-    <div className="flex items-center gap-3 px-3 h-14 rounded-md border border-border bg-panel">
+    <Link
+      to="/my-logs"
+      search={{ open: log.id }}
+      className="flex items-center gap-3 px-3 h-14 rounded-md border border-border bg-panel active:bg-panel-2 hover:bg-panel-2 transition-colors"
+    >
       <MapPin className="h-4 w-4 text-primary shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold truncate">{log.unit}</div>
         <div className="text-[11px] text-muted-foreground truncate">{log.note}</div>
       </div>
       <span className="mono text-[11px] text-muted-foreground shrink-0">{formatTime(log.timestamp)}</span>
-    </div>
+    </Link>
   );
 }
+

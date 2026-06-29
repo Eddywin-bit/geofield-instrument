@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
-import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2 } from "lucide-react";
+import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
 import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
 import { acquireFix, accuracyToneClass, accuracyBarClass, type Acquisition } from "../lib/geo-acquire";
+import { ManualCoordsSheet, type ManualCoords } from "../components/ManualCoordsSheet";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,7 +22,8 @@ type Fix = {
   belt: string;
   lat: number;
   lng: number;
-  accuracy: number;
+  accuracy: number | null;
+  manual?: boolean;
   expectedRocks: string[];
   expectedStructures: string[];
   mineralization: string;
@@ -36,9 +38,15 @@ const UNMAPPED: Pick<Fix, "belt" | "expectedRocks" | "expectedStructures" | "min
   engineering: "No engineering guidance available for an unmapped location.",
 };
 
-function fixFromUnit(unit: GeoUnit | null, lat: number, lng: number, accuracy: number): Fix {
+function fixFromUnit(
+  unit: GeoUnit | null,
+  lat: number,
+  lng: number,
+  accuracy: number | null,
+  manual = false,
+): Fix {
   if (!unit) {
-    return { unit: "Unmapped", lat, lng, accuracy, ...UNMAPPED };
+    return { unit: "Unmapped", lat, lng, accuracy, manual, ...UNMAPPED };
   }
   return {
     unit: unit.unit_name,
@@ -46,6 +54,7 @@ function fixFromUnit(unit: GeoUnit | null, lat: number, lng: number, accuracy: n
     lat,
     lng,
     accuracy,
+    manual,
     expectedRocks: unit.expected_rocks,
     expectedStructures: unit.expected_features,
     mineralization: unit.mineral_note,
@@ -79,6 +88,7 @@ function LocateScreen() {
   const [error, setError] = useState<string | null>(null);
   const [units, setUnits] = useState<GeoUnit[]>([]);
   const [showPicker, setShowPicker] = useState(false);
+  const [showManual, setShowManual] = useState(false);
   const acqRef = useRef<Acquisition | null>(null);
 
   const [, force] = useState(0);
@@ -142,12 +152,30 @@ function LocateScreen() {
   };
 
   const pickUnit = (u: GeoUnit) => {
-    const base = fix ?? { lat: 0, lng: 0, accuracy: 0 };
-    const next = fixFromUnit(u, base.lat, base.lng, base.accuracy);
+    const base = fix ?? { lat: 0, lng: 0, accuracy: null as number | null };
+    const next = fixFromUnit(u, base.lat, base.lng, base.accuracy, !!fix?.manual);
     setFix(next);
     writeCurrentFix(next);
     setState("found");
     setShowPicker(false);
+  };
+
+  const handleManual = async (c: ManualCoords) => {
+    acqRef.current?.stop();
+    try {
+      const geo = await loadGeology();
+      const name = findUnitAt(c.longitude, c.latitude, geo.geo);
+      const unit = unitByName(geo.units, name);
+      const next = fixFromUnit(unit, c.latitude, c.longitude, null, true);
+      setFix(next);
+      setLiveAccuracy(null);
+      writeCurrentFix(next);
+      setState("found");
+      setShowManual(false);
+    } catch {
+      setError("Could not load geology data.");
+      setState("error");
+    }
   };
 
   return (
@@ -190,6 +218,13 @@ function LocateScreen() {
             className="w-full mt-3 h-12 rounded-lg border border-border bg-panel text-foreground text-sm font-semibold tracking-wide hover:bg-panel-2"
           >
             SELECT UNIT MANUALLY
+          </button>
+          <button
+            onClick={() => setShowManual(true)}
+            className="w-full mt-2 h-12 rounded-lg border border-border bg-panel text-foreground text-sm font-semibold tracking-wide hover:bg-panel-2 flex items-center justify-center gap-2"
+          >
+            <Keyboard className="h-4 w-4 text-primary" />
+            ENTER COORDINATES MANUALLY
           </button>
         </div>
       )}
@@ -239,8 +274,22 @@ function LocateScreen() {
           >
             SELECT UNIT MANUALLY
           </button>
+          <button
+            onClick={() => setShowManual(true)}
+            className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2 flex items-center justify-center gap-2"
+          >
+            <Keyboard className="h-4 w-4 text-primary" />
+            ENTER COORDINATES MANUALLY
+          </button>
         </div>
       )}
+
+      <ManualCoordsSheet
+        open={showManual}
+        onClose={() => setShowManual(false)}
+        onSubmit={handleManual}
+      />
+
 
       {showPicker && (
         <div
@@ -299,7 +348,11 @@ function FixCard({
 }) {
   const displayAccuracy =
     acquiring && liveAccuracy !== null && liveAccuracy !== undefined ? liveAccuracy : fix.accuracy;
-  const bars = Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
+  const isManual = !!fix.manual && displayAccuracy === null;
+  const bars =
+    displayAccuracy === null
+      ? 0
+      : Math.max(1, Math.min(5, Math.round(6 - Math.min(displayAccuracy, 30) / 6)));
   const toneText = accuracyToneClass(displayAccuracy);
   const toneBar = accuracyBarClass(displayAccuracy);
   return (
@@ -308,7 +361,7 @@ function FixCard({
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${acquiring ? "bg-primary animate-pulse" : "bg-success"}`} />
           <span className={`label-instrument ${acquiring ? "text-primary" : "text-success"}`}>
-            {acquiring ? "ACQUIRING…" : "FIX ACQUIRED"}
+            {acquiring ? "ACQUIRING…" : isManual ? "MANUAL ENTRY" : "FIX ACQUIRED"}
           </span>
         </div>
         <button
@@ -337,15 +390,21 @@ function FixCard({
           </div>
           <div>
             <div className="label-instrument">Accuracy</div>
-            <div className={`mono text-xs mt-1 ${toneText}`}>± {displayAccuracy.toFixed(1)} m</div>
-            <div className="mt-1 flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((b) => (
-                <span
-                  key={b}
-                  className={`h-1.5 w-4 rounded-sm ${b <= bars ? toneBar : "bg-border"}`}
-                />
-              ))}
-            </div>
+            {displayAccuracy === null ? (
+              <div className="mono text-xs mt-1 text-muted-foreground">Manual entry</div>
+            ) : (
+              <>
+                <div className={`mono text-xs mt-1 ${toneText}`}>± {displayAccuracy.toFixed(1)} m</div>
+                <div className="mt-1 flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((b) => (
+                    <span
+                      key={b}
+                      className={`h-1.5 w-4 rounded-sm ${b <= bars ? toneBar : "bg-border"}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

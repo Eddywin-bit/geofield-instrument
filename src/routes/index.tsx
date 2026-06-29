@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2 } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
 import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
+import { acquireFix, accuracyToneClass, accuracyBarClass, type Acquisition } from "../lib/geo-acquire";
 
 export const Route = createFileRoute("/")({
   head: () => ({

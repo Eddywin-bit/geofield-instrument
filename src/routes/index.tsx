@@ -250,7 +250,7 @@ function LocateScreen() {
               setState("idle");
             }}
           />
-          {fix.nearby && fix.nearby.length > 1 && (
+          {state === "found" && fix.nearby && fix.nearby.length > 1 && (
             <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
               <div className="label-instrument text-primary mb-1">Possible contact nearby</div>
               <div className="text-foreground/90">
@@ -258,31 +258,34 @@ function LocateScreen() {
               </div>
             </div>
           )}
-          <Collapsible title="Expected Rocks" count={fix.expectedRocks.length}>
-            <ul className="space-y-2">
-              {fix.expectedRocks.map((r) => (
-                <li key={r} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ul>
-          </Collapsible>
-          <Collapsible title="Expected Structures" count={fix.expectedStructures.length}>
-            <ul className="space-y-2">
-              {fix.expectedStructures.map((r) => (
-                <li key={r} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ul>
-          </Collapsible>
-          <Collapsible title="Mineralization Notes">
-            <p className="text-sm leading-relaxed text-foreground/90">{fix.mineralization}</p>
-          </Collapsible>
-          <Collapsible title="Engineering Notes">
-            <p className="text-sm leading-relaxed text-foreground/90">{fix.engineering}</p>
+          {state === "found" && (
+            <>
+              <Collapsible title="Expected Rocks" count={fix.expectedRocks.length}>
+                <ul className="space-y-2">
+                  {fix.expectedRocks.map((r) => (
+                    <li key={r} className="flex items-start gap-2 text-sm">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Collapsible>
+              <Collapsible title="Expected Structures" count={fix.expectedStructures.length}>
+                <ul className="space-y-2">
+                  {fix.expectedStructures.map((r) => (
+                    <li key={r} className="flex items-start gap-2 text-sm">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Collapsible>
+              <Collapsible title="Mineralization Notes">
+                <p className="text-sm leading-relaxed text-foreground/90">{fix.mineralization}</p>
+              </Collapsible>
+              <Collapsible title="Engineering Notes">
+                <p className="text-sm leading-relaxed text-foreground/90">{fix.engineering}</p>
+
           </Collapsible>
           <button
             onClick={() => setShowPicker(true)}

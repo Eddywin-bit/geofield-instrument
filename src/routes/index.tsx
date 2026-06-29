@@ -549,3 +549,79 @@ function RecentRow({ log }: { log: LogEntry }) {
   );
 }
 
+
+function HighPrecisionPanel({
+  progress,
+  onCancel,
+}: {
+  progress: { samples: number; elapsed: number; runningAccuracy: number | null; bestAccuracy: number | null } | null;
+  onCancel: () => void;
+}) {
+  const elapsed = progress?.elapsed ?? 0;
+  const pct = Math.min(100, (elapsed / 60) * 100);
+  const samples = progress?.samples ?? 0;
+  const running = progress?.runningAccuracy;
+  const best = progress?.bestAccuracy;
+  const toneText = accuracyToneClass(running ?? null);
+  const toneBar = accuracyBarClass(running ?? null);
+  return (
+    <div className="rounded-lg border border-primary/60 bg-panel overflow-hidden">
+      <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary animate-pulse" />
+          <span className="label-instrument text-primary">HIGH-PRECISION SAMPLING</span>
+        </div>
+        <button
+          onClick={onCancel}
+          className="text-[11px] tracking-[0.14em] font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          <X className="h-3.5 w-3.5" /> CANCEL
+        </button>
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="rounded-md border border-border bg-panel-2 p-3">
+          <div className="text-sm font-semibold tracking-wide">HOLD THE PHONE STILL</div>
+          <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            Keep the device stationary with clear sky view. Collecting samples for up to 60 seconds; will settle early once the position stabilises.
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <div className="label-instrument">Elapsed</div>
+            <div className="mono text-sm mt-1">{elapsed.toFixed(0)} / 60 s</div>
+          </div>
+          <div>
+            <div className="label-instrument">Samples</div>
+            <div className="mono text-sm mt-1">{samples}</div>
+          </div>
+          <div>
+            <div className="label-instrument">Best Single</div>
+            <div className="mono text-sm mt-1">
+              {best === null || best === undefined ? "—" : `± ${best.toFixed(1)} m`}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="label-instrument">Averaged Accuracy</div>
+          <div className={`mono text-lg mt-1 ${toneText}`}>
+            {running === null || running === undefined ? "Calculating…" : `± ${running.toFixed(1)} m`}
+          </div>
+        </div>
+
+        <div className="h-1.5 w-full rounded-sm bg-border overflow-hidden">
+          <div className={`h-full ${toneBar} transition-all`} style={{ width: `${pct}%` }} />
+        </div>
+
+        <button
+          onClick={onCancel}
+          className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-bold tracking-[0.14em] disabled:opacity-60"
+          disabled={samples < 5}
+        >
+          {samples < 5 ? "COLLECTING…" : "FINISH NOW"}
+        </button>
+      </div>
+    </div>
+  );
+}

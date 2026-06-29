@@ -374,6 +374,9 @@ function FixCard({
               </>
             )}
           </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

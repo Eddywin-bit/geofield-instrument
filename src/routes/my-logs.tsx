@@ -89,7 +89,13 @@ function MyLogsScreen() {
             </div>
             <div className="space-y-2 px-4">
               {items.map((l) => (
-                <LogCard key={l.id} log={l} onDeleted={() => force((n) => n + 1)} />
+                <LogCard
+                  key={l.id}
+                  log={l}
+                  initialOpen={l.id === openId}
+                  autoScroll={l.id === openId}
+                  onDeleted={() => force((n) => n + 1)}
+                />
               ))}
             </div>
           </section>

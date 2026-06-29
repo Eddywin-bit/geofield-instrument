@@ -75,55 +75,70 @@ function writeCurrentFix(f: Fix) {
 function LocateScreen() {
   const [state, setState] = useState<"idle" | "locating" | "found" | "error">("idle");
   const [fix, setFix] = useState<Fix | null>(null);
+  const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [units, setUnits] = useState<GeoUnit[]>([]);
   const [showPicker, setShowPicker] = useState(false);
+  const acqRef = useRef<Acquisition | null>(null);
 
   const [, force] = useState(0);
   useEffect(() => {
     void hydrateLogs().then(() => force((n) => n + 1));
     void loadGeology().then((g) => setUnits(g.units));
+    return () => {
+      acqRef.current?.stop();
+    };
   }, []);
   const recent = loadLogs().slice(0, 3);
 
   const locate = () => {
+    acqRef.current?.stop();
     setState("locating");
     setError(null);
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setError("Geolocation not available on this device.");
-      setState("error");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
+    setFix(null);
+    setLiveAccuracy(null);
+
+    acqRef.current = acquireFix({
+      onUpdate: async (accuracy, coords) => {
+        setLiveAccuracy(accuracy);
         try {
           const geo = await loadGeology();
-          const name = findUnitAt(longitude, latitude, geo.geo);
+          const name = findUnitAt(coords.longitude, coords.latitude, geo.geo);
           const unit = unitByName(geo.units, name);
-          const next = fixFromUnit(unit, latitude, longitude, accuracy);
+          setFix(fixFromUnit(unit, coords.latitude, coords.longitude, accuracy));
+          setState((s) => (s === "locating" ? "locating" : s));
+        } catch {
+          /* keep waiting */
+        }
+      },
+      onSettle: async (best) => {
+        try {
+          const geo = await loadGeology();
+          const name = findUnitAt(best.longitude, best.latitude, geo.geo);
+          const unit = unitByName(geo.units, name);
+          const next = fixFromUnit(unit, best.latitude, best.longitude, best.accuracy);
           setFix(next);
+          setLiveAccuracy(best.accuracy);
           writeCurrentFix(next);
           setState("found");
-        } catch (e) {
+        } catch {
           setError("Could not load geology data.");
           setState("error");
         }
       },
-      (err) => {
+      onError: (err) => {
         const msg =
-          err.code === err.PERMISSION_DENIED
+          "code" in err && (err as GeolocationPositionError).code === 1
             ? "Location permission denied. Enable GPS access to continue."
-            : err.code === err.POSITION_UNAVAILABLE
+            : "code" in err && (err as GeolocationPositionError).code === 2
             ? "GPS position unavailable. Move to open sky and retry."
-            : err.code === err.TIMEOUT
+            : "code" in err && (err as GeolocationPositionError).code === 3
             ? "GPS timed out. Retry with a clearer view of the sky."
-            : "Could not acquire GPS fix.";
+            : (err as Error).message || "Could not acquire GPS fix.";
         setError(msg);
         setState("error");
       },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
-    );
+    });
   };
 
   const pickUnit = (u: GeoUnit) => {

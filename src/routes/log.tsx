@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
+import { ImageViewer } from "../components/ImageViewer";
 import { Camera, Mic, Check, MapPin } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";

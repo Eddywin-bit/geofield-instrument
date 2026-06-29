@@ -277,13 +277,6 @@ function LocateScreen() {
             </>
           )}
           <button
-            onClick={startHighPrecision}
-            className="w-full h-11 rounded-lg border border-primary/60 bg-panel text-sm font-semibold tracking-[0.14em] hover:bg-panel-2 flex items-center justify-center gap-2"
-          >
-            <Target className="h-4 w-4 text-primary" />
-            HIGH-PRECISION FIX
-          </button>
-          <button
             onClick={() => setShowManual(true)}
             className="w-full h-11 rounded-lg border border-border bg-panel text-sm font-semibold tracking-wide hover:bg-panel-2 flex items-center justify-center gap-2"
           >

@@ -190,6 +190,17 @@ function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
                   </button>
                 </div>
               )}
+              {log.voice && (
+                <div>
+                  <div className="label-instrument mb-1">Voice Note</div>
+                  <audio
+                    src={log.voice}
+                    controls
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full"
+                  />
+                </div>
+              )}
               <div>
                 <div className="label-instrument">Note</div>
                 <p className="text-sm mt-1 leading-relaxed">{log.note}</p>

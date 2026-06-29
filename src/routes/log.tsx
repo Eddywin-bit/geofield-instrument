@@ -18,6 +18,7 @@ type Ctx = {
   lat: number | null;
   lng: number | null;
   accuracy: number | null;
+  manual: boolean;
   timestamp: number;
 };
 
@@ -42,6 +43,7 @@ function LogScreen() {
       lat: hasFix ? f!.lat : null,
       lng: hasFix ? f!.lng : null,
       accuracy: hasFix ? f!.accuracy : null,
+      manual: hasFix ? !!f!.manual : false,
       timestamp: Date.now(),
     };
   });

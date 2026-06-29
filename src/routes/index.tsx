@@ -152,12 +152,30 @@ function LocateScreen() {
   };
 
   const pickUnit = (u: GeoUnit) => {
-    const base = fix ?? { lat: 0, lng: 0, accuracy: 0 };
-    const next = fixFromUnit(u, base.lat, base.lng, base.accuracy);
+    const base = fix ?? { lat: 0, lng: 0, accuracy: null as number | null };
+    const next = fixFromUnit(u, base.lat, base.lng, base.accuracy, !!fix?.manual);
     setFix(next);
     writeCurrentFix(next);
     setState("found");
     setShowPicker(false);
+  };
+
+  const handleManual = async (c: ManualCoords) => {
+    acqRef.current?.stop();
+    try {
+      const geo = await loadGeology();
+      const name = findUnitAt(c.longitude, c.latitude, geo.geo);
+      const unit = unitByName(geo.units, name);
+      const next = fixFromUnit(unit, c.latitude, c.longitude, null, true);
+      setFix(next);
+      setLiveAccuracy(null);
+      writeCurrentFix(next);
+      setState("found");
+      setShowManual(false);
+    } catch {
+      setError("Could not load geology data.");
+      setState("error");
+    }
   };
 
   return (

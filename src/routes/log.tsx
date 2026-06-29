@@ -291,15 +291,16 @@ function LogScreen() {
           type="file"
           accept="image/*"
           capture="environment"
+          multiple
           className="hidden"
           onChange={onPickPhoto}
         />
         <CaptureTile
-          active={!!photo}
+          active={photos.length > 0}
           onClick={() => fileRef.current?.click()}
           icon={<Camera className="h-7 w-7" strokeWidth={2.2} />}
           label="PHOTO"
-          status={photo ? "Captured" : "Tap to capture"}
+          status={photos.length > 0 ? `${photos.length} photo${photos.length === 1 ? "" : "s"}` : "Tap to capture"}
         />
         <CaptureTile
           active={!!voice || recording}

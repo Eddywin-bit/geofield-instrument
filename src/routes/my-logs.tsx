@@ -97,6 +97,7 @@ function MyLogsScreen() {
 function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [viewing, setViewing] = useState(false);
 
   const handleDelete = () => {
     deleteLog(log.id);

@@ -235,7 +235,7 @@ function LogScreen() {
       lng: ctx.lng,
       accuracy: ctx.accuracy,
       note: note || "(no note)",
-      photo: photo ?? undefined,
+      photos: photos.length > 0 ? photos : undefined,
       voice: voice ?? undefined,
       hasVoice: !!voice,
     });

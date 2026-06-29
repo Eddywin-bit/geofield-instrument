@@ -105,9 +105,17 @@ function MyLogsScreen() {
   );
 }
 
-function LogCard({ log, onDeleted }: { log: LogEntry; onDeleted: () => void }) {
-  const [open, setOpen] = useState(false);
+function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; initialOpen?: boolean; autoScroll?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
   const [confirming, setConfirming] = useState(false);
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (autoScroll && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [autoScroll]);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
 
   const effectivePhotos: string[] = log.photos ?? (log.photo ? [log.photo] : []);

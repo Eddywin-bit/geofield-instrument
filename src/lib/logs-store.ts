@@ -13,7 +13,6 @@ export type LogEntry = {
   photos?: string[]; // new: multiple photos (data URLs)
   voice?: string; // data URL (audio)
   hasVoice?: boolean;
-  tags?: { rocks: string[]; features: string[]; weathering?: string };
 };
 
 const KEY = "geofield.logs.v1";

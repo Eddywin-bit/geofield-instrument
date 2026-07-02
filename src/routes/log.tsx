@@ -5,8 +5,20 @@ import { ImageViewer } from "../components/ImageViewer";
 import { Camera, Mic, Check, MapPin, Square, X } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";
-import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
+import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
 import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
+
+const ROCK_FALLBACK = [
+  "Granite","Granitoid","Phyllite","Schist","Greywacke","Quartzite",
+  "Sandstone","Shale","Gneiss","Basalt","Laterite",
+];
+const FEATURE_FALLBACK = [
+  "Quartz vein","Foliation","Fracturing","Bedding","Fault","Fold",
+  "Mineralization","Fresh outcrop","Weathered surface","Contact",
+];
+const WEATHERING_OPTIONS = [
+  "Fresh","Slightly weathered","Moderately weathered","Highly weathered","Saprolite",
+];
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
@@ -98,6 +110,47 @@ function LogScreen() {
       timestamp: Date.now(),
     };
   });
+
+  const [unitData, setUnitData] = useState<GeoUnit | null>(null);
+  const [selRocks, setSelRocks] = useState<string[]>([]);
+  const [selFeatures, setSelFeatures] = useState<string[]>([]);
+  const [selWeathering, setSelWeathering] = useState<string | undefined>(undefined);
+
+  // Resolve GeoUnit details for the current auto-attached unit name
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const geo = await loadGeology();
+        const u = unitByName(geo.units, ctx.unit);
+        if (!cancelled) setUnitData(u);
+      } catch {
+        if (!cancelled) setUnitData(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.unit]);
+
+  const rockOptions =
+    unitData?.expected_rocks && unitData.expected_rocks.length > 0
+      ? unitData.expected_rocks
+      : ROCK_FALLBACK;
+  const featureOptions =
+    unitData?.expected_features && unitData.expected_features.length > 0
+      ? unitData.expected_features
+      : FEATURE_FALLBACK;
+
+  // Drop any selected chips that are no longer in the current option set
+  useEffect(() => {
+    setSelRocks((prev) => prev.filter((r) => rockOptions.includes(r)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rockOptions.join("|")]);
+  useEffect(() => {
+    setSelFeatures((prev) => prev.filter((f) => featureOptions.includes(f)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featureOptions.join("|")]);
 
   // Live clock for the Time field
   useEffect(() => {
@@ -267,6 +320,10 @@ function LogScreen() {
       photos: photos.length > 0 ? photos : undefined,
       voice: voice ?? undefined,
       hasVoice: !!voice,
+      tags:
+        selRocks.length || selFeatures.length || selWeathering
+          ? { rocks: selRocks, features: selFeatures, weathering: selWeathering }
+          : undefined,
     });
     setTimeout(() => navigate({ to: "/my-logs" }), 400);
   };
@@ -419,6 +476,36 @@ function LogScreen() {
       )}
 
 
+      {/* Quick tag chips */}
+      <div className="px-4 mt-4 space-y-4">
+        <ChipGroup
+          label="Rock Type"
+          options={rockOptions}
+          selected={selRocks}
+          onToggle={(v) =>
+            setSelRocks((prev) =>
+              prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v],
+            )
+          }
+        />
+        <ChipGroup
+          label="Features"
+          options={featureOptions}
+          selected={selFeatures}
+          onToggle={(v) =>
+            setSelFeatures((prev) =>
+              prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v],
+            )
+          }
+        />
+        <ChipGroup
+          label="Weathering"
+          options={WEATHERING_OPTIONS}
+          selected={selWeathering ? [selWeathering] : []}
+          onToggle={(v) => setSelWeathering((prev) => (prev === v ? undefined : v))}
+        />
+      </div>
+
       {/* Short note */}
       <div className="px-4 mt-3">
         <label className="label-instrument">Short Note (optional)</label>
@@ -509,5 +596,43 @@ function CaptureTile({
       <span className="text-xs font-bold tracking-[0.18em] mt-1">{label}</span>
       <span className="text-[10px] text-muted-foreground">{status}</span>
     </button>
+  );
+}
+
+function ChipGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="label-instrument">{label}</label>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {options.map((opt) => {
+          const active = selected.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onToggle(opt)}
+              aria-pressed={active}
+              className={`min-h-10 px-3 py-2 rounded-full border text-xs font-semibold tracking-wide transition-colors ${
+                active
+                  ? "bg-primary/15 border-primary text-primary"
+                  : "bg-panel border-border text-foreground hover:bg-panel-2"
+              }`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

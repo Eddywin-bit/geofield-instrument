@@ -8,6 +8,18 @@ import { readCurrentFix } from "./index";
 import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
 import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
 
+const ROCK_FALLBACK = [
+  "Granite","Granitoid","Phyllite","Schist","Greywacke","Quartzite",
+  "Sandstone","Shale","Gneiss","Basalt","Laterite",
+];
+const FEATURE_FALLBACK = [
+  "Quartz vein","Foliation","Fracturing","Bedding","Fault","Fold",
+  "Mineralization","Fresh outcrop","Weathered surface","Contact",
+];
+const WEATHERING_OPTIONS = [
+  "Fresh","Slightly weathered","Moderately weathered","Highly weathered","Saprolite",
+];
+
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
   validateSearch: (search: Record<string, unknown>): { fresh?: boolean } => ({

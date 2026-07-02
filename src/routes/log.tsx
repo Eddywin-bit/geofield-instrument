@@ -476,6 +476,36 @@ function LogScreen() {
       )}
 
 
+      {/* Quick tag chips */}
+      <div className="px-4 mt-4 space-y-4">
+        <ChipGroup
+          label="Rock Type"
+          options={rockOptions}
+          selected={selRocks}
+          onToggle={(v) =>
+            setSelRocks((prev) =>
+              prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v],
+            )
+          }
+        />
+        <ChipGroup
+          label="Features"
+          options={featureOptions}
+          selected={selFeatures}
+          onToggle={(v) =>
+            setSelFeatures((prev) =>
+              prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v],
+            )
+          }
+        />
+        <ChipGroup
+          label="Weathering"
+          options={WEATHERING_OPTIONS}
+          selected={selWeathering ? [selWeathering] : []}
+          onToggle={(v) => setSelWeathering((prev) => (prev === v ? undefined : v))}
+        />
+      </div>
+
       {/* Short note */}
       <div className="px-4 mt-3">
         <label className="label-instrument">Short Note (optional)</label>

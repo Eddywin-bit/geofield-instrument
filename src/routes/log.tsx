@@ -320,6 +320,10 @@ function LogScreen() {
       photos: photos.length > 0 ? photos : undefined,
       voice: voice ?? undefined,
       hasVoice: !!voice,
+      tags:
+        selRocks.length || selFeatures.length || selWeathering
+          ? { rocks: selRocks, features: selFeatures, weathering: selWeathering }
+          : undefined,
     });
     setTimeout(() => navigate({ to: "/my-logs" }), 400);
   };

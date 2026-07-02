@@ -99,6 +99,47 @@ function LogScreen() {
     };
   });
 
+  const [unitData, setUnitData] = useState<GeoUnit | null>(null);
+  const [selRocks, setSelRocks] = useState<string[]>([]);
+  const [selFeatures, setSelFeatures] = useState<string[]>([]);
+  const [selWeathering, setSelWeathering] = useState<string | undefined>(undefined);
+
+  // Resolve GeoUnit details for the current auto-attached unit name
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const geo = await loadGeology();
+        const u = unitByName(geo.units, ctx.unit);
+        if (!cancelled) setUnitData(u);
+      } catch {
+        if (!cancelled) setUnitData(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.unit]);
+
+  const rockOptions =
+    unitData?.expected_rocks && unitData.expected_rocks.length > 0
+      ? unitData.expected_rocks
+      : ROCK_FALLBACK;
+  const featureOptions =
+    unitData?.expected_features && unitData.expected_features.length > 0
+      ? unitData.expected_features
+      : FEATURE_FALLBACK;
+
+  // Drop any selected chips that are no longer in the current option set
+  useEffect(() => {
+    setSelRocks((prev) => prev.filter((r) => rockOptions.includes(r)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rockOptions.join("|")]);
+  useEffect(() => {
+    setSelFeatures((prev) => prev.filter((f) => featureOptions.includes(f)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featureOptions.join("|")]);
+
   // Live clock for the Time field
   useEffect(() => {
     const id = setInterval(() => setCtx((c) => ({ ...c, timestamp: Date.now() })), 1000);

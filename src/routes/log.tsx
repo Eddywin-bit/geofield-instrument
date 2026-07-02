@@ -5,7 +5,7 @@ import { ImageViewer } from "../components/ImageViewer";
 import { Camera, Mic, Check, MapPin, Square, X } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix } from "./index";
-import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
+import { loadGeology, findUnitAt, unitByName, type GeoUnit } from "../lib/geology";
 import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
 
 export const Route = createFileRoute("/log")({

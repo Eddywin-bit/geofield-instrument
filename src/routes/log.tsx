@@ -598,3 +598,41 @@ function CaptureTile({
     </button>
   );
 }
+
+function ChipGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="label-instrument">{label}</label>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {options.map((opt) => {
+          const active = selected.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onToggle(opt)}
+              aria-pressed={active}
+              className={`min-h-10 px-3 py-2 rounded-full border text-xs font-semibold tracking-wide transition-colors ${
+                active
+                  ? "bg-primary/15 border-primary text-primary"
+                  : "bg-panel border-border text-foreground hover:bg-panel-2"
+              }`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

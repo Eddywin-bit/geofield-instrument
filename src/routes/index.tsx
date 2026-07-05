@@ -279,7 +279,7 @@ function LocateScreen() {
           )}
           <button
             onClick={() => setShowManual(true)}
-            className="w-full h-16 rounded-lg border border-primary/70 bg-primary/5 text-foreground text-sm font-semibold tracking-wide hover:bg-primary/10 flex items-center justify-center gap-2"
+            className="w-full h-14 rounded-lg border border-primary/70 bg-primary/5 text-foreground text-sm font-semibold tracking-wide hover:bg-primary/10 flex items-center justify-center gap-2"
           >
             <Keyboard className="h-4 w-4 text-primary" />
             ENTER COORDINATES MANUALLY

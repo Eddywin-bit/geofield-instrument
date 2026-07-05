@@ -1,18 +1,32 @@
 import { useEffect, useState } from "react";
 import { GEOFIELD_MARK } from "../lib/logo";
 
+const SPLASH_KEY = "geofield_splash_shown";
+
 export function SplashScreen() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(() => {
+    try {
+      return sessionStorage.getItem(SPLASH_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  });
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
+    if (!visible) return;
+    try {
+      sessionStorage.setItem(SPLASH_KEY, "1");
+    } catch {
+      // ignore storage failures
+    }
     const fadeTimer = setTimeout(() => setFading(true), 1800);
     const unmountTimer = setTimeout(() => setVisible(false), 2200);
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(unmountTimer);
     };
-  }, []);
+  }, [visible]);
 
   if (!visible) return null;
 

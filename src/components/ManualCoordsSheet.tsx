@@ -144,7 +144,7 @@ export function ManualCoordsSheet({
             </Field>
             <Field label="Longitude (deg / min / hemi)">
               <div className="grid grid-cols-[1fr_1.3fr_4.5rem] gap-2">
-                <NumInput value={lngDeg} onChange={setLngDeg} placeholder="1" />
+                <NumInput value={lngDeg} onChange={(v) => setLngDeg(v.replace(/^-+/, ""))} placeholder="1" />
                 <NumInput value={lngMin} onChange={setLngMin} placeholder="34.296" />
                 <HemiToggle
                   value={lngHem}

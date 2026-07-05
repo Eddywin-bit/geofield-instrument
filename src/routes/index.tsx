@@ -9,6 +9,7 @@ import {
   accuracyToneClass,
   accuracyBarClass,
   type Acquisition,
+  type AcquireCoords,
 } from "../lib/geo-acquire";
 import { ManualCoordsSheet, type ManualCoords } from "../components/ManualCoordsSheet";
 

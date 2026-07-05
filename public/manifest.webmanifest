@@ -6,7 +6,13 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#121417",
-  "theme_color": "#121417",
-  "icons": []
+  "background_color": "#0d0d0e",
+  "theme_color": "#0d0d0e",
+  "icons": [
+    {
+      "src": "/geofield-mark.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
 }

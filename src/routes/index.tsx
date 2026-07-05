@@ -89,12 +89,16 @@ function writeCurrentFix(f: Fix) {
 }
 
 function LocateScreen() {
-  const [state, setState] = useState<"idle" | "locating" | "found" | "error">("idle");
+  const [state, setState] = useState<"idle" | "locating" | "weak" | "found" | "error">("idle");
   const [fix, setFix] = useState<Fix | null>(null);
   const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
   const acqRef = useRef<Acquisition | null>(null);
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const [, force] = useState(0);
   useEffect(() => {
@@ -106,46 +110,84 @@ function LocateScreen() {
   }, []);
   const recent = loadLogs().slice(0, 3);
 
-  const locate = () => {
-    acqRef.current?.stop();
-    setState("locating");
-    setError(null);
-    setFix(null);
-    setLiveAccuracy(null);
+  const resolveAndCommit = async (best: AcquireCoords, manual = false) => {
+    try {
+      const geo = await loadGeology();
+      const name = findUnitAt(best.longitude, best.latitude, geo.geo);
+      const unit = unitByName(geo.units, name);
+      const next = fixFromUnit(
+        unit,
+        best.latitude,
+        best.longitude,
+        manual ? null : best.accuracy,
+        manual,
+      );
+      if (!manual && typeof best.accuracy === "number" && Number.isFinite(best.accuracy)) {
+        const overlaps = nearbyUnits(best.longitude, best.latitude, best.accuracy, geo.geo);
+        if (overlaps.length > 1) next.nearby = overlaps;
+      }
+      setFix(next);
+      setLiveAccuracy(manual ? null : best.accuracy);
+      writeCurrentFix(next);
+      setState("found");
+    } catch {
+      setError("Could not load geology data.");
+      setState("error");
+    }
+  };
 
+  const startCycle = () => {
     acqRef.current = acquireFix({
       onUpdate: (accuracy, coords) => {
         setLiveAccuracy(accuracy);
-        // Do NOT resolve geology during acquisition — position hasn't converged.
-        setFix({
-          unit: "Identifying…",
-          belt: "—",
-          lat: coords.latitude,
-          lng: coords.longitude,
-          accuracy,
-          expectedRocks: [],
-          expectedStructures: [],
-          mineralization: "",
-          engineering: "",
+        // Auto-upgrade: a fresh reading during weak-choice reaches usable accuracy.
+        if (stateRef.current === "weak" && accuracy <= 30) {
+          acqRef.current?.stop();
+          void resolveAndCommit(coords);
+          return;
+        }
+        setFix((prev) => {
+          const base = {
+            lat: coords.latitude,
+            lng: coords.longitude,
+            accuracy,
+          };
+          if (prev && stateRef.current === "weak") {
+            return { ...prev, ...base };
+          }
+          return {
+            unit: "Identifying…",
+            belt: "—",
+            lat: coords.latitude,
+            lng: coords.longitude,
+            accuracy,
+            expectedRocks: [],
+            expectedStructures: [],
+            mineralization: "",
+            engineering: "",
+          };
         });
       },
-      onSettle: async (best) => {
-        try {
-          const geo = await loadGeology();
-          const name = findUnitAt(best.longitude, best.latitude, geo.geo);
-          const unit = unitByName(geo.units, name);
-          const next = fixFromUnit(unit, best.latitude, best.longitude, best.accuracy);
-          if (typeof best.accuracy === "number" && Number.isFinite(best.accuracy)) {
-            const overlaps = nearbyUnits(best.longitude, best.latitude, best.accuracy, geo.geo);
-            if (overlaps.length > 1) next.nearby = overlaps;
-          }
-          setFix(next);
+      onSettle: (best) => {
+        if (best.accuracy > 30) {
+          // Present neutral choice; keep watching for a better reading.
           setLiveAccuracy(best.accuracy);
-          writeCurrentFix(next);
-          setState("found");
-        } catch {
-          setError("Could not load geology data.");
-          setState("error");
+          setFix((prev) => ({
+            unit: "Approximate location",
+            belt: "—",
+            lat: best.latitude,
+            lng: best.longitude,
+            accuracy: best.accuracy,
+            expectedRocks: [],
+            expectedStructures: [],
+            mineralization: "",
+            engineering: "",
+            ...(prev ? {} : {}),
+          }));
+          setState("weak");
+          startCycle();
+        } else {
+          void resolveAndCommit(best);
         }
       },
       onError: (err) => {
@@ -160,6 +202,25 @@ function LocateScreen() {
         setError(msg);
         setState("error");
       },
+    });
+  };
+
+  const locate = () => {
+    acqRef.current?.stop();
+    setState("locating");
+    setError(null);
+    setFix(null);
+    setLiveAccuracy(null);
+    startCycle();
+  };
+
+  const acceptApproximate = () => {
+    acqRef.current?.stop();
+    if (!fix) return;
+    void resolveAndCommit({
+      latitude: fix.lat,
+      longitude: fix.lng,
+      accuracy: liveAccuracy ?? fix.accuracy ?? 0,
     });
   };
 

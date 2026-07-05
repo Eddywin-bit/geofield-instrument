@@ -400,11 +400,13 @@ function LocateScreen() {
 function FixCard({
   fix,
   acquiring,
+  weak,
   liveAccuracy,
   onRelocate,
 }: {
   fix: Fix;
   acquiring?: boolean;
+  weak?: boolean;
   liveAccuracy?: number | null;
   onRelocate: () => void;
 }) {

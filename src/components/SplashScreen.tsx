@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { GEOFIELD_MARK } from "../lib/logo";
 
 export function SplashScreen() {
   const [visible, setVisible] = useState(true);
@@ -21,7 +22,7 @@ export function SplashScreen() {
       style={{ opacity: fading ? 0 : 1 }}
       aria-hidden="true"
     >
-      <img src="/geofield-mark.svg" alt="" className="h-24 w-auto" />
+      <img src={GEOFIELD_MARK} alt="" className="h-24 w-auto" />
       <span className="mt-4 text-2xl font-bold tracking-tight text-foreground">GeoField</span>
     </div>
   );

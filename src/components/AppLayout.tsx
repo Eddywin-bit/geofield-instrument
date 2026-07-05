@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Crosshair, FileText, Layers, Map, Plus } from "lucide-react";
 import type { ReactNode } from "react";
+import { GEOFIELD_MARK } from "../lib/logo";
 import { SplashScreen } from "./SplashScreen";
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -21,7 +22,7 @@ function StatusBar() {
   return (
     <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
       <div className="flex items-center justify-center gap-2 px-4 h-11">
-        <img src="/geofield-mark.svg" alt="" className="h-[22px] w-auto" />
+        <img src={GEOFIELD_MARK} alt="" className="h-[22px] w-auto" />
         <span className="text-lg font-bold tracking-tight text-foreground">GeoField</span>
       </div>
     </div>

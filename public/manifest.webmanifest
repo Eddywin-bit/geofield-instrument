@@ -1,17 +1,17 @@
 {
-  "name": "GeoField Companion",
+  "name": "GeoField",
   "short_name": "GeoField",
   "description": "Offline-first geological field companion for exploration teams in Ghana.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0d0d0e",
-  "theme_color": "#0d0d0e",
+  "background_color": "#121417",
+  "theme_color": "#121417",
   "icons": [
     {
-      "src": "/geofield-mark.svg",
-      "type": "image/svg+xml",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAI0AAADACAYAAAA5mOAXAAAFJklEQVR42u2dUZIbIQxEVxSnyalzxlxA+UxVkt31eBjoll5/r20Qj5Y0Bm/8+vnjA6ErGoQAAQ0CGqSn2Xjuueh9AmiAY8X7B9AAyd0xBNAAyp3xBdAASjuAJrAAUGVoKsHy1fwCaIClHDwTWIDnqoZosLoDI715JsHBdVydBmCM4jQJAq7j5DQAYxq/ATCA4wANwJh3mwNgcB1laACmSIzHpokATCFwRgXy0d64D4ABHJeWGxmDM9woR+fXYgAM4JyGBmAaaAAMbnMKGoBpBA7dE+AcgQaXoaYBGNyG9IQWgzNP0SqiaD7/rdBkU1C+eh/HmOQ78ejyo0ax+TNKu9B8k05Aee2zHWJ12W2qFsIhNI4wAecxaNIAlgDiZ1XFaRx2tPoY8wloUngxSJ04TfkFUB13roQmCXzbIrmM01QqLANoCLL7nHIFNElwkavTVAfGxm3GnRcDTM95cp4GcEpCQx0jlqIGwDDvlU7D+V/AsXMa0hLQIMONk1egyebBQjgNblMdGlwGp0FAg7q5b6pDQ2oydRoe6iHSEykKaBDQUM8ADQIahIAGAQ0dFNAgnAYBDUJAg4AGAQ36Rwk0CKdBQIOQPDQc/jKGhiMKiPRE5wQ0aK9CHRrqGtITqriZgAYtgybYVQinITUtKYKVocFtcBpUafOMq9aE2yCcBpcpBw1uI1YE4zT6iyb55fF4lzbcpi88Lk5DmvoDT2z6rBKFMOCIuM98cYApBE4UgzsWOUIqQaO4KGEOymevVQAoVkGj5DYq4OTD7ynrQI5Ocxqc3Pw5d+cYQHMOnDw4x8cAeLrlDmFwunRuqTAWd6dZbeUurf5R97n6nKZauyu/qy+Mk5b7sOuk+dwf3eAVobkbwCw4/6XZ4h1o4qPuI/0OX1XkXZA6HI0IgDlbCLsUxFfGmc2BiV3QVAIGbYQmhGEBmAfXcDQNAsAcbLkVOqmruwVgbmaK2WzSACPgNLvdpuNTXrU4WjjN3YIbWASdZqXbrOzI0gT4NNuES51GqQVPYUi+e428M1b7wtIJllfeKxXHOQFF2l1DZJ4loHF7NqQAUHSERmWnhdAYjsRkAsgWWPIh+F6FJ1ygSdfuYEHA842/sbmeO5u6xlPAKF7PtbosF42AyQc3WmyE/iUNsZ2qAovSQXS5k4WVbyMop6KT7iPvNC5uE2Y7/+gYujuN+wGuI+4zRBcHYITdZ25epAQWf3X7HeHqwGxx9HlgUgks3iXAPDS5BBZfVe2eut1UiA7QPOU2Ha+1bO9M5+HJnj6MTjpqlp6A5dDzrykw6dwYoErOIv2/EU6CsyowpKGC6empXVMVlgAaYLEBpho0abKA6QxMFWjc7kK7H7TnspzALn/1JkEAjU+NEoc+KxWBUYfG8exNqYL3Mymfpzm9YI43KUhPRrCm+CZoBU2lszdZBSKX39xLIWBWjSVdAXJJT0+Co/CD1VYAdTtYrgiMnUbBBV7dHaXpHIFmYVCvwILDFElPceN1yukogMYXNIAp0j292005/MNTu+c1zk4Ti1IRwDRLT7FgISh2m6Sn/6UqN1hsv0aoUggDDE7zmLqf0QEaw7qlxPGIATAAg9PQFeE0RYAJoKnXTQEM0MgsVsnD6dULYa6gAI3N4pW+/sLRCAQ0AAo0bovZwtH4mXuAAZpDi9uqZupa0wTAAM2pxW7ZlXHDEmCAZtPit37uAzQAAzSAADRq4AAX0FyCAmCA5hIcAAM0l8ABmL/Er3uSjnAaBDQIaFAF/QZPVf3j+1elgQAAAABJRU5ErkJggg==",
+      "type": "image/png",
       "sizes": "any"
     }
   ]

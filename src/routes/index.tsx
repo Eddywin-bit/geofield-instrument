@@ -292,6 +292,7 @@ function LocateScreen() {
           <FixCard
             fix={fix}
             acquiring={state === "locating"}
+            weak={state === "weak"}
             liveAccuracy={liveAccuracy}
             onRelocate={() => {
               acqRef.current?.stop();

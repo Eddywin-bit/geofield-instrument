@@ -80,11 +80,10 @@ export function deleteLog(id: string) {
 }
 
 export function formatCoord(n: number) {
-  const dir = n >= 0 ? "" : "-";
   const abs = Math.abs(n);
   const deg = Math.floor(abs);
   const min = (abs - deg) * 60;
-  return `${dir}${deg}° ${min.toFixed(3)}'`;
+  return `${deg}° ${min.toFixed(3)}'`;
 }
 
 export function formatTime(ts: number) {

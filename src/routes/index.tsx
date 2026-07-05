@@ -338,25 +338,35 @@ function LocateScreen() {
               </Collapsible>
             </>
           )}
-          {state === "found" && !fix.manual && typeof fix.accuracy === "number" && fix.accuracy > 30 && (
-            <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
-              <div className="label-instrument text-primary mb-1">GPS is weak here</div>
-              <div className="text-foreground/90">
-                Accuracy is low at this spot. If you have coordinates from another device (a Garmin, survey point, or a better phone), enter them for a more precise fix.
-              </div>
+          {state === "weak" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                onClick={acceptApproximate}
+                className="h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold tracking-wide flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+              >
+                <Crosshair className="h-4 w-4" />
+                Use approximate fix (±{Math.round(liveAccuracy ?? fix.accuracy ?? 0)} m)
+              </button>
+              <button
+                onClick={() => setShowManual(true)}
+                className="h-12 rounded-lg border border-primary/70 bg-primary/10 text-foreground text-sm font-semibold tracking-wide hover:bg-primary/20 flex items-center justify-center gap-2"
+              >
+                <Keyboard className="h-4 w-4 text-primary" />
+                Enter coordinates manually
+              </button>
             </div>
           )}
-          <button
-            onClick={() => setShowManual(true)}
-            className={`w-full h-11 rounded-lg text-sm font-semibold tracking-wide flex items-center justify-center gap-2 ${
-              state === "found" && !fix.manual && typeof fix.accuracy === "number" && fix.accuracy > 30
-                ? "border border-primary bg-primary/10 hover:bg-primary/20"
-                : "border border-primary/70 bg-primary/5 text-foreground hover:bg-primary/10"
-            }`}
-          >
-            <Keyboard className="h-4 w-4 text-primary" />
-            ENTER COORDINATES MANUALLY
-          </button>
+          {state !== "weak" && (
+            <div className="pt-1 flex justify-center">
+              <button
+                onClick={() => setShowManual(true)}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary underline underline-offset-4 decoration-dotted"
+              >
+                <Keyboard className="h-3.5 w-3.5" />
+                Enter coordinates manually
+              </button>
+            </div>
+          )}
         </div>
       )}
 

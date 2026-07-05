@@ -133,7 +133,7 @@ export function ManualCoordsSheet({
           <div className="space-y-3">
             <Field label="Latitude (deg / min / hemi)">
               <div className="grid grid-cols-[1fr_1.3fr_4.5rem] gap-2">
-                <NumInput value={latDeg} onChange={setLatDeg} placeholder="6" />
+                <NumInput value={latDeg} onChange={(v) => setLatDeg(v.replace(/^-+/, ""))} placeholder="6" />
                 <NumInput value={latMin} onChange={setLatMin} placeholder="40.470" />
                 <HemiToggle
                   value={latHem}

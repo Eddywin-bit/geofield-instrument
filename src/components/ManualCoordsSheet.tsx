@@ -57,18 +57,20 @@ export function ManualCoordsSheet({
         lat = a;
         lng = b;
       } else if (format === "DDM") {
+        // Hemisphere selector encodes sign; degrees/minutes are magnitudes.
         const ld = parseNum(latDeg);
         const lm = parseNum(latMin);
         const gd = parseNum(lngDeg);
         const gm = parseNum(lngMin);
         if (ld === null || lm === null || gd === null || gm === null)
           throw new Error("Enter all degree and minute values.");
-        if (ld < 0 || ld > 90) throw new Error("Latitude degrees must be 0–90.");
-        if (gd < 0 || gd > 180) throw new Error("Longitude degrees must be 0–180.");
-        if (lm < 0 || lm >= 60) throw new Error("Latitude minutes must be 0–60.");
-        if (gm < 0 || gm >= 60) throw new Error("Longitude minutes must be 0–60.");
-        lat = (ld + lm / 60) * (latHem === "S" ? -1 : 1);
-        lng = (gd + gm / 60) * (lngHem === "W" ? -1 : 1);
+        const HEMI_HINT =
+          "Enter degrees as a positive number and use the N/S (or E/W) selector to set direction.";
+        if (ld < 0 || ld > 90 || gd < 0 || gd > 180) throw new Error(HEMI_HINT);
+        if (lm < 0 || lm >= 60 || gm < 0 || gm >= 60)
+          throw new Error("Minutes must be between 0 and 60.");
+        lat = (Math.abs(ld) + lm / 60) * (latHem === "S" ? -1 : 1);
+        lng = (Math.abs(gd) + gm / 60) * (lngHem === "W" ? -1 : 1);
       } else {
         const e = parseNum(easting);
         const n = parseNum(northing);
@@ -131,7 +133,7 @@ export function ManualCoordsSheet({
           <div className="space-y-3">
             <Field label="Latitude (deg / min / hemi)">
               <div className="grid grid-cols-[1fr_1.3fr_4.5rem] gap-2">
-                <NumInput value={latDeg} onChange={setLatDeg} placeholder="6" />
+                <NumInput value={latDeg} onChange={(v) => setLatDeg(v.replace(/^-+/, ""))} placeholder="6" />
                 <NumInput value={latMin} onChange={setLatMin} placeholder="40.470" />
                 <HemiToggle
                   value={latHem}
@@ -142,7 +144,7 @@ export function ManualCoordsSheet({
             </Field>
             <Field label="Longitude (deg / min / hemi)">
               <div className="grid grid-cols-[1fr_1.3fr_4.5rem] gap-2">
-                <NumInput value={lngDeg} onChange={setLngDeg} placeholder="1" />
+                <NumInput value={lngDeg} onChange={(v) => setLngDeg(v.replace(/^-+/, ""))} placeholder="1" />
                 <NumInput value={lngMin} onChange={setLngMin} placeholder="34.296" />
                 <HemiToggle
                   value={lngHem}

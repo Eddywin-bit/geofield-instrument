@@ -17,12 +17,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
 function StatusBar() {
   return (
-    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
-      <div className="flex items-center justify-between px-4 h-11">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-          <span className="label-instrument">GEOFIELD</span>
-        </div>
+    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
+      <div className="flex items-center px-4 h-11">
+        <span className="text-lg font-bold tracking-tight text-foreground">GeoField</span>
       </div>
     </div>
   );

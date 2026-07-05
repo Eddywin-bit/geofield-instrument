@@ -424,9 +424,9 @@ function FixCard({
     <div className="rounded-lg border border-border bg-panel overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${acquiring ? "bg-primary animate-pulse" : "bg-success"}`} />
-          <span className={`label-instrument ${acquiring ? "text-primary" : "text-success"}`}>
-            {acquiring ? "ACQUIRING…" : isManual ? "MANUAL ENTRY" : "FIX ACQUIRED"}
+          <span className={`h-2 w-2 rounded-full ${acquiring ? "bg-primary animate-pulse" : weak ? "bg-primary" : "bg-success"}`} />
+          <span className={`label-instrument ${acquiring || weak ? "text-primary" : "text-success"}`}>
+            {acquiring ? "ACQUIRING…" : weak ? "APPROXIMATE FIX" : isManual ? "MANUAL ENTRY" : "FIX ACQUIRED"}
           </span>
         </div>
         <button

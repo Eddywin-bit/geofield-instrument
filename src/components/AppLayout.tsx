@@ -21,9 +21,8 @@ function StatusBar() {
       <div className="flex items-center justify-between px-4 h-11">
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-          <span className="label-instrument">GeoField · Offline</span>
+          <span className="label-instrument">GEOFIELD</span>
         </div>
-        <span className="mono text-[11px] text-muted-foreground">v1.0</span>
       </div>
     </div>
   );

@@ -122,6 +122,10 @@ function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { 
 
   const effectivePhotos: string[] = log.photos ?? (log.photo ? [log.photo] : []);
   const photoCount = effectivePhotos.length;
+  const stripeColor = colorForUnit(log.unit, log.belt);
+  const tags = (log as LogEntry & { tags?: string[] }).tags;
+  const hasPosition =
+    log.lat !== null && log.lng !== null && log.accuracy !== null;
 
   const handleDelete = () => {
     deleteLog(log.id);

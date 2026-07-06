@@ -443,11 +443,25 @@ function FixCard({
           <div className="text-lg font-bold leading-tight mt-1">
             {acquiring ? "Identifying…" : fix.unit}
           </div>
+          {!acquiring && fix.belt && fix.belt !== "—" && fix.belt !== "Outside mapped sheets" && (
+            <div className="text-sm text-muted-foreground mt-0.5">{fix.belt}</div>
+          )}
         </div>
-        <div>
-          <div className="label-instrument">Belt / Formation</div>
-          <div className="text-sm mt-1">{acquiring ? "—" : fix.belt}</div>
-        </div>
+        {!acquiring && !weak && fix.unit !== "Unmapped" && fix.unit !== "Identifying…" && fix.unit !== "Approximate location" && (
+          <Link
+            to="/know/$unit"
+            params={{ unit: encodeURIComponent(fix.unit) }}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4"
+          >
+            Learn about this unit →
+          </Link>
+        )}
+        {!(!acquiring && fix.belt && fix.belt !== "—" && fix.belt !== "Outside mapped sheets") && (
+          <div>
+            <div className="label-instrument">Belt / Formation</div>
+            <div className="text-sm mt-1">{acquiring ? "—" : fix.belt}</div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
           <div>
             <div className="label-instrument">Position</div>

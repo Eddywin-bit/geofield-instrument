@@ -13,6 +13,7 @@ import { Route as MyLogsRouteImport } from './routes/my-logs'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as KnowUnitRouteImport } from './routes/know.$unit'
 
 const MyLogsRoute = MyLogsRouteImport.update({
   id: '/my-logs',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KnowUnitRoute = KnowUnitRouteImport.update({
+  id: '/know/$unit',
+  path: '/know/$unit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
+  '/know/$unit': typeof KnowUnitRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
+  '/know/$unit': typeof KnowUnitRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
+  '/know/$unit': typeof KnowUnitRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/log' | '/map' | '/my-logs'
+  fullPaths: '/' | '/log' | '/map' | '/my-logs' | '/know/$unit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/log' | '/map' | '/my-logs'
-  id: '__root__' | '/' | '/log' | '/map' | '/my-logs'
+  to: '/' | '/log' | '/map' | '/my-logs' | '/know/$unit'
+  id: '__root__' | '/' | '/log' | '/map' | '/my-logs' | '/know/$unit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   LogRoute: typeof LogRoute
   MapRoute: typeof MapRoute
   MyLogsRoute: typeof MyLogsRoute
+  KnowUnitRoute: typeof KnowUnitRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/know/$unit': {
+      id: '/know/$unit'
+      path: '/know/$unit'
+      fullPath: '/know/$unit'
+      preLoaderRoute: typeof KnowUnitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   LogRoute: LogRoute,
   MapRoute: MapRoute,
   MyLogsRoute: MyLogsRoute,
+  KnowUnitRoute: KnowUnitRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

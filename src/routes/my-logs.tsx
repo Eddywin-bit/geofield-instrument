@@ -11,6 +11,7 @@ import {
   loadLogs,
   type LogEntry,
 } from "../lib/logs-store";
+import { colorForUnit } from "../lib/unit-colors";
 
 export const Route = createFileRoute("/my-logs")({
   head: () => ({ meta: [{ title: "GeoField — My Logs" }] }),

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "../components/AppLayout";
 import { Crosshair, Map as MapIcon, Minus, Plus } from "lucide-react";
 import { useState } from "react";
+import { LEGEND } from "../lib/unit-colors";
 
 export const Route = createFileRoute("/map")({
   head: () => ({ meta: [{ title: "GeoField — Map" }] }),

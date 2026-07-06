@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "../components/AppLayout";
 import { Crosshair, Map as MapIcon, Minus, Plus } from "lucide-react";
 import { useState } from "react";
+import { LEGEND } from "../lib/unit-colors";
 
 export const Route = createFileRoute("/map")({
   head: () => ({ meta: [{ title: "GeoField — Map" }] }),
@@ -95,10 +96,9 @@ function MapScreen() {
 
         {/* Legend */}
         <div className="absolute bottom-3 left-3 max-w-[60%] rounded-md border border-border bg-background/85 backdrop-blur-md px-2.5 py-2 flex flex-col gap-1 shadow-lg shadow-black/40">
-          <LegendDot color="#3FB37F" label="Birimian Sed." />
-          <LegendDot color="#2BA29A" label="Birimian Volc." />
-          <LegendDot color="#D4A017" label="Tarkwaian" />
-          <LegendDot color="#8B5E3C" label="Voltaian" />
+          {LEGEND.map((l) => (
+            <LegendDot key={l.unit} color={l.color} label={l.label} />
+          ))}
         </div>
 
         {/* GPS dot near centre */}

@@ -147,7 +147,7 @@ function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { 
       className="w-full text-left rounded-lg border border-border bg-panel overflow-hidden cursor-pointer"
     >
       <div className="flex items-stretch">
-        <div className="w-1 bg-primary" />
+        <div className="w-1.5 shrink-0" style={{ backgroundColor: stripeColor }} />
         <div className="flex-1 p-3 min-w-0">
           <div className="flex items-start gap-3">
             <div className="relative h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
@@ -182,18 +182,43 @@ function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { 
               <div className="text-xs text-muted-foreground mt-0.5 truncate">
                 {log.belt}
               </div>
-              <div className="text-xs mt-1.5 line-clamp-1 text-foreground/90">
-                {log.note}
-              </div>
+              {log.note ? (
+                <div className="text-xs mt-1.5 line-clamp-2 text-foreground/90 leading-relaxed">
+                  {log.note}
+                </div>
+              ) : (
+                <div className="text-xs mt-1.5 italic text-muted-foreground/70">
+                  No note
+                </div>
+              )}
+              {tags && tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {tags.map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center px-1.5 h-5 rounded-full border border-border bg-panel-2 text-[10px] text-foreground/90"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-3 mt-2">
-                {log.hasVoice && (
-                  <span className="flex items-center gap-1 text-[10px] text-primary">
-                    <Mic className="h-3 w-3" /> VOICE
+                {(log.photo || (log.photos && log.photos.length > 0)) && (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <ImageIcon className="h-3 w-3" /> Photo
                   </span>
                 )}
-                <span className="mono text-[10px] text-muted-foreground">
-                  {log.accuracy !== null ? `± ${log.accuracy.toFixed(1)} m` : "± — m"}
-                </span>
+                {log.hasVoice && (
+                  <span className="flex items-center gap-1 text-[10px] text-primary">
+                    <Mic className="h-3 w-3" /> Voice
+                  </span>
+                )}
+                {hasPosition && (
+                  <span className="mono text-[10px] text-muted-foreground">
+                    ± {log.accuracy!.toFixed(1)} m
+                  </span>
+                )}
               </div>
             </div>
           </div>

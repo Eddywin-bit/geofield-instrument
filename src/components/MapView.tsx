@@ -127,7 +127,7 @@ export function MapView() {
     try {
       map = new maplibregl.Map({
         container: containerRef.current,
-        style: buildStyle(false),
+        style: buildStyle(false, debug),
         bounds: GHANA_BOUNDS,
         fitBoundsOptions: { padding: 20 },
         attributionControl: { compact: true },
@@ -202,8 +202,45 @@ export function MapView() {
       }
     });
 
+    const dumpCanvasMetrics = (tag: string) => {
+      try {
+        const canvas = map.getCanvas();
+        const rect = canvas.getBoundingClientRect();
+        const cs = window.getComputedStyle(canvas);
+        const canvases = c.querySelectorAll("canvas").length;
+        pushDiag(
+          `${tag} canvas attr=${canvas.width}x${canvas.height} rect=${Math.round(rect.width)}x${Math.round(rect.height)}@${Math.round(rect.left)},${Math.round(rect.top)}`,
+        );
+        pushDiag(
+          `${tag} css pos=${cs.position} disp=${cs.display} vis=${cs.visibility} op=${cs.opacity} z=${cs.zIndex}`,
+        );
+        pushDiag(
+          `${tag} container=${c.clientWidth}x${c.clientHeight} inDoc=${document.contains(canvas)} canvases=${canvases}`,
+        );
+      } catch (err) {
+        pushDiag(`${tag} canvas metrics threw: ${(err as Error).message}`);
+      }
+    };
+
     map.on("load", () => {
       pushDiag("map load fired");
+      dumpCanvasMetrics("load");
+      map.once("idle", () => {
+        dumpCanvasMetrics("idle");
+        try {
+          const canvas = map.getCanvas();
+          const gl =
+            (canvas.getContext("webgl2") as WebGL2RenderingContext | null) ??
+            (canvas.getContext("webgl") as WebGLRenderingContext | null);
+          const lost =
+            gl && typeof (gl as WebGLRenderingContext).isContextLost === "function"
+              ? (gl as WebGLRenderingContext).isContextLost()
+              : "n/a";
+          pushDiag(`idle gl=${gl !== null} lost=${String(lost)}`);
+        } catch (err) {
+          pushDiag(`idle gl probe threw: ${(err as Error).message}`);
+        }
+      });
       void loadGeology()
         .then((geo) => {
           geoRef.current = geo;
@@ -264,7 +301,7 @@ export function MapView() {
     const map = mapRef.current;
     if (!map) return;
     pushDiag(`setStyle online=${online}`);
-    map.setStyle(buildStyle(online), { diff: false });
+    map.setStyle(buildStyle(online, debug), { diff: false });
     const reapply = (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology;
     if (reapply) reapply();
   }, [online]);

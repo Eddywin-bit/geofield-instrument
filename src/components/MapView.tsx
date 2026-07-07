@@ -417,7 +417,7 @@ export function MapView() {
       if (l.lat == null || l.lng == null) continue;
       const color = colorForUnit(l.unit, l.belt);
       const el = document.createElement("div");
-      el.style.cssText = `width:12px;height:12px;border-radius:9999px;background:${color};border:2px solid #0f1418;box-shadow:0 0 0 1px rgba(255,255,255,0.35);cursor:pointer;`;
+      el.style.cssText = `width:12px;height:12px;background:${color};border:2px solid #ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.6);cursor:pointer;transform:rotate(45deg);`;
       el.addEventListener("click", (ev) => {
         ev.stopPropagation();
         const pt = map.project([l.lng!, l.lat!]);

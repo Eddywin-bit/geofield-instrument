@@ -1,8 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Crosshair, FileText, Layers, Map, Plus } from "lucide-react";
+import { Crosshair, FileText, Layers, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { GEOFIELD_MARK } from "../lib/logo";
 import { SplashScreen } from "./SplashScreen";
+import { MapFoldIcon } from "./MapFoldIcon";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -49,7 +50,7 @@ function BottomNav() {
     { to: "/", label: "LOCATE", icon: Crosshair, exact: true },
     { to: "/log", label: "LOG", icon: FileText, exact: false },
     { to: "/my-logs", label: "MY LOGS", icon: Layers, exact: false },
-    { to: "/map", label: "MAP", icon: Map, exact: false },
+    { to: "/map", label: "MAP", icon: MapFoldIcon, exact: false },
   ] as const;
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-panel border-t border-border pb-[env(safe-area-inset-bottom)]">
@@ -65,11 +66,11 @@ function BottomNav() {
             >
               {active && <span className="absolute top-0 inset-x-6 h-[2px] bg-primary" />}
               <Icon
-                className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`}
+                className={`h-[22px] w-[22px] ${active ? "text-primary" : "text-muted-foreground"}`}
                 strokeWidth={active ? 2.5 : 2}
               />
               <span
-                className={`text-[10px] tracking-[0.14em] font-semibold ${
+                className={`text-[10px] tracking-[0.08em] font-semibold leading-none whitespace-nowrap ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >

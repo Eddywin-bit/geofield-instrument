@@ -292,8 +292,10 @@ export function MapView() {
     if (!map) return;
     pushDiag(`setStyle online=${online}`);
     map.setStyle(buildStyle(online), { diff: false });
-    const reapply = (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology;
-    if (reapply) map.once("style.load", () => reapply());
+    map.once("style.load", () => {
+      pushDiag("style.load -> reapply geology");
+      reapplyGeologyRef.current?.();
+    });
   }, [online]);
 
   // Watch GPS

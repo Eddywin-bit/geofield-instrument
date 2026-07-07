@@ -45,22 +45,6 @@ function unitMatchExpression(): maplibregl.ExpressionSpecification {
   return expr as unknown as maplibregl.ExpressionSpecification;
 }
 
-function buildGraticule(): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = [];
-  const lonMin = -6, lonMax = 4, latMin = 2, latMax = 14;
-  for (let lon = lonMin; lon <= lonMax; lon++) {
-    const coords: [number, number][] = [];
-    for (let lat = latMin; lat <= latMax; lat += 0.5) coords.push([lon, lat]);
-    features.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
-  }
-  for (let lat = latMin; lat <= latMax; lat++) {
-    const coords: [number, number][] = [];
-    for (let lon = lonMin; lon <= lonMax; lon += 0.5) coords.push([lon, lat]);
-    features.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
-  }
-  return { type: "FeatureCollection", features };
-}
-
 type Popup = {
   unit: string;
   x: number;
@@ -117,19 +101,6 @@ export function MapView() {
       }
       if (map.getSource("geology")) return;
       try {
-        if (!map.getSource("graticule")) {
-          map.addSource("graticule", { type: "geojson", data: buildGraticule() });
-          map.addLayer({
-            id: "graticule-line",
-            type: "line",
-            source: "graticule",
-            paint: {
-              "line-color": "#94A3B8",
-              "line-width": 0.5,
-              "line-opacity": 0.1,
-            },
-          });
-        }
         map.addSource("geology", { type: "geojson", data: geo.geo });
         map.addLayer({
           id: "geology-fill",

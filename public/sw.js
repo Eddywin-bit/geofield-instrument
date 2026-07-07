@@ -1,5 +1,5 @@
 /* GeoField Companion Service Worker */
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL_CACHE = `geofield-shell-${VERSION}`;
 const DATA_CACHE = `geofield-data-${VERSION}`;
 

@@ -397,44 +397,6 @@ export function MapView() {
     };
   }, []);
 
-  // Hydrate & render log pins
-  useEffect(() => {
-    void hydrateLogs().then(() => setLogsTick((n) => n + 1));
-  }, []);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    for (const m of markersRef.current) m.remove();
-    markersRef.current = [];
-    const logs: LogEntry[] = loadLogs();
-    for (const l of logs) {
-      if (l.lat == null || l.lng == null) continue;
-      const color = colorForUnit(l.unit, l.belt);
-      const el = document.createElement("div");
-      el.style.cssText = `width:12px;height:12px;background:${color};border:2px solid #ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.6);cursor:pointer;transform:rotate(45deg);`;
-      el.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        const pt = map.project([l.lng!, l.lat!]);
-        setPopup({
-          kind: "log",
-          unit: l.unit,
-          note: l.note || "No note",
-          time: formatTime(l.timestamp),
-          x: pt.x,
-          y: pt.y,
-        });
-      });
-      const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([l.lng, l.lat])
-        .addTo(map);
-      markersRef.current.push(marker);
-    }
-    return () => {
-      for (const m of markersRef.current) m.remove();
-      markersRef.current = [];
-    };
-  }, [logsTick]);
 
   // Hide popup on map move
   useEffect(() => {

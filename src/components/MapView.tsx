@@ -202,6 +202,14 @@ export function MapView() {
       }
     });
 
+    const ro = new ResizeObserver(() => {
+      const w = c.clientWidth;
+      const h = c.clientHeight;
+      map.resize();
+      pushDiag(`resizeObserver: ${w}x${h}`);
+    });
+    ro.observe(c);
+
     const dumpCanvasMetrics = (tag: string) => {
       try {
         const canvas = map.getCanvas();
@@ -286,6 +294,7 @@ export function MapView() {
     };
 
     return () => {
+      ro.disconnect();
       window.removeEventListener("resize", onWindowResize);
       map.remove();
       mapRef.current = null;

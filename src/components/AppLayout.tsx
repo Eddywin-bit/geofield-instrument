@@ -1,9 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Crosshair, FileText, Layers, Plus } from "lucide-react";
+import { Crosshair, FileText, Layers, Map, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { GEOFIELD_MARK } from "../lib/logo";
 import { SplashScreen } from "./SplashScreen";
-import { MapFoldIcon } from "./MapFoldIcon";
+
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -50,7 +50,7 @@ function BottomNav() {
     { to: "/", label: "LOCATE", icon: Crosshair, exact: true },
     { to: "/log", label: "LOG", icon: FileText, exact: false },
     { to: "/my-logs", label: "MY LOGS", icon: Layers, exact: false },
-    { to: "/map", label: "MAP", icon: MapFoldIcon, exact: false },
+    { to: "/map", label: "MAP", icon: Map, exact: false },
   ] as const;
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-panel border-t border-border pb-[env(safe-area-inset-bottom)]">

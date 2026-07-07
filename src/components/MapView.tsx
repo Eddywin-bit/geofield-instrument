@@ -540,22 +540,13 @@ export function MapView() {
                 ✕
               </button>
             </div>
-            {popup.kind === "log" ? (
-              <>
-                <div className="text-[11px] text-muted-foreground mt-1 leading-snug">{popup.note}</div>
-                {popup.time && (
-                  <div className="mono text-[10px] text-muted-foreground mt-1">{popup.time}</div>
-                )}
-              </>
-            ) : (
-              <Link
-                to="/know/$unit"
-                params={{ unit: encodeURIComponent(popup.unit) }}
-                className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-semibold text-primary hover:underline"
-              >
-                Know →
-              </Link>
-            )}
+            <Link
+              to="/know/$unit"
+              params={{ unit: encodeURIComponent(popup.unit) }}
+              className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-semibold text-primary hover:underline"
+            >
+              Know →
+            </Link>
           </div>
         </div>
       )}

@@ -10,10 +10,10 @@ import { hydrateLogs, loadLogs, formatTime, type LogEntry } from "../lib/logs-st
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#121417";
 
-function buildStyle(online: boolean): StyleSpecification {
+function buildStyle(online: boolean, debug = false): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
   const layers: StyleSpecification["layers"] = [
-    { id: "bg", type: "background", paint: { "background-color": BG } },
+    { id: "bg", type: "background", paint: { "background-color": debug ? "#FF0000" : BG } },
   ];
   if (online) {
     sources.osm = {

@@ -368,14 +368,39 @@ export function MapView() {
       </button>
 
       {/* Legend */}
-      <div className="absolute bottom-3 left-3 max-w-[60%] rounded-md border border-border bg-background/85 backdrop-blur-md px-2.5 py-2 flex flex-col gap-1 shadow-lg shadow-black/40 z-10 max-h-[45%] overflow-auto">
-        {LEGEND.map((l) => (
-          <div key={l.unit} className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
-            <span className="mono text-[10px] text-foreground whitespace-nowrap">{l.label}</span>
+      {!legendOpen && (
+        <button
+          type="button"
+          onClick={() => setLegendOpen(true)}
+          className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/85 backdrop-blur-md px-3 py-1.5 shadow-lg shadow-black/40"
+        >
+          <Layers className="h-3.5 w-3.5 text-foreground" />
+          <span className="text-[10px] font-semibold text-foreground">Legend</span>
+        </button>
+      )}
+      {legendOpen && (
+        <div className="absolute bottom-3 left-3 max-w-[60%] rounded-md border border-border bg-background/85 backdrop-blur-md shadow-lg shadow-black/40 z-10 flex flex-col max-h-[45%]">
+          <div className="flex items-center justify-between px-2.5 py-2 border-b border-border shrink-0">
+            <span className="text-[10px] font-semibold text-foreground">Legend</span>
+            <button
+              type="button"
+              onClick={() => setLegendOpen(false)}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Collapse legend"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
           </div>
-        ))}
-      </div>
+          <div className="px-2.5 py-2 flex flex-col gap-1 overflow-auto">
+            {LEGEND.map((l) => (
+              <div key={l.unit} className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
+                <span className="mono text-[10px] text-foreground whitespace-nowrap">{l.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Popup */}
       {popup && (

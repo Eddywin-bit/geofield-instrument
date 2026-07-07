@@ -4,8 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
 import { Crosshair, Minus, Plus } from "lucide-react";
 import { loadGeology, type GeoData } from "../lib/geology";
-import { UNIT_COLORS, LEGEND, colorForUnit } from "../lib/unit-colors";
-import { hydrateLogs, loadLogs, formatTime, type LogEntry } from "../lib/logs-store";
+import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#121417";
@@ -47,10 +46,7 @@ function unitMatchExpression(): maplibregl.ExpressionSpecification {
 }
 
 type Popup = {
-  kind: "unit" | "log";
   unit: string;
-  note?: string;
-  time?: string;
   x: number;
   y: number;
 };
@@ -76,14 +72,13 @@ export function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const geoRef = useRef<GeoData | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
   const accuracyMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const reapplyGeologyRef = useRef<(() => void) | null>(null);
   const firstRunRef = useRef(true);
   const [online, setOnline] = useState(false);
   const [popup, setPopup] = useState<Popup | null>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
-  const [logsTick, setLogsTick] = useState(0);
   const [initError, setInitError] = useState<string | null>(null);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
@@ -166,7 +161,7 @@ export function MapView() {
             "line-width": 0.8,
           },
         });
-        pushDiag("layers added");
+        pushDiag("ensureGeologyLayers: source+layers added");
         map.once("idle", () => {
           try {
             const hasLayer = map.getLayer("geology-fill") !== undefined;
@@ -251,6 +246,7 @@ export function MapView() {
           const feats = geo.geo.features ?? [];
           const first = feats[0]?.properties as { unit_name?: string } | undefined;
           pushDiag(`loadGeology ok: features=${feats.length} first=${first?.unit_name ?? "?"}`);
+          reapplyGeologyRef.current = () => ensureGeologyLayers(geo);
           if (mapRef.current === map) ensureGeologyLayers(geo);
         })
         .catch((err) => {
@@ -266,7 +262,7 @@ export function MapView() {
       const name = (f?.properties as { unit_name?: string } | undefined)?.unit_name;
       if (!name) return;
       const pt = map.project(e.lngLat);
-      setPopup({ kind: "unit", unit: name, x: pt.x, y: pt.y });
+      setPopup({ unit: name, x: pt.x, y: pt.y });
     });
     map.on("mouseenter", "geology-fill", () => {
       map.getCanvas().style.cursor = "pointer";
@@ -275,19 +271,8 @@ export function MapView() {
       map.getCanvas().style.cursor = "";
     });
 
-    // Expose for the online-toggle effect below via a stashed reapply fn.
-    (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology = () => {
-      const geo = geoRef.current;
-      if (geo) ensureGeologyLayers(geo);
-      else {
-        void loadGeology()
-          .then((g) => {
-            geoRef.current = g;
-            ensureGeologyLayers(g);
-          })
-          .catch((err) => pushDiag(`re-apply loadGeology failed: ${(err as Error).message}`));
-      }
-    };
+
+
 
     return () => {
       ro.disconnect();
@@ -307,8 +292,10 @@ export function MapView() {
     if (!map) return;
     pushDiag(`setStyle online=${online}`);
     map.setStyle(buildStyle(online), { diff: false });
-    const reapply = (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology;
-    if (reapply) map.once("style.load", () => reapply());
+    map.once("style.load", () => {
+      pushDiag("style.load -> reapply geology");
+      reapplyGeologyRef.current?.();
+    });
   }, [online]);
 
   // Watch GPS
@@ -402,44 +389,6 @@ export function MapView() {
     };
   }, []);
 
-  // Hydrate & render log pins
-  useEffect(() => {
-    void hydrateLogs().then(() => setLogsTick((n) => n + 1));
-  }, []);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    for (const m of markersRef.current) m.remove();
-    markersRef.current = [];
-    const logs: LogEntry[] = loadLogs();
-    for (const l of logs) {
-      if (l.lat == null || l.lng == null) continue;
-      const color = colorForUnit(l.unit, l.belt);
-      const el = document.createElement("div");
-      el.style.cssText = `width:12px;height:12px;background:${color};border:2px solid #ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.6);cursor:pointer;transform:rotate(45deg);`;
-      el.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        const pt = map.project([l.lng!, l.lat!]);
-        setPopup({
-          kind: "log",
-          unit: l.unit,
-          note: l.note || "No note",
-          time: formatTime(l.timestamp),
-          x: pt.x,
-          y: pt.y,
-        });
-      });
-      const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([l.lng, l.lat])
-        .addTo(map);
-      markersRef.current.push(marker);
-    }
-    return () => {
-      for (const m of markersRef.current) m.remove();
-      markersRef.current = [];
-    };
-  }, [logsTick]);
 
   // Hide popup on map move
   useEffect(() => {
@@ -583,22 +532,13 @@ export function MapView() {
                 ✕
               </button>
             </div>
-            {popup.kind === "log" ? (
-              <>
-                <div className="text-[11px] text-muted-foreground mt-1 leading-snug">{popup.note}</div>
-                {popup.time && (
-                  <div className="mono text-[10px] text-muted-foreground mt-1">{popup.time}</div>
-                )}
-              </>
-            ) : (
-              <Link
-                to="/know/$unit"
-                params={{ unit: encodeURIComponent(popup.unit) }}
-                className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-semibold text-primary hover:underline"
-              >
-                Know →
-              </Link>
-            )}
+            <Link
+              to="/know/$unit"
+              params={{ unit: encodeURIComponent(popup.unit) }}
+              className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-semibold text-primary hover:underline"
+            >
+              Know →
+            </Link>
           </div>
         </div>
       )}

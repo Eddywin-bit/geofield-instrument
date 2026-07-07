@@ -46,38 +46,6 @@ function unitMatchExpression(): maplibregl.ExpressionSpecification {
   return expr as unknown as maplibregl.ExpressionSpecification;
 }
 
-function ensureGeologyLayers(map: maplibregl.Map, geo: GeoData) {
-  if (!map.isStyleLoaded()) {
-    map.once("styledata", () => ensureGeologyLayers(map, geo));
-    return;
-  }
-  if (map.getSource("geology")) return;
-  try {
-    map.addSource("geology", { type: "geojson", data: geo.geo });
-    map.addLayer({
-      id: "geology-fill",
-      type: "fill",
-      source: "geology",
-      paint: {
-        "fill-color": unitMatchExpression(),
-        "fill-opacity": 0.55,
-      },
-    });
-    map.addLayer({
-      id: "geology-line",
-      type: "line",
-      source: "geology",
-      paint: {
-        "line-color": "#000000",
-        "line-opacity": 0.35,
-        "line-width": 0.8,
-      },
-    });
-  } catch (err) {
-    console.warn("[MapView] ensureGeologyLayers failed", err);
-  }
-}
-
 type Popup = {
   kind: "unit" | "log";
   unit: string;
@@ -86,6 +54,28 @@ type Popup = {
   x: number;
   y: number;
 };
+
+function detectDebug(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const has = new URLSearchParams(window.location.search).has("debug");
+    if (has) {
+      window.sessionStorage.setItem("geofield_debug", "1");
+      return true;
+    }
+    return window.sessionStorage.getItem("geofield_debug") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function fmtTime(): string {
+  const d = new Date();
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  const ms = String(d.getMilliseconds()).padStart(3, "0");
+  return `${mm}:${ss}.${ms}`;
+}
 
 export function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -103,9 +93,36 @@ export function MapView() {
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
 
+  const [debug] = useState<boolean>(() => detectDebug());
+  const [diag, setDiag] = useState<string[]>([]);
+  const diagRef = useRef<(line: string) => void>(() => {});
+  useEffect(() => {
+    diagRef.current = (line: string) => {
+      if (!debug) return;
+      setDiag((prev) => {
+        const next = [...prev, `${fmtTime()}  ${line}`];
+        return next.length > 40 ? next.slice(next.length - 40) : next;
+      });
+    };
+  }, [debug]);
+  const pushDiag = (line: string) => diagRef.current(line);
+
   // Init map once
   useEffect(() => {
     if (!containerRef.current) return;
+    const c = containerRef.current;
+    pushDiag(`mounted; container ${c.offsetWidth}x${c.offsetHeight}`);
+
+    // WebGL probe
+    try {
+      const probe = document.createElement("canvas");
+      const gl2 = !!probe.getContext("webgl2");
+      const gl1 = !!probe.getContext("webgl");
+      pushDiag(`webgl2=${gl2} webgl=${gl1}`);
+    } catch (err) {
+      pushDiag(`webgl probe threw: ${(err as Error).message}`);
+    }
+
     let map: maplibregl.Map;
     try {
       map = new maplibregl.Map({
@@ -115,15 +132,64 @@ export function MapView() {
         fitBoundsOptions: { padding: 20 },
         attributionControl: { compact: true },
       });
+      pushDiag("map constructed OK");
     } catch (err) {
+      const msg = (err as Error).message;
       console.warn("[MapView] map construction failed", err);
+      pushDiag(`map construction threw: ${msg}`);
       setInitError("Map cannot render on this device (WebGL unavailable).");
       return;
     }
     mapRef.current = map;
 
+    const ensureGeologyLayers = (geo: GeoData) => {
+      pushDiag(`ensureGeologyLayers: styleLoaded=${map.isStyleLoaded()} hasSource=${!!map.getSource("geology")}`);
+      if (!map.isStyleLoaded()) {
+        map.once("styledata", () => ensureGeologyLayers(geo));
+        return;
+      }
+      if (map.getSource("geology")) return;
+      try {
+        map.addSource("geology", { type: "geojson", data: geo.geo });
+        map.addLayer({
+          id: "geology-fill",
+          type: "fill",
+          source: "geology",
+          paint: {
+            "fill-color": unitMatchExpression(),
+            "fill-opacity": 0.55,
+          },
+        });
+        map.addLayer({
+          id: "geology-line",
+          type: "line",
+          source: "geology",
+          paint: {
+            "line-color": "#000000",
+            "line-opacity": 0.35,
+            "line-width": 0.8,
+          },
+        });
+        pushDiag("layers added");
+        map.once("idle", () => {
+          try {
+            const hasLayer = map.getLayer("geology-fill") !== undefined;
+            const count = map.querySourceFeatures("geology").length;
+            pushDiag(`idle: hasLayer=${hasLayer} sourceFeatures=${count}`);
+          } catch (err) {
+            pushDiag(`idle probe threw: ${(err as Error).message}`);
+          }
+        });
+      } catch (err) {
+        console.warn("[MapView] ensureGeologyLayers failed", err);
+        pushDiag(`ensureGeologyLayers threw: ${(err as Error).message}`);
+      }
+    };
+
     map.on("error", (e) => {
-      console.warn("[MapView] map error", e?.error ?? e);
+      const err = (e as unknown as { error?: Error }).error;
+      console.warn("[MapView] map error", err ?? e);
+      pushDiag(`map error: ${err?.message ?? String(e)}`);
     });
 
     const onWindowResize = () => map.resize();
@@ -137,12 +203,19 @@ export function MapView() {
     });
 
     map.on("load", () => {
+      pushDiag("map load fired");
       void loadGeology()
         .then((geo) => {
           geoRef.current = geo;
-          if (mapRef.current === map) ensureGeologyLayers(map, geo);
+          const feats = geo.geo.features ?? [];
+          const first = feats[0]?.properties as { unit_name?: string } | undefined;
+          pushDiag(`loadGeology ok: features=${feats.length} first=${first?.unit_name ?? "?"}`);
+          if (mapRef.current === map) ensureGeologyLayers(geo);
         })
-        .catch((err) => console.warn("[MapView] loadGeology failed", err));
+        .catch((err) => {
+          console.warn("[MapView] loadGeology failed", err);
+          pushDiag(`loadGeology failed: ${(err as Error).message}`);
+        });
     });
 
     // Register click / hover handlers once. Layer-scoped listeners are safe
@@ -161,6 +234,20 @@ export function MapView() {
       map.getCanvas().style.cursor = "";
     });
 
+    // Expose for the online-toggle effect below via a stashed reapply fn.
+    (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology = () => {
+      const geo = geoRef.current;
+      if (geo) ensureGeologyLayers(geo);
+      else {
+        void loadGeology()
+          .then((g) => {
+            geoRef.current = g;
+            ensureGeologyLayers(g);
+          })
+          .catch((err) => pushDiag(`re-apply loadGeology failed: ${(err as Error).message}`));
+      }
+    };
+
     return () => {
       window.removeEventListener("resize", onWindowResize);
       map.remove();
@@ -176,17 +263,10 @@ export function MapView() {
     }
     const map = mapRef.current;
     if (!map) return;
+    pushDiag(`setStyle online=${online}`);
     map.setStyle(buildStyle(online), { diff: false });
-    const apply = async () => {
-      try {
-        const geo = geoRef.current ?? (await loadGeology());
-        geoRef.current = geo;
-        if (mapRef.current === map) ensureGeologyLayers(map, geo);
-      } catch (err) {
-        console.warn("[MapView] re-apply geology failed", err);
-      }
-    };
-    void apply();
+    const reapply = (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology;
+    if (reapply) reapply();
   }, [online]);
 
   // Watch GPS
@@ -328,6 +408,14 @@ export function MapView() {
     }
   };
 
+  const copyDiag = () => {
+    try {
+      void navigator.clipboard.writeText(diag.join("\n"));
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <div className="fixed left-0 right-0 top-11 bottom-16 overflow-hidden bg-[#121417]">
       <div ref={containerRef} className="absolute inset-0" />
@@ -359,6 +447,27 @@ export function MapView() {
           </button>
         </div>
       </div>
+
+      {/* Diagnostic overlay */}
+      {debug && (
+        <div className="absolute top-12 left-2 right-2 z-30 rounded-md border border-border bg-background/90 backdrop-blur-md max-h-[40%] overflow-auto text-[10px] font-mono p-2 shadow-lg shadow-black/40">
+          <div className="flex items-center justify-between mb-1 sticky top-0 bg-background/90 pb-1">
+            <span className="font-bold text-foreground">diag ({diag.length})</span>
+            <button
+              type="button"
+              onClick={copyDiag}
+              className="px-2 py-0.5 rounded border border-border text-foreground"
+            >
+              copy
+            </button>
+          </div>
+          {diag.map((l, i) => (
+            <div key={i} className="text-foreground whitespace-pre-wrap break-all leading-tight">
+              {l}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Zoom controls */}
       <div className="absolute top-16 right-3 flex flex-col rounded-md border border-border bg-background/85 backdrop-blur-md overflow-hidden shadow-lg shadow-black/40 z-10">

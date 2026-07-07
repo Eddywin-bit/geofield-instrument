@@ -444,10 +444,12 @@ function FixCard({
             {acquiring ? "Identifying…" : fix.unit}
           </div>
         </div>
-        <div>
-          <div className="label-instrument">Belt / Formation</div>
-          <div className="text-sm mt-1">{acquiring ? "—" : fix.belt}</div>
-        </div>
+        {(acquiring || (fix.belt && fix.belt.trim().length > 0)) && (
+          <div>
+            <div className="label-instrument">Belt / Formation</div>
+            <div className="text-sm mt-1">{acquiring ? "—" : fix.belt}</div>
+          </div>
+        )}
         {!acquiring && !weak && fix.unit !== "Unmapped" && fix.unit !== "Identifying…" && fix.unit !== "Approximate location" && (
           <Link
             to="/know/$unit"

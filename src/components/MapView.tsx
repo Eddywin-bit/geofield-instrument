@@ -262,7 +262,7 @@ export function MapView() {
       const name = (f?.properties as { unit_name?: string } | undefined)?.unit_name;
       if (!name) return;
       const pt = map.project(e.lngLat);
-      setPopup({ kind: "unit", unit: name, x: pt.x, y: pt.y });
+      setPopup({ unit: name, x: pt.x, y: pt.y });
     });
     map.on("mouseenter", "geology-fill", () => {
       map.getCanvas().style.cursor = "pointer";

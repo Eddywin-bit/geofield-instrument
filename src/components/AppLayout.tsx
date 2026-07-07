@@ -66,7 +66,7 @@ function BottomNav() {
             >
               {active && <span className="absolute top-0 inset-x-6 h-[2px] bg-primary" />}
               <Icon
-                className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`}
+                className={`h-[22px] w-[22px] ${active ? "text-primary" : "text-muted-foreground"}`}
                 strokeWidth={active ? 2.5 : 2}
               />
               <span

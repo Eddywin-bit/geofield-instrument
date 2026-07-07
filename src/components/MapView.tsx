@@ -161,7 +161,7 @@ export function MapView() {
             "line-width": 0.8,
           },
         });
-        pushDiag("layers added");
+        pushDiag("ensureGeologyLayers: source+layers added");
         map.once("idle", () => {
           try {
             const hasLayer = map.getLayer("geology-fill") !== undefined;

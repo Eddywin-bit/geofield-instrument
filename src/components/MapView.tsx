@@ -246,6 +246,7 @@ export function MapView() {
           const feats = geo.geo.features ?? [];
           const first = feats[0]?.properties as { unit_name?: string } | undefined;
           pushDiag(`loadGeology ok: features=${feats.length} first=${first?.unit_name ?? "?"}`);
+          reapplyGeologyRef.current = () => ensureGeologyLayers(geo);
           if (mapRef.current === map) ensureGeologyLayers(geo);
         })
         .catch((err) => {

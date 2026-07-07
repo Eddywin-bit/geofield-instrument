@@ -99,12 +99,13 @@
    "Conglomerates"
   ],
   "expected_features": [
-   "Flat-lying bedding",
-   "Ripple marks",
-   "Mud cracks"
+   "Red to purple-brown red-bed colouration",
+   "Coarse feldspathic sandstone and polymictic conglomerate",
+   "Large-scale cross-stratification",
+   "Flat-lying beds, coarsening to the southeast"
   ],
-  "engineering_note": "Generally flat-lying and stable; watch for mudstone interbeds.",
-  "mineral_note": "Limited metallic potential; some industrial sand and clay."
+  "engineering_note": "Flat-lying and generally firm sandstone and conglomerate, but interbedded sandy clays and mudstones are weaker and the red-bed clays can be expansive; expect variable strength.",
+  "mineral_note": ""
  },
  {
   "unit_name": "Obosum & Oti Beds",
@@ -203,12 +204,13 @@
    "Phyllites"
   ],
   "expected_features": [
-   "Cross-bedding",
-   "Pebble imbrication",
-   "Reef horizons"
+   "Cross-bedding and ripple marks (useful for way-up)",
+   "Banket quartz-pebble conglomerate reefs",
+   "Well-rounded milky-quartz pebbles in an iron-oxide matrix",
+   "Upward-fining into the Tarkwa Phyllite"
   ],
-  "engineering_note": "Competent quartzitic units; good foundation but abrasive to drill.",
-  "mineral_note": "Paleoplacer gold in the Banket conglomerate reefs."
+  "engineering_note": "Quartzites and reef conglomerates are hard, competent and abrasive to drill; the phyllite interbeds are softer and foliated, so strength varies through the sequence.",
+  "mineral_note": "Host to world-class paleoplacer free-gold in the Banket quartz-pebble conglomerate reefs (e.g. Tarkwa, Damang)."
  },
  {
   "unit_name": "Birimian Volcanics",
@@ -220,12 +222,13 @@
    "Greenstones"
   ],
   "expected_features": [
-   "Pillow structures",
-   "Chlorite alteration",
-   "Sulphide stringers"
+   "Subaqueous pillow lava structures",
+   "Chlorite-epidote alteration in shear zones",
+   "Penetrative schistosity near the belt margins",
+   "Ridge-forming greenstone outcrops"
   ],
-  "engineering_note": "Fresh rock is strong; weathered cap can be 20-40 m of saprolite.",
-  "mineral_note": "Primary host of Ashanti-style gold; also Cu and minor base metals."
+  "engineering_note": "Fresh metavolcanic rock is strong and ridge-forming, but sheared and altered margins weaken to chlorite schist and weather to a thick saprolite; locate the shear zones before founding.",
+  "mineral_note": "Ghana's primary host for world-class mesothermal quartz-vein gold, structurally controlled along the sheared margins of the belt."
  },
  {
   "unit_name": "Birimian Sediments",
@@ -237,13 +240,13 @@
    "Slates"
   ],
   "expected_features": [
-   "Tight folding",
-   "Shear zones",
-   "Quartz veins",
-   "Slaty cleavage"
+   "Rhythmically bedded slates, phyllites and greywackes",
+   "Slaty cleavage obscuring original bedding",
+   "Black carbonaceous (graphitic) phyllite marker horizons",
+   "Shear zones near the belt margins"
   ],
-  "engineering_note": "Deeply weathered profile with variable rockhead depth; probe before founding.",
-  "mineral_note": "Hosts orogenic gold in shear zones and quartz veins."
+  "engineering_note": "Fissile, deeply weathered argillaceous rock with variable rockhead; carbonaceous phyllites are weak and slake, so probe depth and treat the cleavage as a failure plane on cuts.",
+  "mineral_note": "Shear zones near the belt margins host lode gold, and some horizons carry manganese ore (e.g. Nsuta)."
  },
  {
   "unit_name": "Dahomeyan Acidic Gneiss",

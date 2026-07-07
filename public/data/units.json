@@ -1,7 +1,7 @@
 [
  {
   "unit_name": "Recent",
-  "also_known_as": "",
+  "also_known_as": "Quaternary deposits",
   "expected_rocks": [
    "Unconsolidated sand",
    "Clay",
@@ -18,7 +18,7 @@
  },
  {
   "unit_name": "Tertiary",
-  "also_known_as": "",
+  "also_known_as": "Continental Terminal / Amisian Formation",
   "expected_rocks": [
    "Limonitic sand",
    "Sandy clay",
@@ -35,7 +35,7 @@
  },
  {
   "unit_name": "Eocene & Cretaceous",
-  "also_known_as": "",
+  "also_known_as": "Apollonian Group (Tano & Keta basins)",
   "expected_rocks": [
    "Shales",
    "Sandstones",
@@ -54,7 +54,7 @@
  },
  {
   "unit_name": "Sekondian",
-  "also_known_as": "",
+  "also_known_as": "Sekondian Group",
   "expected_rocks": [
    "Sandstone",
    "Grit",
@@ -75,7 +75,7 @@
  },
  {
   "unit_name": "Accraian",
-  "also_known_as": "",
+  "also_known_as": "Accraian Group",
   "expected_rocks": [
    "Sandstone",
    "Grit",
@@ -92,7 +92,7 @@
  },
  {
   "unit_name": "Upper Voltaian",
-  "also_known_as": "",
+  "also_known_as": "Obosum Group",
   "expected_rocks": [
    "Sandstones",
    "Mudstones",
@@ -109,7 +109,7 @@
  },
  {
   "unit_name": "Obosum & Oti Beds",
-  "also_known_as": "",
+  "also_known_as": "Oti-Pendjari & Obosum Groups",
   "expected_rocks": [
    "Shale",
    "Mudstone",
@@ -127,7 +127,7 @@
  },
  {
   "unit_name": "Basal Sandstone",
-  "also_known_as": "",
+  "also_known_as": "Kwahu-Bombouaka Group",
   "expected_rocks": [
    "Sandstone"
   ],
@@ -142,7 +142,7 @@
  },
  {
   "unit_name": "Buem Volcanics",
-  "also_known_as": "",
+  "also_known_as": "Buem Volcanic Formation",
   "expected_rocks": [
    "Basaltic lava",
    "Andesitic lava",
@@ -162,7 +162,7 @@
  },
  {
   "unit_name": "Buem",
-  "also_known_as": "",
+  "also_known_as": "Buem Structural Unit",
   "expected_rocks": [
    "Calcareous rocks"
   ],
@@ -177,7 +177,7 @@
  },
  {
   "unit_name": "Togo Series",
-  "also_known_as": "",
+  "also_known_as": "Togo Structural Unit",
   "expected_rocks": [
    "Quartzite",
    "Sandstone",
@@ -250,7 +250,7 @@
  },
  {
   "unit_name": "Dahomeyan Acidic Gneiss",
-  "also_known_as": "",
+  "also_known_as": "Dahomeyan Structural Unit",
   "expected_rocks": [
    "Acidic orthogneiss",
    "Paragneiss",
@@ -268,7 +268,7 @@
  },
  {
   "unit_name": "Dahomeyan Basic Gneiss",
-  "also_known_as": "",
+  "also_known_as": "Shai Hills Gneiss",
   "expected_rocks": [
    "Basic orthogneiss",
    "Paragneiss",
@@ -286,7 +286,7 @@
  },
  {
   "unit_name": "Granitoid Undifferentiated",
-  "also_known_as": "",
+  "also_known_as": "Cape Coast / Dixcove / Bongo suites",
   "expected_rocks": [
    "Granitoids (undifferentiated)"
   ],

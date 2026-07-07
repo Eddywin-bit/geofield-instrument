@@ -4,8 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
 import { Crosshair, Minus, Plus } from "lucide-react";
 import { loadGeology, type GeoData } from "../lib/geology";
-import { UNIT_COLORS, LEGEND, colorForUnit } from "../lib/unit-colors";
-import { hydrateLogs, loadLogs, formatTime, type LogEntry } from "../lib/logs-store";
+import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#121417";

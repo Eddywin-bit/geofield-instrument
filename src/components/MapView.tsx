@@ -95,7 +95,12 @@ export function MapView() {
         bounds: GHANA_BOUNDS,
         fitBoundsOptions: { padding: 20 },
         attributionControl: false,
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        maxPitch: 0,
       });
+      map.touchZoomRotate.disableRotation();
       map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
     } catch (err) {
       const msg = (err as Error).message;

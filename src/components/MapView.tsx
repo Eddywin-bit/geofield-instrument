@@ -310,7 +310,7 @@ export function MapView() {
     const map = mapRef.current;
     if (!map) return;
     pushDiag(`setStyle online=${online}`);
-    map.setStyle(buildStyle(online, debug), { diff: false });
+    map.setStyle(buildStyle(online), { diff: false });
     const reapply = (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology;
     if (reapply) reapply();
   }, [online]);

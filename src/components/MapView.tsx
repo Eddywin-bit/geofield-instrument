@@ -58,12 +58,7 @@ type Popup = {
 function detectDebug(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const has = new URLSearchParams(window.location.search).has("debug");
-    if (has) {
-      window.sessionStorage.setItem("geofield_debug", "1");
-      return true;
-    }
-    return window.sessionStorage.getItem("geofield_debug") === "1";
+    return new URLSearchParams(window.location.search).has("debug");
   } catch {
     return false;
   }

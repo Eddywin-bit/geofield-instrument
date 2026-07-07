@@ -46,10 +46,7 @@ function unitMatchExpression(): maplibregl.ExpressionSpecification {
 }
 
 type Popup = {
-  kind: "unit" | "log";
   unit: string;
-  note?: string;
-  time?: string;
   x: number;
   y: number;
 };

@@ -58,12 +58,7 @@ type Popup = {
 function detectDebug(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const has = new URLSearchParams(window.location.search).has("debug");
-    if (has) {
-      window.sessionStorage.setItem("geofield_debug", "1");
-      return true;
-    }
-    return window.sessionStorage.getItem("geofield_debug") === "1";
+    return new URLSearchParams(window.location.search).has("debug");
   } catch {
     return false;
   }
@@ -343,8 +338,22 @@ export function MapView() {
 
     if (!gpsMarkerRef.current) {
       const el = document.createElement("div");
-      el.style.cssText =
-        "width:14px;height:14px;border-radius:9999px;background:#F59E0B;border:2px solid #0f1418;box-shadow:0 0 0 2px rgba(245,158,11,0.35);";
+      el.style.cssText = "width:40px;height:40px;position:relative;";
+
+      const dot = document.createElement("div");
+      dot.style.cssText =
+        "width:14px;height:14px;border-radius:9999px;background:#F59E0B;border:2px solid #0f1418;box-shadow:0 0 0 2px rgba(245,158,11,0.35);position:absolute;top:13px;left:13px;";
+
+      const halo = document.createElement("div");
+      halo.style.cssText =
+        "position:absolute;top:13px;left:13px;width:14px;height:14px;border-radius:9999px;background:#F59E0B;";
+      halo.animate(
+        [{ transform: "scale(1)", opacity: 0.6 }, { transform: "scale(2.6)", opacity: 0 }],
+        { duration: 1500, iterations: Infinity, easing: "ease-out" },
+      );
+
+      el.appendChild(halo);
+      el.appendChild(dot);
       gpsMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([gps.lng, gps.lat])
         .addTo(map);

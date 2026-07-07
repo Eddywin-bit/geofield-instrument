@@ -112,6 +112,19 @@ export function MapView() {
       }
       if (map.getSource("geology")) return;
       try {
+        if (!map.getSource("graticule")) {
+          map.addSource("graticule", { type: "geojson", data: buildGraticule() });
+          map.addLayer({
+            id: "graticule-line",
+            type: "line",
+            source: "graticule",
+            paint: {
+              "line-color": "#94A3B8",
+              "line-width": 0.5,
+              "line-opacity": 0.1,
+            },
+          });
+        }
         map.addSource("geology", { type: "geojson", data: geo.geo });
         map.addLayer({
           id: "geology-fill",

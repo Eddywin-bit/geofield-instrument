@@ -125,8 +125,9 @@ export function MapView() {
         style: buildStyle(false),
         bounds: GHANA_BOUNDS,
         fitBoundsOptions: { padding: 20 },
-        attributionControl: { compact: true },
+        attributionControl: false,
       });
+      map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
       pushDiag("map constructed OK");
     } catch (err) {
       const msg = (err as Error).message;
@@ -307,7 +308,7 @@ export function MapView() {
     pushDiag(`setStyle online=${online}`);
     map.setStyle(buildStyle(online), { diff: false });
     const reapply = (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology;
-    if (reapply) reapply();
+    if (reapply) map.once("style.load", () => reapply());
   }, [online]);
 
   // Watch GPS

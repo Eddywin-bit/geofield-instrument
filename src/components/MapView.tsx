@@ -10,10 +10,10 @@ import { hydrateLogs, loadLogs, formatTime, type LogEntry } from "../lib/logs-st
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#121417";
 
-function buildStyle(online: boolean, debug = false): StyleSpecification {
+function buildStyle(online: boolean): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
   const layers: StyleSpecification["layers"] = [
-    { id: "bg", type: "background", paint: { "background-color": debug ? "#FF0000" : BG } },
+    { id: "bg", type: "background", paint: { "background-color": BG } },
   ];
   if (online) {
     sources.osm = {
@@ -127,7 +127,7 @@ export function MapView() {
     try {
       map = new maplibregl.Map({
         container: containerRef.current,
-        style: buildStyle(false, debug),
+        style: buildStyle(false),
         bounds: GHANA_BOUNDS,
         fitBoundsOptions: { padding: 20 },
         attributionControl: { compact: true },
@@ -310,7 +310,7 @@ export function MapView() {
     const map = mapRef.current;
     if (!map) return;
     pushDiag(`setStyle online=${online}`);
-    map.setStyle(buildStyle(online, debug), { diff: false });
+    map.setStyle(buildStyle(online), { diff: false });
     const reapply = (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology;
     if (reapply) reapply();
   }, [online]);

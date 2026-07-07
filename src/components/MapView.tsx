@@ -271,19 +271,8 @@ export function MapView() {
       map.getCanvas().style.cursor = "";
     });
 
-    // Expose for the online-toggle effect below via a stashed reapply fn.
-    (map as unknown as { __reapplyGeology?: () => void }).__reapplyGeology = () => {
-      const geo = geoRef.current;
-      if (geo) ensureGeologyLayers(geo);
-      else {
-        void loadGeology()
-          .then((g) => {
-            geoRef.current = g;
-            ensureGeologyLayers(g);
-          })
-          .catch((err) => pushDiag(`re-apply loadGeology failed: ${(err as Error).message}`));
-      }
-    };
+
+
 
     return () => {
       ro.disconnect();

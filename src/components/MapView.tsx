@@ -45,6 +45,22 @@ function unitMatchExpression(): maplibregl.ExpressionSpecification {
   return expr as unknown as maplibregl.ExpressionSpecification;
 }
 
+function buildGraticule(): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  const lonMin = -6, lonMax = 4, latMin = 2, latMax = 14;
+  for (let lon = lonMin; lon <= lonMax; lon++) {
+    const coords: [number, number][] = [];
+    for (let lat = latMin; lat <= latMax; lat += 0.5) coords.push([lon, lat]);
+    features.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
+  }
+  for (let lat = latMin; lat <= latMax; lat++) {
+    const coords: [number, number][] = [];
+    for (let lon = lonMin; lon <= lonMax; lon += 0.5) coords.push([lon, lat]);
+    features.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
+  }
+  return { type: "FeatureCollection", features };
+}
+
 type Popup = {
   unit: string;
   x: number;

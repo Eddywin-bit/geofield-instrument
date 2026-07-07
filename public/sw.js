@@ -47,19 +47,19 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Cache-first for /data
+  // Stale-while-revalidate for /data: serve cache instantly (offline-safe),
+  // refresh in the background so data edits propagate on the next load.
   if (url.pathname.startsWith("/data/")) {
     event.respondWith(
       caches.open(DATA_CACHE).then(async (cache) => {
         const cached = await cache.match(req);
-        if (cached) return cached;
-        try {
-          const res = await fetch(req);
-          if (res.ok) cache.put(req, res.clone());
-          return res;
-        } catch (e) {
-          return cached || Response.error();
-        }
+        const network = fetch(req)
+          .then((res) => {
+            if (res.ok) cache.put(req, res.clone());
+            return res;
+          })
+          .catch(() => cached);
+        return cached || network;
       }),
     );
     return;

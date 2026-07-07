@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
-import { Crosshair, Minus, Plus } from "lucide-react";
+import { Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
@@ -63,6 +63,7 @@ export function MapView() {
   const [popup, setPopup] = useState<Popup | null>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const [legendOpen, setLegendOpen] = useState(false);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
 

@@ -72,14 +72,13 @@ export function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const geoRef = useRef<GeoData | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
   const accuracyMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const reapplyGeologyRef = useRef<(() => void) | null>(null);
   const firstRunRef = useRef(true);
   const [online, setOnline] = useState(false);
   const [popup, setPopup] = useState<Popup | null>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
-  const [logsTick, setLogsTick] = useState(0);
   const [initError, setInitError] = useState<string | null>(null);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;

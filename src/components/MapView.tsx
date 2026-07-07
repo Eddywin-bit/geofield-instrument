@@ -464,7 +464,7 @@ export function MapView() {
 
   return (
     <div className="fixed left-0 right-0 top-11 bottom-16 overflow-hidden bg-[#121417]">
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} className="absolute inset-0 h-full w-full" />
 
       {initError && (
         <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">

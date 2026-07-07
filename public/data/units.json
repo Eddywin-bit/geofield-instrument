@@ -7,9 +7,14 @@
    "Clay",
    "Gravel"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Unconsolidated sand, silt and gravel",
+   "Active floodplain, beach, spit and estuarine forms",
+   "Heavy-mineral concentrations (rutile, zircon, ilmenite, gold)",
+   "Mapped by geomorphology, not by rock exposure"
+  ],
+  "engineering_note": "Unconsolidated, saturated and mobile: low strength, high settlement, and shifting channels and shorelines make it poor founding ground and prone to scour and erosion.",
+  "mineral_note": "Principal host of Ghana's alluvial gold and diamond placers (e.g. Birim River) and the main source of construction sand and gravel."
  },
  {
   "unit_name": "Tertiary",
@@ -19,8 +24,13 @@
    "Sandy clay",
    "Gravel"
   ],
-  "expected_features": [],
-  "engineering_note": "",
+  "expected_features": [
+   "Soft, poorly lithified bouldery shale and pebbly grit",
+   "Red sandy-clay lateritic (Continental Terminal) profile",
+   "Arkosic sandstones, carbonate-free",
+   "Easily excavated with hand tools"
+  ],
+  "engineering_note": "Very soft and easily excavated, but the lateritic clays shrink, swell and erode readily; low bearing capacity and poor slope stability where saturated.",
   "mineral_note": ""
  },
  {
@@ -33,9 +43,14 @@
    "Glauconitic sandstone",
    "Oil sand"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Alternating unconsolidated sands and clays",
+   "Thin fossiliferous marine limestone and glauconitic sandstone",
+   "Dark pyritic shales",
+   "Gentle (2-6 degree) seaward dips, largely soil and swamp covered"
+  ],
+  "engineering_note": "Poorly consolidated, water-saturated coastal sands and clays: soft, compressible ground with a shallow water table, so expect settlement and excavation-support issues.",
+  "mineral_note": "Ghana's key petroleum system: organic-rich shales and porous sands act as source and reservoir for offshore and onshore oil and gas (e.g. Jubilee Field, Tano Basin)."
  },
  {
   "unit_name": "Sekondian",
@@ -49,9 +64,14 @@
    "Limestone nodules",
    "Siderite nodules"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Chocolate-purple Elmina Sandstone",
+   "Granitoid dropstones in dark Ajua Shale",
+   "Siderite nodules and pyrite in upper shales",
+   "Coastal fault-block exposures (Dixcove to Cape Coast)"
+  ],
+  "engineering_note": "Interbedded sandstone, shale and conglomerate of very uneven strength; block-faulted and coastal, so cliff stability and rapid facies changes matter for any works.",
+  "mineral_note": "No significant ore; notable for classic, accessible unconformity exposures along Western Region coastal cliffs."
  },
  {
   "unit_name": "Accraian",
@@ -61,8 +81,13 @@
    "Grit",
    "Shale"
   ],
-  "expected_features": [],
-  "engineering_note": "",
+  "expected_features": [
+   "Very mature (near-pure quartz) arenites and grits",
+   "Fossiliferous grey shale middle unit",
+   "Devonian marine fossils (trilobites, bivalves)",
+   "Gentle dips; central Accra coastal exposures"
+  ],
+  "engineering_note": "Mature quartz arenites are hard and stable; the fine grey shale and mudstone interbeds are the weak layer to watch on cuts and foundations.",
   "mineral_note": ""
  },
  {
@@ -90,9 +115,14 @@
    "Sandy beds",
    "Pebbly beds"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Basal glacial triad: tillite, cap carbonate, cherty silixite",
+   "Greenish-grey thinly bedded shale and wacke (flysch)",
+   "Varves, microfolds and calcite veining in limestones",
+   "Greenish-grey Oti beds grading up into red Obosum beds"
+  ],
+  "engineering_note": "Shale-dominated and generally weak, with soft mudstone interbeds; limestone bands are firmer but may be karstic, so check for solution features.",
+  "mineral_note": "Oti limestones (Bimbila, Buipe) are evaluated for cement; minor barite in the cap carbonates, and bitumen seeps drive current hydrocarbon exploration."
  },
  {
   "unit_name": "Basal Sandstone",
@@ -100,9 +130,14 @@
   "expected_rocks": [
    "Sandstone"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Near-horizontal bedding (1-2 degree dip)",
+   "Large-scale cross-bedding, ripple marks, flute casts",
+   "Escarpment-forming (Kwahu Plateau, Gambaga scarp)",
+   "Thin basal conglomerate over the basement unconformity"
+  ],
+  "engineering_note": "Well-cemented quartz arenite is strong and stable, forming steep escarpments; it is a productive fractured-rock aquifer, so expect water in joints and fractures.",
+  "mineral_note": "No metallic ores; regionally important as a fractured-rock aquifer and as an escarpment-forming building-stone source."
  },
  {
   "unit_name": "Buem Volcanics",
@@ -115,8 +150,13 @@
    "Tuff",
    "Jasper"
   ],
-  "expected_features": [],
-  "engineering_note": "",
+  "expected_features": [
+   "Pillow lava structures",
+   "Vesicular, amygdaloidal and spherulitic textures",
+   "Volcanic breccia, agglomerate and tuff interbeds",
+   "Magnetic, ridge-forming outcrops"
+  ],
+  "engineering_note": "Fresh mafic lavas are hard and resistant (ridge-forming); serpentinised ultramafic pods along thrust planes can be weak and slippery, so watch the contacts.",
   "mineral_note": ""
  },
  {
@@ -125,9 +165,14 @@
   "expected_rocks": [
    "Calcareous rocks"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Chevron and tight folding",
+   "Top-to-west thrust fabrics, steep dips",
+   "Banded chert and jasper horizons",
+   "Feldspathic (immature) sandstones"
+  ],
+  "engineering_note": "Mixed strengths: hard chert, jasper and sandstone bands set against weak, tectonically foliated shales; expect variable competence and structurally controlled weakness along thrusts.",
+  "mineral_note": "Minor ornamental jasper ('tiger eye') and limited hematite iron occurrences; not a major ore host."
  },
  {
   "unit_name": "Togo Series",
@@ -140,9 +185,14 @@
    "Schist",
    "Silicified limestone"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Pervasive schistosity dipping ESE",
+   "Tight isoclinal folding",
+   "Flaggy to massive quartzite beds",
+   "Ridge-forming (Akwapim-Togo range)"
+  ],
+  "engineering_note": "Quartzites are hard and competent (good aggregate and dimension stone), but interbedded phyllites and schists are weak and fissile; bedding-parallel failure and anisotropy are the concern on slopes and cuts.",
+  "mineral_note": "No significant metallic mineralization; flaggy quartzites are worked locally for dimension stone and aggregate."
  },
  {
   "unit_name": "Tarkwaian",
@@ -204,8 +254,13 @@
    "Schist",
    "Migmatite"
   ],
-  "expected_features": [],
-  "engineering_note": "",
+  "expected_features": [
+   "Gneissic banding",
+   "Migmatitic textures",
+   "Pegmatoid veins cutting the foliation",
+   "N-S to NE foliation trend"
+  ],
+  "engineering_note": "Quartzo-feldspathic gneiss forming low-relief flat ground (Accra Plains); fresh rock is firm, but weathering depth is variable, so verify rockhead locally.",
   "mineral_note": ""
  },
  {
@@ -217,9 +272,14 @@
    "Schist",
    "Migmatite"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Large red garnet porphyroblasts",
+   "Streaky garnet-rich and hornblende-rich banding",
+   "Boudinage and ductile shear fabrics",
+   "Steep inselberg outcrops (Shai, Krobo Hills)"
+  ],
+  "engineering_note": "Dense, hard, high-strength rock widely quarried for construction aggregate; forms steep inselbergs, so slope stability matters on and around outcrops.",
+  "mineral_note": "No metallic ores of note; valued as high-strength crushed-rock aggregate. Inselbergs carry cultural and geoheritage significance."
  },
  {
   "unit_name": "Granitoid Undifferentiated",
@@ -227,8 +287,13 @@
   "expected_rocks": [
    "Granitoids (undifferentiated)"
   ],
-  "expected_features": [],
-  "engineering_note": "",
-  "mineral_note": ""
+  "expected_features": [
+   "Foliation (Cape Coast type)",
+   "Massive plutons (Dixcove type)",
+   "Pink microcline phenocrysts (Bongo type)",
+   "Sandy-clay saprolite over laterite cap"
+  ],
+  "engineering_note": "Fresh granitoid is strong and competent, but deep tropical weathering commonly leaves thick sandy-clay saprolite over a hard lateritic cap; probe for true rockhead before founding.",
+  "mineral_note": "Not a primary ore host itself, but its shear corridors help control mesothermal gold; local pegmatites carry kaolin (e.g. Saltpond)."
  }
 ]

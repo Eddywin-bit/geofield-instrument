@@ -438,7 +438,7 @@ function LogScreen() {
           className="w-full h-16 rounded-lg bg-primary text-primary-foreground font-bold tracking-[0.2em] text-base flex items-center justify-center gap-3 active:scale-[0.99] transition-transform disabled:opacity-70"
         >
           <Check className="h-6 w-6" strokeWidth={3} />
-          {saving ? "SAVED" : "SAVE OBSERVATION"}
+          {saving ? "SAVED" : "Save observation"}
         </button>
       </div>
     </AppLayout>

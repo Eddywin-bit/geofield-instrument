@@ -3,6 +3,7 @@ import { Crosshair, FileText, Layers, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { GEOFIELD_MARK } from "../lib/logo";
 import { SplashScreen } from "./SplashScreen";
+import { MapFoldIcon } from "./MapFoldIcon";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { AppLayout } from "../components/AppLayout";
@@ -21,6 +21,7 @@ export const Route = createFileRoute("/know/$unit")({
 function KnowScreen() {
   const { unit: unitParam } = Route.useParams();
   const unitName = decodeURIComponent(unitParam);
+  const router = useRouter();
   const [unit, setUnit] = useState<GeoUnit | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -41,13 +42,20 @@ function KnowScreen() {
   return (
     <AppLayout>
       <div className="px-4 pt-4 pb-3">
-        <Link
-          to="/"
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              router.history.back();
+            } else {
+              router.navigate({ to: "/" });
+            }
+          }}
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back
-        </Link>
+        </button>
       </div>
 
       <div className="px-4">

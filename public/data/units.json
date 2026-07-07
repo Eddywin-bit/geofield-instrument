@@ -214,7 +214,7 @@
  },
  {
   "unit_name": "Birimian Volcanics",
-  "also_known_as": "Ashanti Greenstone Belt",
+  "also_known_as": "Greenstone belts (Ashanti, Sefwi, Bole-Navrongo)",
   "expected_rocks": [
    "Metabasalts",
    "Pillow lavas",
@@ -232,7 +232,7 @@
  },
  {
   "unit_name": "Birimian Sediments",
-  "also_known_as": "Kumasi Basin",
+  "also_known_as": "Sedimentary basins (Kumasi, Sunyani)",
   "expected_rocks": [
    "Phyllites",
    "Metagreywackes",

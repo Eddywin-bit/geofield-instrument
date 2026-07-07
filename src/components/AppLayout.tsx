@@ -70,7 +70,7 @@ function BottomNav() {
                 strokeWidth={active ? 2.5 : 2}
               />
               <span
-                className={`text-[10px] tracking-[0.14em] font-semibold ${
+                className={`text-[10px] tracking-[0.08em] font-semibold leading-none whitespace-nowrap ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >

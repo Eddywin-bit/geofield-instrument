@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
-import { Crosshair, Map as MapIcon, Minus, Plus } from "lucide-react";
-import { loadGeology } from "../lib/geology";
+import { Crosshair, Minus, Plus } from "lucide-react";
+import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND, colorForUnit } from "../lib/unit-colors";
 import { hydrateLogs, loadLogs, formatTime, type LogEntry } from "../lib/logs-store";
 
@@ -13,11 +13,7 @@ const BG = "#121417";
 function buildStyle(online: boolean): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
   const layers: StyleSpecification["layers"] = [
-    {
-      id: "bg",
-      type: "background",
-      paint: { "background-color": BG },
-    },
+    { id: "bg", type: "background", paint: { "background-color": BG } },
   ];
   if (online) {
     sources.osm = {
@@ -38,11 +34,7 @@ function buildStyle(online: boolean): StyleSpecification {
       paint: { "raster-opacity": 0.75 },
     });
   }
-  return {
-    version: 8,
-    sources,
-    layers,
-  };
+  return { version: 8, sources, layers };
 }
 
 function unitMatchExpression(): maplibregl.ExpressionSpecification {
@@ -52,6 +44,38 @@ function unitMatchExpression(): maplibregl.ExpressionSpecification {
   }
   expr.push("#6B7280");
   return expr as unknown as maplibregl.ExpressionSpecification;
+}
+
+function ensureGeologyLayers(map: maplibregl.Map, geo: GeoData) {
+  if (!map.isStyleLoaded()) {
+    map.once("styledata", () => ensureGeologyLayers(map, geo));
+    return;
+  }
+  if (map.getSource("geology")) return;
+  try {
+    map.addSource("geology", { type: "geojson", data: geo.geo });
+    map.addLayer({
+      id: "geology-fill",
+      type: "fill",
+      source: "geology",
+      paint: {
+        "fill-color": unitMatchExpression(),
+        "fill-opacity": 0.55,
+      },
+    });
+    map.addLayer({
+      id: "geology-line",
+      type: "line",
+      source: "geology",
+      paint: {
+        "line-color": "#000000",
+        "line-opacity": 0.35,
+        "line-width": 0.8,
+      },
+    });
+  } catch (err) {
+    console.warn("[MapView] ensureGeologyLayers failed", err);
+  }
 }
 
 type Popup = {
@@ -66,115 +90,103 @@ type Popup = {
 export function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const geoRef = useRef<GeoData | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
   const accuracyMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const firstRunRef = useRef(true);
   const [online, setOnline] = useState(false);
   const [popup, setPopup] = useState<Popup | null>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [logsTick, setLogsTick] = useState(0);
+  const [initError, setInitError] = useState<string | null>(null);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
 
   // Init map once
   useEffect(() => {
     if (!containerRef.current) return;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: buildStyle(false),
-      bounds: GHANA_BOUNDS,
-      fitBoundsOptions: { padding: 20 },
-      attributionControl: { compact: true },
-    });
+    let map: maplibregl.Map;
+    try {
+      map = new maplibregl.Map({
+        container: containerRef.current,
+        style: buildStyle(false),
+        bounds: GHANA_BOUNDS,
+        fitBoundsOptions: { padding: 20 },
+        attributionControl: { compact: true },
+      });
+    } catch (err) {
+      console.warn("[MapView] map construction failed", err);
+      setInitError("Map cannot render on this device (WebGL unavailable).");
+      return;
+    }
     mapRef.current = map;
 
-    map.on("error", () => {
-      // Silence tile / style errors.
+    map.on("error", (e) => {
+      console.warn("[MapView] map error", e?.error ?? e);
     });
 
-    map.on("load", async () => {
+    const onWindowResize = () => map.resize();
+    window.addEventListener("resize", onWindowResize);
+    requestAnimationFrame(() => {
       try {
-        const geo = await loadGeology();
-        if (!mapRef.current) return;
-        map.addSource("geology", { type: "geojson", data: geo.geo });
-        map.addLayer({
-          id: "geology-fill",
-          type: "fill",
-          source: "geology",
-          paint: {
-            "fill-color": unitMatchExpression(),
-            "fill-opacity": 0.55,
-          },
-        });
-        map.addLayer({
-          id: "geology-line",
-          type: "line",
-          source: "geology",
-          paint: {
-            "line-color": "#000000",
-            "line-opacity": 0.35,
-            "line-width": 0.8,
-          },
-        });
-
-        map.on("click", "geology-fill", (e) => {
-          const f = e.features?.[0];
-          const name = (f?.properties as { unit_name?: string } | undefined)?.unit_name;
-          if (!name) return;
-          const pt = map.project(e.lngLat);
-          setPopup({ kind: "unit", unit: name, x: pt.x, y: pt.y });
-        });
-        map.on("mouseenter", "geology-fill", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-        map.on("mouseleave", "geology-fill", () => {
-          map.getCanvas().style.cursor = "";
-        });
+        map.resize();
       } catch {
-        /* silent */
+        /* ignore */
       }
     });
 
+    map.on("load", () => {
+      void loadGeology()
+        .then((geo) => {
+          geoRef.current = geo;
+          if (mapRef.current === map) ensureGeologyLayers(map, geo);
+        })
+        .catch((err) => console.warn("[MapView] loadGeology failed", err));
+    });
+
+    // Register click / hover handlers once. Layer-scoped listeners are safe
+    // even if the layer is re-added later (e.g. after setStyle).
+    map.on("click", "geology-fill", (e) => {
+      const f = e.features?.[0];
+      const name = (f?.properties as { unit_name?: string } | undefined)?.unit_name;
+      if (!name) return;
+      const pt = map.project(e.lngLat);
+      setPopup({ kind: "unit", unit: name, x: pt.x, y: pt.y });
+    });
+    map.on("mouseenter", "geology-fill", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "geology-fill", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
     return () => {
+      window.removeEventListener("resize", onWindowResize);
       map.remove();
       mapRef.current = null;
     };
   }, []);
 
-  // Update style on online toggle
+  // Online toggle — skip first run so we don't race the initial style load.
   useEffect(() => {
+    if (firstRunRef.current) {
+      firstRunRef.current = false;
+      return;
+    }
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(buildStyle(online), { diff: false });
-    map.once("styledata", async () => {
+    const apply = async () => {
       try {
-        const geo = await loadGeology();
-        if (!map.getSource("geology")) {
-          map.addSource("geology", { type: "geojson", data: geo.geo });
-          map.addLayer({
-            id: "geology-fill",
-            type: "fill",
-            source: "geology",
-            paint: {
-              "fill-color": unitMatchExpression(),
-              "fill-opacity": 0.55,
-            },
-          });
-          map.addLayer({
-            id: "geology-line",
-            type: "line",
-            source: "geology",
-            paint: {
-              "line-color": "#000000",
-              "line-opacity": 0.35,
-              "line-width": 0.8,
-            },
-          });
-        }
-      } catch {
-        /* silent */
+        const geo = geoRef.current ?? (await loadGeology());
+        geoRef.current = geo;
+        if (mapRef.current === map) ensureGeologyLayers(map, geo);
+      } catch (err) {
+        console.warn("[MapView] re-apply geology failed", err);
       }
-    });
+    };
+    void apply();
   }, [online]);
 
   // Watch GPS
@@ -214,13 +226,13 @@ export function MapView() {
       gpsMarkerRef.current.setLngLat([gps.lng, gps.lat]);
     }
 
-    // Accuracy circle sized in screen px based on current zoom
     const metersPerPixel =
       (156543.03392 * Math.cos((gps.lat * Math.PI) / 180)) / Math.pow(2, map.getZoom());
     const diameterPx = Math.max(20, (gps.accuracy * 2) / metersPerPixel);
     if (!accuracyMarkerRef.current) {
       const el = document.createElement("div");
-      el.style.cssText = `pointer-events:none;border-radius:9999px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);`;
+      el.style.cssText =
+        "pointer-events:none;border-radius:9999px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);";
       el.style.width = `${diameterPx}px`;
       el.style.height = `${diameterPx}px`;
       accuracyMarkerRef.current = new maplibregl.Marker({ element: el })
@@ -262,7 +274,6 @@ export function MapView() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    // Clear existing
     for (const m of markersRef.current) m.remove();
     markersRef.current = [];
     const logs: LogEntry[] = loadLogs();
@@ -294,7 +305,7 @@ export function MapView() {
     };
   }, [logsTick]);
 
-  // Reposition popup on move/zoom (approximate: hide during move)
+  // Hide popup on map move
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -320,6 +331,14 @@ export function MapView() {
   return (
     <div className="fixed left-0 right-0 top-11 bottom-16 overflow-hidden bg-[#121417]">
       <div ref={containerRef} className="absolute inset-0" />
+
+      {initError && (
+        <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">
+          <div className="rounded-lg border border-border bg-background/90 backdrop-blur-md p-4 text-center text-sm text-muted-foreground max-w-xs">
+            {initError}
+          </div>
+        </div>
+      )}
 
       {/* Offline / Online pill */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
@@ -402,7 +421,9 @@ export function MapView() {
             {popup.kind === "log" ? (
               <>
                 <div className="text-[11px] text-muted-foreground mt-1 leading-snug">{popup.note}</div>
-                {popup.time && <div className="mono text-[10px] text-muted-foreground mt-1">{popup.time}</div>}
+                {popup.time && (
+                  <div className="mono text-[10px] text-muted-foreground mt-1">{popup.time}</div>
+                )}
               </>
             ) : (
               <Link
@@ -419,6 +440,3 @@ export function MapView() {
     </div>
   );
 }
-
-// Prevent unused import warning while keeping MapIcon reserved for future empty states.
-void MapIcon;

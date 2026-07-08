@@ -1,5 +1,5 @@
 /* GeoField Companion Service Worker */
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL_CACHE = `geofield-shell-${VERSION}`;
 const DATA_CACHE = `geofield-data-${VERSION}`;
 
@@ -13,6 +13,10 @@ const SHELL_URLS = [
 const DATA_URLS = [
   "/data/units.json",
   "/data/geology.geojson",
+  "/data/ghana-roads.geojson",
+  "/data/ghana-rivers.geojson",
+  "/data/ghana-regions.geojson",
+  "/data/ghana-places.geojson",
 ];
 
 self.addEventListener("install", (event) => {

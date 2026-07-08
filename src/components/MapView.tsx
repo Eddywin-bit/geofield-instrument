@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
-import { Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
+import { Box, Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
@@ -33,7 +33,7 @@ function buildStyle(online: boolean): StyleSpecification {
       paint: { "raster-opacity": 0.75 },
     });
   }
-  return { version: 8, sources, layers };
+  return { version: 8, sources, layers, projection: { type: "globe" } as any };
 }
 
 function unitMatchExpression(): maplibregl.ExpressionSpecification {
@@ -64,6 +64,7 @@ export function MapView() {
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [pitched, setPitched] = useState(false);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
 
@@ -82,7 +83,7 @@ export function MapView() {
         dragRotate: false,
         pitchWithRotate: false,
         touchPitch: false,
-        maxPitch: 0,
+        maxPitch: 60,
       });
       map.touchZoomRotate.disableRotation();
       map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
@@ -300,6 +301,12 @@ export function MapView() {
 
   const zoomIn = () => mapRef.current?.zoomIn();
   const zoomOut = () => mapRef.current?.zoomOut();
+  const toggleTilt = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.easeTo({ pitch: pitched ? 0 : 60, duration: 400 });
+    setPitched((prev) => !prev);
+  };
   const recenter = () => {
     const map = mapRef.current;
     if (!map) return;
@@ -342,23 +349,33 @@ export function MapView() {
         </div>
       </div>
 
-      {/* Zoom controls */}
-      <div className="absolute top-16 right-3 flex flex-col rounded-md border border-border bg-background/85 backdrop-blur-md overflow-hidden shadow-lg shadow-black/40 z-10">
+      {/* Zoom + tilt controls */}
+      <div className="absolute top-16 right-3 flex flex-col gap-2 z-10">
+        <div className="flex flex-col rounded-md border border-border bg-background/85 backdrop-blur-md overflow-hidden shadow-lg shadow-black/40">
+          <button
+            type="button"
+            onClick={zoomIn}
+            className="h-9 w-9 flex items-center justify-center text-foreground border-b border-border"
+            aria-label="Zoom in"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            onClick={zoomOut}
+            className="h-9 w-9 flex items-center justify-center text-foreground"
+            aria-label="Zoom out"
+          >
+            <Minus className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        </div>
         <button
           type="button"
-          onClick={zoomIn}
-          className="h-9 w-9 flex items-center justify-center text-foreground border-b border-border"
-          aria-label="Zoom in"
+          onClick={toggleTilt}
+          className={`h-9 w-9 flex items-center justify-center rounded-md border border-border bg-background/85 backdrop-blur-md shadow-lg shadow-black/40 ${pitched ? "text-primary" : "text-foreground"}`}
+          aria-label="Toggle map tilt"
         >
-          <Plus className="h-4 w-4" strokeWidth={2.5} />
-        </button>
-        <button
-          type="button"
-          onClick={zoomOut}
-          className="h-9 w-9 flex items-center justify-center text-foreground"
-          aria-label="Zoom out"
-        >
-          <Minus className="h-4 w-4" strokeWidth={2.5} />
+          <Box className="h-4 w-4" strokeWidth={2.5} />
         </button>
       </div>
 

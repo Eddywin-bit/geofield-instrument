@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
-import { Box, Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
+import { Navigation2, Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
@@ -64,7 +64,7 @@ export function MapView() {
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
-  const [pitched, setPitched] = useState(false);
+  const [bearing, setBearing] = useState(0);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
 
@@ -80,12 +80,11 @@ export function MapView() {
         bounds: GHANA_BOUNDS,
         fitBoundsOptions: { padding: 20 },
         attributionControl: false,
-        dragRotate: false,
+        dragRotate: true,
         pitchWithRotate: false,
         touchPitch: false,
-        maxPitch: 60,
+        maxPitch: 0,
       });
-      map.touchZoomRotate.disableRotation();
       map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
     } catch (err) {
       const msg = (err as Error).message;
@@ -318,14 +317,19 @@ export function MapView() {
     };
   }, []);
 
-  const zoomIn = () => mapRef.current?.zoomIn();
-  const zoomOut = () => mapRef.current?.zoomOut();
-  const toggleTilt = () => {
+  // Track bearing so the compass button reflects the map rotation
+  useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    map.easeTo({ pitch: pitched ? 0 : 60, duration: 400 });
-    setPitched((prev) => !prev);
-  };
+    const onRotate = () => setBearing(map.getBearing());
+    map.on("rotate", onRotate);
+    return () => {
+      map.off("rotate", onRotate);
+    };
+  }, []);
+
+  const zoomIn = () => mapRef.current?.zoomIn();
+  const zoomOut = () => mapRef.current?.zoomOut();
   const recenter = () => {
     const map = mapRef.current;
     if (!map) return;
@@ -368,35 +372,35 @@ export function MapView() {
         </div>
       </div>
 
-      {/* Zoom + tilt controls */}
-      <div className="absolute top-16 right-3 flex flex-col gap-2 z-10">
-        <div className="flex flex-col rounded-md border border-border bg-background/85 backdrop-blur-md overflow-hidden shadow-lg shadow-black/40">
-          <button
-            type="button"
-            onClick={zoomIn}
-            className="h-9 w-9 flex items-center justify-center text-foreground border-b border-border"
-            aria-label="Zoom in"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
-          </button>
-          <button
-            type="button"
-            onClick={zoomOut}
-            className="h-9 w-9 flex items-center justify-center text-foreground"
-            aria-label="Zoom out"
-          >
-            <Minus className="h-4 w-4" strokeWidth={2.5} />
-          </button>
-        </div>
+      {/* Zoom controls */}
+      <div className="absolute top-16 right-3 flex flex-col rounded-md border border-border bg-background/85 backdrop-blur-md overflow-hidden shadow-lg shadow-black/40 z-10">
         <button
           type="button"
-          onClick={toggleTilt}
-          className={`h-9 w-9 flex items-center justify-center rounded-md border border-border bg-background/85 backdrop-blur-md shadow-lg shadow-black/40 ${pitched ? "text-primary" : "text-foreground"}`}
-          aria-label="Toggle map tilt"
+          onClick={zoomIn}
+          className="h-9 w-9 flex items-center justify-center text-foreground border-b border-border"
+          aria-label="Zoom in"
         >
-          <Box className="h-4 w-4" strokeWidth={2.5} />
+          <Plus className="h-4 w-4" strokeWidth={2.5} />
+        </button>
+        <button
+          type="button"
+          onClick={zoomOut}
+          className="h-9 w-9 flex items-center justify-center text-foreground"
+          aria-label="Zoom out"
+        >
+          <Minus className="h-4 w-4" strokeWidth={2.5} />
         </button>
       </div>
+
+      {/* Reset north (compass) */}
+      <button
+        type="button"
+        onClick={() => mapRef.current?.resetNorth()}
+        className="absolute bottom-16 right-3 h-11 w-11 rounded-full border border-border bg-background/85 backdrop-blur-md flex items-center justify-center text-foreground shadow-lg shadow-black/40 z-10"
+        aria-label="Reset north"
+      >
+        <Navigation2 className="h-5 w-5" strokeWidth={2.5} style={{ transform: `rotate(${-bearing}deg)` }} />
+      </button>
 
       {/* Recenter FAB */}
       <button

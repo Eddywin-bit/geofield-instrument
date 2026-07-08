@@ -3,9 +3,11 @@
   "unit_name": "Recent",
   "also_known_as": "Quaternary deposits",
   "expected_rocks": [
-   "Unconsolidated sand",
-   "Clay",
-   "Gravel"
+   "Alluvial sand and gravel",
+   "Silt",
+   "Estuarine mud",
+   "Beach sand",
+   "Residual laterite"
   ],
   "expected_features": [
    "Unconsolidated sand, silt and gravel",
@@ -20,9 +22,10 @@
   "unit_name": "Tertiary",
   "also_known_as": "Continental Terminal / Amisian Formation",
   "expected_rocks": [
-   "Limonitic sand",
-   "Sandy clay",
-   "Gravel"
+   "Arkosic sandstone",
+   "Pebbly grit",
+   "Bouldery shale",
+   "Lateritic sandy clay"
   ],
   "expected_features": [
    "Soft, poorly lithified bouldery shale and pebbly grit",
@@ -37,10 +40,11 @@
   "unit_name": "Eocene & Cretaceous",
   "also_known_as": "Apollonian Group (Tano & Keta basins)",
   "expected_rocks": [
-   "Shales",
-   "Sandstones",
-   "Limestone",
+   "Sandstone",
+   "Clay",
+   "Marine limestone",
    "Glauconitic sandstone",
+   "Pyritic shale",
    "Oil sand"
   ],
   "expected_features": [
@@ -58,10 +62,9 @@
   "expected_rocks": [
    "Sandstone",
    "Grit",
-   "Conglomerate",
+   "Boulder conglomerate",
    "Shale",
    "Mudstone",
-   "Limestone nodules",
    "Siderite nodules"
   ],
   "expected_features": [
@@ -77,9 +80,11 @@
   "unit_name": "Accraian",
   "also_known_as": "Accraian Group",
   "expected_rocks": [
-   "Sandstone",
+   "Quartz arenite",
    "Grit",
-   "Shale"
+   "Pebbly sandstone",
+   "Fossiliferous shale",
+   "Mudstone"
   ],
   "expected_features": [
    "Very mature (near-pure quartz) arenites and grits",
@@ -94,9 +99,11 @@
   "unit_name": "Upper Voltaian",
   "also_known_as": "Obosum Group",
   "expected_rocks": [
-   "Sandstones",
-   "Mudstones",
-   "Conglomerates"
+   "Feldspathic sandstone",
+   "Polymictic conglomerate",
+   "Siltstone",
+   "Mudstone",
+   "Sandy clay"
   ],
   "expected_features": [
    "Red to purple-brown red-bed colouration",
@@ -112,9 +119,11 @@
   "also_known_as": "Oti-Pendjari & Obosum Groups",
   "expected_rocks": [
    "Shale",
-   "Mudstone",
-   "Sandy beds",
-   "Pebbly beds"
+   "Siltstone",
+   "Wacke",
+   "Cap-carbonate limestone and dolomite",
+   "Tillite (diamictite)",
+   "Chert (silixite)"
   ],
   "expected_features": [
    "Basal glacial triad: tillite, cap carbonate, cherty silixite",
@@ -129,7 +138,10 @@
   "unit_name": "Basal Sandstone",
   "also_known_as": "Kwahu-Bombouaka Group",
   "expected_rocks": [
-   "Sandstone"
+   "Quartz arenite",
+   "Sub-arkosic sandstone",
+   "Basal granule conglomerate",
+   "Grey shale interbeds"
   ],
   "expected_features": [
    "Near-horizontal bedding (1-2 degree dip)",
@@ -145,11 +157,12 @@
   "also_known_as": "Buem Volcanic Formation",
   "expected_rocks": [
    "Basaltic lava",
-   "Andesitic lava",
    "Trachytic lava",
+   "Volcanic breccia",
    "Agglomerate",
    "Tuff",
-   "Jasper"
+   "Serpentinised peridotite",
+   "Gabbro"
   ],
   "expected_features": [
    "Pillow lava structures",
@@ -164,7 +177,12 @@
   "unit_name": "Buem",
   "also_known_as": "Buem Structural Unit",
   "expected_rocks": [
-   "Calcareous rocks"
+   "Arkosic sandstone",
+   "Siltstone",
+   "Mudstone",
+   "Shale",
+   "Limestone and dolomite",
+   "Banded chert and jasper"
   ],
   "expected_features": [
    "Chevron and tight folding",
@@ -180,11 +198,10 @@
   "also_known_as": "Togo Structural Unit",
   "expected_rocks": [
    "Quartzite",
-   "Sandstone",
-   "Shale",
+   "Quartzitic sandstone",
    "Phyllite",
-   "Schist",
-   "Silicified limestone"
+   "Chlorite schist",
+   "Quartz-mica schist"
   ],
   "expected_features": [
    "Pervasive schistosity dipping ESE",
@@ -199,9 +216,11 @@
   "unit_name": "Tarkwaian",
   "also_known_as": "Banket Series",
   "expected_rocks": [
-   "Quartz-pebble conglomerates",
-   "Sandstones",
-   "Phyllites"
+   "Quartzite",
+   "Subarkosic sandstone",
+   "Quartz-pebble conglomerate (Banket)",
+   "Polymictic conglomerate (Kawere)",
+   "Tarkwa Phyllite"
   ],
   "expected_features": [
    "Cross-bedding and ripple marks (useful for way-up)",
@@ -216,10 +235,12 @@
   "unit_name": "Birimian Volcanics",
   "also_known_as": "Greenstone belts (Ashanti, Sefwi, Bole-Navrongo)",
   "expected_rocks": [
-   "Metabasalts",
-   "Pillow lavas",
-   "Tuffs",
-   "Greenstones"
+   "Metabasalt",
+   "Meta-andesite",
+   "Metadolerite",
+   "Volcanic agglomerate",
+   "Tuff",
+   "Minor felsic flows"
   ],
   "expected_features": [
    "Subaqueous pillow lava structures",
@@ -234,10 +255,11 @@
   "unit_name": "Birimian Sediments",
   "also_known_as": "Sedimentary basins (Kumasi, Sunyani)",
   "expected_rocks": [
-   "Phyllites",
-   "Metagreywackes",
-   "Schists",
-   "Slates"
+   "Slate",
+   "Phyllite",
+   "Meta-greywacke",
+   "Carbonaceous phyllite",
+   "Quartz-biotite schist"
   ],
   "expected_features": [
    "Rhythmically bedded slates, phyllites and greywackes",
@@ -254,8 +276,9 @@
   "expected_rocks": [
    "Acidic orthogneiss",
    "Paragneiss",
-   "Schist",
-   "Migmatite"
+   "Migmatite",
+   "Muscovite quartzite",
+   "Sericite schist"
   ],
   "expected_features": [
    "Gneissic banding",
@@ -270,10 +293,11 @@
   "unit_name": "Dahomeyan Basic Gneiss",
   "also_known_as": "Shai Hills Gneiss",
   "expected_rocks": [
+   "Mafic granulite",
+   "Garnet-hornblende gneiss",
+   "Eclogite",
    "Basic orthogneiss",
-   "Paragneiss",
-   "Schist",
-   "Migmatite"
+   "Mafic-ultramafic rock"
   ],
   "expected_features": [
    "Large red garnet porphyroblasts",
@@ -288,7 +312,10 @@
   "unit_name": "Granitoid Undifferentiated",
   "also_known_as": "Cape Coast / Dixcove / Bongo suites",
   "expected_rocks": [
-   "Granitoids (undifferentiated)"
+   "Granodiorite (Cape Coast type)",
+   "Tonalite-trondhjemite-granodiorite (Dixcove type)",
+   "Porphyritic granite (Bongo type)",
+   "Migmatite"
   ],
   "expected_features": [
    "Foliation (Cape Coast type)",

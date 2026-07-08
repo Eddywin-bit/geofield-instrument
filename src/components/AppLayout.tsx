@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Crosshair, FileText, Layers, Map, Plus } from "lucide-react";
+import { Crosshair, FileText, Info, Layers, Map, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { GEOFIELD_MARK } from "../lib/logo";
 import { SplashScreen } from "./SplashScreen";
@@ -8,12 +8,13 @@ import { SplashScreen } from "./SplashScreen";
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isMap = pathname === "/map";
+  const isAbout = pathname === "/about";
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <SplashScreen />
       <StatusBar />
       <main className="flex-1 pb-32">{children}</main>
-      {!isMap && <QuickLogFab />}
+      {!isMap && !isAbout && <QuickLogFab />}
       <BottomNav />
     </div>
   );
@@ -51,10 +52,11 @@ function BottomNav() {
     { to: "/log", label: "LOG", icon: FileText, exact: false },
     { to: "/my-logs", label: "MY LOGS", icon: Layers, exact: false },
     { to: "/map", label: "MAP", icon: Map, exact: false },
+    { to: "/about", label: "ABOUT", icon: Info, exact: false },
   ] as const;
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-panel border-t border-border pb-[env(safe-area-inset-bottom)]">
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-5">
         {items.map((it) => {
           const active = it.exact ? pathname === it.to : pathname.startsWith(it.to);
           const Icon = it.icon;

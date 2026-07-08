@@ -274,6 +274,16 @@ export function MapView() {
     const applyAll = () => {
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       if (baseDataRef.current) ensureBaseLayers(baseDataRef.current);
+      for (const id of [
+        "base-water-fill",
+        "base-rivers",
+        "base-roads",
+        "base-bounds",
+        "base-road-labels",
+        "base-place-labels",
+      ]) {
+        if (map.getLayer(id)) map.moveLayer(id);
+      }
     };
 
     map.on("error", (e) => {

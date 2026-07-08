@@ -297,15 +297,34 @@ export function MapView() {
     ro.observe(containerRef.current);
 
     map.on("load", () => {
+      reapplyGeologyRef.current = applyAll;
       void loadGeology()
         .then((geo) => {
           geoRef.current = geo;
-          reapplyGeologyRef.current = () => ensureGeologyLayers(geo);
-          if (mapRef.current === map) ensureGeologyLayers(geo);
+          if (mapRef.current === map) applyAll();
         })
         .catch((err) => {
           console.warn("[MapView] loadGeology failed", err);
         });
+
+      const fetchJson = (url: string) =>
+        fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
+      void Promise.all([
+        fetchJson("/data/roads.geojson").catch(() => null),
+        fetchJson("/data/rivers.geojson").catch(() => null),
+        fetchJson("/data/water.geojson").catch(() => null),
+        fetchJson("/data/places.geojson").catch(() => null),
+        fetchJson("/data/bounds.geojson").catch(() => null),
+      ]).then(([roads, rivers, water, places, bounds]) => {
+        baseDataRef.current = {
+          roads: roads ?? undefined,
+          rivers: rivers ?? undefined,
+          water: water ?? undefined,
+          places: places ?? undefined,
+          bounds: bounds ?? undefined,
+        };
+        if (mapRef.current === map) applyAll();
+      });
     });
 
     // Register click / hover handlers once. Layer-scoped listeners are safe

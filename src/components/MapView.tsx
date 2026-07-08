@@ -349,23 +349,33 @@ export function MapView() {
         </div>
       </div>
 
-      {/* Zoom controls */}
-      <div className="absolute top-16 right-3 flex flex-col rounded-md border border-border bg-background/85 backdrop-blur-md overflow-hidden shadow-lg shadow-black/40 z-10">
+      {/* Zoom + tilt controls */}
+      <div className="absolute top-16 right-3 flex flex-col gap-2 z-10">
+        <div className="flex flex-col rounded-md border border-border bg-background/85 backdrop-blur-md overflow-hidden shadow-lg shadow-black/40">
+          <button
+            type="button"
+            onClick={zoomIn}
+            className="h-9 w-9 flex items-center justify-center text-foreground border-b border-border"
+            aria-label="Zoom in"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            onClick={zoomOut}
+            className="h-9 w-9 flex items-center justify-center text-foreground"
+            aria-label="Zoom out"
+          >
+            <Minus className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        </div>
         <button
           type="button"
-          onClick={zoomIn}
-          className="h-9 w-9 flex items-center justify-center text-foreground border-b border-border"
-          aria-label="Zoom in"
+          onClick={toggleTilt}
+          className={`h-9 w-9 flex items-center justify-center rounded-md border border-border bg-background/85 backdrop-blur-md shadow-lg shadow-black/40 ${pitched ? "text-primary" : "text-foreground"}`}
+          aria-label="Toggle map tilt"
         >
-          <Plus className="h-4 w-4" strokeWidth={2.5} />
-        </button>
-        <button
-          type="button"
-          onClick={zoomOut}
-          className="h-9 w-9 flex items-center justify-center text-foreground"
-          aria-label="Zoom out"
-        >
-          <Minus className="h-4 w-4" strokeWidth={2.5} />
+          <Box className="h-4 w-4" strokeWidth={2.5} />
         </button>
       </div>
 

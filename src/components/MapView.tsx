@@ -271,18 +271,14 @@ export function MapView() {
       const fetchJson = (url: string) =>
         fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
       void Promise.all([
-        fetchJson("/data/roads.geojson").catch(() => null),
-        fetchJson("/data/rivers.geojson").catch(() => null),
-        fetchJson("/data/water.geojson").catch(() => null),
-        fetchJson("/data/places.geojson").catch(() => null),
-        fetchJson("/data/bounds.geojson").catch(() => null),
-      ]).then(([roads, rivers, water, places, bounds]) => {
+        fetchJson("/data/ghana-roads.geojson").catch(() => null),
+        fetchJson("/data/ghana-rivers.geojson").catch(() => null),
+        fetchJson("/data/ghana-regions.geojson").catch(() => null),
+      ]).then(([roads, rivers, regions]) => {
         baseDataRef.current = {
           roads: roads ?? undefined,
           rivers: rivers ?? undefined,
-          water: water ?? undefined,
-          places: places ?? undefined,
-          bounds: bounds ?? undefined,
+          regions: regions ?? undefined,
         };
         if (mapRef.current === map) applyAll();
       });

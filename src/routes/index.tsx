@@ -103,7 +103,8 @@ function LocateScreen() {
   const [, force] = useState(0);
   useEffect(() => {
     void hydrateLogs().then(() => force((n) => n + 1));
-
+  }, []);
+  useEffect(() => {
     return () => {
       acqRef.current?.stop();
     };
@@ -214,6 +215,25 @@ function LocateScreen() {
     startCycle();
   };
 
+  const locateRef = useRef(locate);
+  useEffect(() => {
+    locateRef.current = locate;
+  });
+
+  useEffect(() => {
+    locateRef.current();
+    const onVis = () => {
+      if (document.visibilityState === "visible" && stateRef.current === "idle") {
+        locateRef.current();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
+
   const acceptApproximate = () => {
     acqRef.current?.stop();
     if (!fix) return;
@@ -255,26 +275,29 @@ function LocateScreen() {
 
       {!fix && (
         <div className="px-4 space-y-2">
-          <button
-            onClick={locate}
-            disabled={state === "locating"}
-            className="w-full h-32 rounded-lg bg-primary text-primary-foreground font-bold tracking-[0.2em] text-lg flex flex-col items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-80"
-          >
-            {state === "locating" ? (
-              <>
-                <Loader2 className="h-7 w-7 animate-spin" />
-                {liveAccuracy === null ? "LOCATING…" : `ACQUIRING · ± ${liveAccuracy.toFixed(1)} M`}
-              </>
-            ) : (
-              <>
+          {state === "error" ? (
+            <>
+              {error && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+              <button
+                onClick={locate}
+                className="w-full h-32 rounded-lg bg-primary text-primary-foreground font-bold tracking-[0.2em] text-lg flex flex-col items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+              >
                 <Crosshair className="h-7 w-7" strokeWidth={2.5} />
-                LOCATE ME
-              </>
-            )}
-          </button>
-          {state === "error" && error && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
+                TRY AGAIN
+              </button>
+            </>
+          ) : (
+            <div
+              role="status"
+              aria-live="polite"
+              className="w-full h-32 rounded-lg border border-border bg-panel flex flex-col items-center justify-center gap-2 text-muted-foreground"
+            >
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="label-instrument text-primary">Acquiring GPS…</span>
             </div>
           )}
           <button
@@ -286,6 +309,7 @@ function LocateScreen() {
           </button>
         </div>
       )}
+
 
       {fix && (
         <div className="px-4 space-y-3">

@@ -108,7 +108,7 @@ export function MapView() {
           source: "geology",
           paint: {
             "fill-color": unitMatchExpression(),
-            "fill-opacity": 0.42,
+            "fill-opacity": 0.35,
           },
         });
         map.addLayer({
@@ -148,9 +148,7 @@ export function MapView() {
     type BaseData = {
       roads?: GeoJSON.FeatureCollection;
       rivers?: GeoJSON.FeatureCollection;
-      water?: GeoJSON.FeatureCollection;
-      places?: GeoJSON.FeatureCollection;
-      bounds?: GeoJSON.FeatureCollection;
+      regions?: GeoJSON.FeatureCollection;
     };
     const baseDataRef: { current: BaseData | null } = { current: null };
 
@@ -159,112 +157,64 @@ export function MapView() {
         map.once("styledata", () => ensureBaseLayers(base));
         return;
       }
+      const beforeId = map.getLayer("geology-fill") ? "geology-fill" : undefined;
       try {
-        if (base.water && !map.getSource("base-water")) {
-          map.addSource("base-water", { type: "geojson", data: base.water });
-          map.addLayer({
-            id: "base-water-fill",
-            type: "fill",
-            source: "base-water",
-            paint: { "fill-color": "#2A4A5E", "fill-opacity": 0.55 },
-          });
-        }
         if (base.rivers && !map.getSource("base-rivers")) {
           map.addSource("base-rivers", { type: "geojson", data: base.rivers });
-          map.addLayer({
-            id: "base-rivers",
-            type: "line",
-            source: "base-rivers",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: {
-              "line-color": "#5B8DB0",
-              "line-opacity": 0.7,
-              "line-width": [
-                "interpolate", ["linear"], ["zoom"],
-                7, 0.6,
-                13, 1.6,
-              ],
+        }
+        if (base.rivers && !map.getLayer("base-rivers")) {
+          map.addLayer(
+            {
+              id: "base-rivers",
+              type: "line",
+              source: "base-rivers",
+              layout: { "line-join": "round", "line-cap": "round" },
+              paint: {
+                "line-color": "#4A7FB0",
+                "line-opacity": 0.45,
+                "line-width": ["interpolate", ["linear"], ["zoom"], 6, 0.5, 12, 1.6],
+              },
             },
-          });
+            beforeId,
+          );
         }
         if (base.roads && !map.getSource("base-roads")) {
           map.addSource("base-roads", { type: "geojson", data: base.roads });
-          map.addLayer({
-            id: "base-roads",
-            type: "line",
-            source: "base-roads",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: {
-              "line-color": [
-                "match", ["get", "highway"],
-                ["motorway", "trunk"], "#B8BEC8",
-                "#8A9099",
-              ],
-              "line-opacity": 0.8,
-              "line-width": [
-                "interpolate", ["linear"], ["zoom"],
-                6, ["match", ["get", "highway"], ["motorway", "trunk"], 0.8, 0.3],
-                10, ["match", ["get", "highway"], ["motorway", "trunk"], 1.8, 0.9],
-                14, ["match", ["get", "highway"], ["motorway", "trunk"], 3.4, 1.8],
-              ],
-            },
-          });
         }
-        if (base.bounds && !map.getSource("base-bounds")) {
-          map.addSource("base-bounds", { type: "geojson", data: base.bounds });
-          map.addLayer({
-            id: "base-bounds",
-            type: "line",
-            source: "base-bounds",
-            paint: {
-              "line-color": "#6B7280",
-              "line-opacity": 0.5,
-              "line-width": 1,
-              "line-dasharray": [2, 2],
+        if (base.roads && !map.getLayer("base-roads")) {
+          map.addLayer(
+            {
+              id: "base-roads",
+              type: "line",
+              source: "base-roads",
+              layout: { "line-join": "round", "line-cap": "round" },
+              paint: {
+                "line-color": "#B8BEC9",
+                "line-opacity": 0.4,
+                "line-width": ["interpolate", ["linear"], ["zoom"], 6, 0.4, 10, 1.0, 14, 2.4],
+              },
             },
-          });
+            beforeId,
+          );
         }
-        if (base.roads && !map.getLayer("base-road-labels")) {
-          map.addLayer({
-            id: "base-road-labels",
-            type: "symbol",
-            source: "base-roads",
-            filter: ["has", "ref"],
-            layout: {
-              "text-field": ["get", "ref"],
-              "symbol-placement": "line",
-              "text-size": 10,
-            },
-            paint: {
-              "text-color": "#E5E7EB",
-              "text-halo-color": "#0B0E12",
-              "text-halo-width": 1.4,
-            },
-          });
+        if (base.regions && !map.getSource("base-regions")) {
+          map.addSource("base-regions", { type: "geojson", data: base.regions });
         }
-        if (base.places && !map.getSource("base-places")) {
-          map.addSource("base-places", { type: "geojson", data: base.places });
-          map.addLayer({
-            id: "base-place-labels",
-            type: "symbol",
-            source: "base-places",
-            layout: {
-              "text-field": ["get", "name"],
-              "text-size": [
-                "match", ["get", "place"],
-                "city", 13,
-                "town", 11,
-                10,
-              ],
-              "text-anchor": "top",
-              "text-offset": [0, 0.6],
+        if (base.regions && !map.getLayer("base-regions")) {
+          map.addLayer(
+            {
+              id: "base-regions",
+              type: "line",
+              source: "base-regions",
+              paint: {
+                "line-color": "#7A8290",
+                "line-opacity": 0.35,
+                "line-width": 0.8,
+                "line-dasharray": [2, 2],
+              },
             },
-            paint: {
-              "text-color": "#F3F4F6",
-              "text-halo-color": "#0B0E12",
-              "text-halo-width": 1.4,
-            },
-          });
+            beforeId,
+          );
         }
       } catch (err) {
         console.warn("[MapView] ensureBaseLayers failed", err);
@@ -272,15 +222,16 @@ export function MapView() {
     };
 
     const applyAll = () => {
-      if (geoRef.current) ensureGeologyLayers(geoRef.current);
       if (baseDataRef.current) ensureBaseLayers(baseDataRef.current);
+      if (geoRef.current) ensureGeologyLayers(geoRef.current);
+      // Enforce draw order bottom→top by moving each existing layer to the top in sequence.
       for (const id of [
-        "base-water-fill",
         "base-rivers",
         "base-roads",
-        "base-bounds",
-        "base-road-labels",
-        "base-place-labels",
+        "base-regions",
+        "geology-fill",
+        "geology-line-soft",
+        "geology-line",
       ]) {
         if (map.getLayer(id)) map.moveLayer(id);
       }
@@ -320,18 +271,14 @@ export function MapView() {
       const fetchJson = (url: string) =>
         fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
       void Promise.all([
-        fetchJson("/data/roads.geojson").catch(() => null),
-        fetchJson("/data/rivers.geojson").catch(() => null),
-        fetchJson("/data/water.geojson").catch(() => null),
-        fetchJson("/data/places.geojson").catch(() => null),
-        fetchJson("/data/bounds.geojson").catch(() => null),
-      ]).then(([roads, rivers, water, places, bounds]) => {
+        fetchJson("/data/ghana-roads.geojson").catch(() => null),
+        fetchJson("/data/ghana-rivers.geojson").catch(() => null),
+        fetchJson("/data/ghana-regions.geojson").catch(() => null),
+      ]).then(([roads, rivers, regions]) => {
         baseDataRef.current = {
           roads: roads ?? undefined,
           rivers: rivers ?? undefined,
-          water: water ?? undefined,
-          places: places ?? undefined,
-          bounds: bounds ?? undefined,
+          regions: regions ?? undefined,
         };
         if (mapRef.current === map) applyAll();
       });

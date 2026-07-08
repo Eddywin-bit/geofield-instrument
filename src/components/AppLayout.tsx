@@ -1,21 +1,16 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Crosshair, FileText, Info, Layers, Map, Plus } from "lucide-react";
+import { Crosshair, FileText, Info, Layers, Map } from "lucide-react";
 import type { ReactNode } from "react";
 import { GEOFIELD_MARK } from "../lib/logo";
 import { SplashScreen } from "./SplashScreen";
 
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isMap = pathname === "/map";
-  const isMyLogs = pathname === "/my-logs";
-  const isAbout = pathname === "/about";
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <SplashScreen />
       <StatusBar />
       <main className="flex-1 pb-32">{children}</main>
-      {!isMap && !isMyLogs && !isAbout && <QuickLogFab />}
       <BottomNav />
     </div>
   );
@@ -32,19 +27,6 @@ function StatusBar() {
   );
 }
 
-function QuickLogFab() {
-  return (
-    <Link
-      to="/log"
-      search={{ fresh: true }}
-      className="fixed right-4 bottom-24 z-40 h-14 px-5 rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/40 flex items-center gap-2 font-bold tracking-wide active:scale-95 transition-transform"
-      aria-label="Quick log"
-    >
-      <Plus className="h-5 w-5" strokeWidth={3} />
-      <span className="text-sm">QUICK LOG</span>
-    </Link>
-  );
-}
 
 function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

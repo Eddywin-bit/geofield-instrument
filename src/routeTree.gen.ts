@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as MyLogsRouteImport } from './routes/my-logs'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as LogRouteImport } from './routes/log'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KnowUnitRouteImport } from './routes/know.$unit'
 
@@ -30,6 +31,11 @@ const LogRoute = LogRouteImport.update({
   path: '/log',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +49,7 @@ const KnowUnitRoute = KnowUnitRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -65,14 +74,15 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/log' | '/map' | '/my-logs' | '/know/$unit'
+  fullPaths: '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/log' | '/map' | '/my-logs' | '/know/$unit'
-  id: '__root__' | '/' | '/log' | '/map' | '/my-logs' | '/know/$unit'
+  to: '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit'
+  id: '__root__' | '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   LogRoute: typeof LogRoute
   MapRoute: typeof MapRoute
   MyLogsRoute: typeof MyLogsRoute
@@ -102,6 +112,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -121,6 +138,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   LogRoute: LogRoute,
   MapRoute: MapRoute,
   MyLogsRoute: MyLogsRoute,
@@ -129,3 +147,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

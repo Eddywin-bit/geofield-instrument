@@ -297,7 +297,12 @@ function LocateScreen() {
             acquiring={state === "locating"}
             weak={state === "weak"}
             liveAccuracy={liveAccuracy}
-            onRelocate={locate}
+            onRelocate={() => {
+              acqRef.current?.stop();
+              setFix(null);
+              setLiveAccuracy(null);
+              setState("idle");
+            }}
           />
           {state === "found" && fix.nearby && fix.nearby.length > 1 && (
             <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-primary">

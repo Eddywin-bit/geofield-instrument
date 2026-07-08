@@ -103,8 +103,7 @@ function LocateScreen() {
   const [, force] = useState(0);
   useEffect(() => {
     void hydrateLogs().then(() => force((n) => n + 1));
-  }, []);
-  useEffect(() => {
+
     return () => {
       acqRef.current?.stop();
     };

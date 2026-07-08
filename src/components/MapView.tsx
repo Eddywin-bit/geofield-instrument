@@ -113,13 +113,32 @@ export function MapView() {
           },
         });
         map.addLayer({
+          id: "geology-line-soft",
+          type: "line",
+          source: "geology",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#000000",
+            "line-opacity": 0.14,
+            "line-width": 2.4,
+            "line-blur": 1.4,
+          },
+        });
+        map.addLayer({
           id: "geology-line",
           type: "line",
           source: "geology",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
           paint: {
             "line-color": "#000000",
-            "line-opacity": 0.35,
-            "line-width": 0.8,
+            "line-opacity": 0.4,
+            "line-width": 0.7,
           },
         });
       } catch (err) {

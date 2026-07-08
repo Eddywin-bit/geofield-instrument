@@ -8,13 +8,14 @@ import { SplashScreen } from "./SplashScreen";
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isMap = pathname === "/map";
+  const isMyLogs = pathname === "/my-logs";
   const isAbout = pathname === "/about";
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <SplashScreen />
       <StatusBar />
       <main className="flex-1 pb-32">{children}</main>
-      {!isMap && !isAbout && <QuickLogFab />}
+      {!isMap && !isMyLogs && !isAbout && <QuickLogFab />}
       <BottomNav />
     </div>
   );

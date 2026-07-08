@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
-import { Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
+import { Box, Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
@@ -33,7 +33,7 @@ function buildStyle(online: boolean): StyleSpecification {
       paint: { "raster-opacity": 0.75 },
     });
   }
-  return { version: 8, sources, layers };
+  return { version: 8, sources, layers, projection: { type: "globe" } as any };
 }
 
 function unitMatchExpression(): maplibregl.ExpressionSpecification {
@@ -64,6 +64,7 @@ export function MapView() {
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [pitched, setPitched] = useState(false);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
 
@@ -82,7 +83,7 @@ export function MapView() {
         dragRotate: false,
         pitchWithRotate: false,
         touchPitch: false,
-        maxPitch: 0,
+        maxPitch: 60,
       });
       map.touchZoomRotate.disableRotation();
       map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
@@ -300,6 +301,12 @@ export function MapView() {
 
   const zoomIn = () => mapRef.current?.zoomIn();
   const zoomOut = () => mapRef.current?.zoomOut();
+  const toggleTilt = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.easeTo({ pitch: pitched ? 0 : 60, duration: 400 });
+    setPitched((prev) => !prev);
+  };
   const recenter = () => {
     const map = mapRef.current;
     if (!map) return;

@@ -33,7 +33,7 @@ function buildStyle(online: boolean): StyleSpecification {
       paint: { "raster-opacity": 0.75 },
     });
   }
-  return { version: 8, sources, layers, projection: { type: "globe" } as any };
+  return { version: 8, sources, layers };
 }
 
 function unitMatchExpression(): maplibregl.ExpressionSpecification {

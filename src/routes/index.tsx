@@ -289,7 +289,6 @@ function LocateScreen() {
         </div>
       )}
 
-
       {fix && (
         <div className="px-4 space-y-3">
           <FixCard

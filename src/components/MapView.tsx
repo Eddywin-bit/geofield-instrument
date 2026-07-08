@@ -222,6 +222,10 @@ export function MapView() {
     };
 
     const applyAll = () => {
+      if (!map.isStyleLoaded()) {
+        map.once("styledata", applyAll);
+        return;
+      }
       if (baseDataRef.current) ensureBaseLayers(baseDataRef.current);
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       // Enforce draw order bottom→top by moving each existing layer to the top in sequence.
@@ -259,28 +263,25 @@ export function MapView() {
 
     map.on("load", () => {
       reapplyGeologyRef.current = applyAll;
-      void loadGeology()
-        .then((geo) => {
-          geoRef.current = geo;
-          if (mapRef.current === map) applyAll();
-        })
-        .catch((err) => {
-          console.warn("[MapView] loadGeology failed", err);
-        });
-
       const fetchJson = (url: string) =>
         fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
       void Promise.all([
+        loadGeology().catch((err) => {
+          console.warn("[MapView] loadGeology failed", err);
+          return null;
+        }),
         fetchJson("/data/ghana-roads.geojson").catch(() => null),
         fetchJson("/data/ghana-rivers.geojson").catch(() => null),
         fetchJson("/data/ghana-regions.geojson").catch(() => null),
-      ]).then(([roads, rivers, regions]) => {
+      ]).then(([geo, roads, rivers, regions]) => {
+        if (mapRef.current !== map) return;
+        if (geo) geoRef.current = geo;
         baseDataRef.current = {
           roads: roads ?? undefined,
           rivers: rivers ?? undefined,
           regions: regions ?? undefined,
         };
-        if (mapRef.current === map) applyAll();
+        applyAll();
       });
     });
 

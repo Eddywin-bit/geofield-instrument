@@ -214,23 +214,6 @@ function LocateScreen() {
     startCycle();
   };
 
-  const locateRef = useRef(locate);
-  useEffect(() => {
-    locateRef.current = locate;
-  });
-
-  useEffect(() => {
-    locateRef.current();
-    const onVis = () => {
-      if (document.visibilityState === "visible" && stateRef.current === "idle") {
-        locateRef.current();
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, []);
 
 
   const acceptApproximate = () => {

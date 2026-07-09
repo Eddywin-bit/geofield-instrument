@@ -2,6 +2,7 @@ import localforage from "localforage";
 
 export type LogEntry = {
   id: string;
+  ref?: string; // human-readable reference, e.g. GF-20260709-0001. Absent on pre-0.2.0 logs.
   timestamp: number;
   unit: string;
   belt: string;
@@ -69,8 +70,38 @@ export function saveLogs(logs: LogEntry[]) {
   void getStore().setItem(KEY, logs);
 }
 
+const REF_PREFIX = "GF";
+
+function refDatePart(ts: number): string {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}${m}${day}`;
+}
+
+// Next reference for the given day = highest SURVIVING ref that day, plus one.
+// Deleting the newest log therefore frees its number; deleting a middle log
+// leaves a permanent gap. This is deliberate.
+export function nextRef(ts: number, logs: LogEntry[] = memoryCache): string {
+  const prefix = `${REF_PREFIX}-${refDatePart(ts)}-`;
+  let max = 0;
+  for (const l of logs) {
+    if (typeof l.ref !== "string" || !l.ref.startsWith(prefix)) continue;
+    const n = Number(l.ref.slice(prefix.length));
+    if (Number.isInteger(n) && n > max) max = n;
+  }
+  return `${prefix}${String(max + 1).padStart(4, "0")}`;
+}
+
+// Pre-0.2.0 logs have no ref; fall back to the opaque id so nothing renders blank.
+export function displayRef(l: LogEntry): string {
+  return l.ref ?? l.id;
+}
+
 export function addLog(entry: LogEntry) {
-  const next = [entry, ...memoryCache];
+  const withRef: LogEntry = entry.ref ? entry : { ...entry, ref: nextRef(entry.timestamp) };
+  const next = [withRef, ...memoryCache];
   saveLogs(next);
 }
 

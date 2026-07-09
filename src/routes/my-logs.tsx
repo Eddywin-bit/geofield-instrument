@@ -5,6 +5,7 @@ import { ImageViewer } from "../components/ImageViewer";
 import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
 import {
   deleteLog,
+  displayRef,
   formatDateGroup,
   formatTime,
   hydrateLogs,
@@ -34,7 +35,7 @@ function MyLogsScreen() {
   const filtered = useMemo(
     () =>
       logs.filter((l) =>
-        (l.unit + " " + l.note).toLowerCase().includes(query.toLowerCase()),
+        (l.unit + " " + l.note + " " + displayRef(l)).toLowerCase().includes(query.toLowerCase()),
       ),
     [logs, query],
   );
@@ -182,6 +183,9 @@ function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { 
               <div className="text-xs text-muted-foreground mt-0.5 truncate">
                 {log.belt}
               </div>
+              <div className="mono text-[10px] text-muted-foreground/80 mt-1 tracking-wide">
+                {displayRef(log)}
+              </div>
               {log.note ? (
                 <div className="text-xs mt-1.5 line-clamp-2 text-foreground/90 leading-relaxed">
                   {log.note}
@@ -227,6 +231,7 @@ function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { 
               className="mt-3 pt-3 border-t border-border space-y-2"
               onClick={(e) => e.stopPropagation()}
             >
+              <Detail label="Reference" value={displayRef(log)} />
               <Detail label="Position" value={log.lat !== null && log.lng !== null ? `${log.lat.toFixed(5)}, ${log.lng.toFixed(5)}` : "Position unknown"} />
               <Detail label="Belt" value={log.belt} />
               {photoCount > 0 && (

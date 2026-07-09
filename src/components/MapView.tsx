@@ -228,6 +228,7 @@ export function MapView() {
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
   const accuracyMarkerRef = useRef<maplibregl.Marker | null>(null);
   const reapplyGeologyRef = useRef<(() => void) | null>(null);
+  const attributionRef = useRef<maplibregl.AttributionControl | null>(null);
   const firstRunRef = useRef(true);
   const [online, setOnline] = useState(false);
   const [popup, setPopup] = useState<Popup | null>(null);

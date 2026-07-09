@@ -108,6 +108,13 @@ function LocateScreen() {
       acqRef.current?.stop();
     };
   }, []);
+
+  // Auto-dismiss GPS error banner after 10s.
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 10000);
+    return () => clearTimeout(t);
+  }, [error]);
   const recent = loadLogs().slice(0, 3);
 
   const resolveAndCommit = async (best: AcquireCoords, manual = false) => {

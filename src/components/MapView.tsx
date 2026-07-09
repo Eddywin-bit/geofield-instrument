@@ -217,6 +217,75 @@ export function MapView() {
             beforeId,
           );
         }
+        if (base.places && !map.getSource("base-places")) {
+          map.addSource("base-places", { type: "geojson", data: base.places });
+        }
+        if (base.places && !map.getLayer("place-labels-city")) {
+          map.addLayer({
+            id: "place-labels-city",
+            type: "symbol",
+            source: "base-places",
+            filter: ["==", ["get", "place"], "city"],
+            minzoom: 6,
+            layout: {
+              "text-field": ["get", "name"],
+              "text-font": ["Noto Sans Regular"],
+              "text-size": 15,
+              "text-anchor": "center",
+              "text-allow-overlap": false,
+              "text-optional": true,
+            },
+            paint: {
+              "text-color": "#E8EAF0",
+              "text-halo-color": "#0B0E14",
+              "text-halo-width": 1.4,
+            },
+          });
+        }
+        if (base.places && !map.getLayer("place-labels-town")) {
+          map.addLayer({
+            id: "place-labels-town",
+            type: "symbol",
+            source: "base-places",
+            filter: ["==", ["get", "place"], "town"],
+            minzoom: 8,
+            layout: {
+              "text-field": ["get", "name"],
+              "text-font": ["Noto Sans Regular"],
+              "text-size": 12,
+              "text-anchor": "center",
+              "text-allow-overlap": false,
+              "text-optional": true,
+            },
+            paint: {
+              "text-color": "#E8EAF0",
+              "text-halo-color": "#0B0E14",
+              "text-halo-width": 1.4,
+            },
+          });
+        }
+        if (base.roads && !map.getLayer("road-labels")) {
+          map.addLayer({
+            id: "road-labels",
+            type: "symbol",
+            source: "base-roads",
+            minzoom: 9,
+            layout: {
+              "text-field": ["coalesce", ["get", "ref"], ""],
+              "text-font": ["Noto Sans Regular"],
+              "text-size": 11,
+              "symbol-placement": "line",
+              "text-rotation-alignment": "map",
+              "text-allow-overlap": false,
+              "text-optional": true,
+            },
+            paint: {
+              "text-color": "#C9CFDA",
+              "text-halo-color": "#0B0E14",
+              "text-halo-width": 1.3,
+            },
+          });
+        }
       } catch (err) {
         console.warn("[MapView] ensureBaseLayers failed", err);
       }

@@ -8,6 +8,7 @@ import {
   Crosshair,
   Database,
   FileText,
+  FlaskConical,
   Library,
   Mail,
   MapPin,
@@ -29,7 +30,8 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "0.1.0";
+const CHANNEL = "Beta"; // "Beta" while 0.x. Clear this string at 1.0.0.
 const EDITION = "Ghana Edition";
 const CONTACT_EMAIL = ""; // set to enable the Send feedback button
 

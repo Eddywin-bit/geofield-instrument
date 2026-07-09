@@ -321,16 +321,33 @@ function LocateScreen() {
             )}
           </button>
           {state === "error" && error && (
-            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              <span className="flex-1 leading-snug">{error}</span>
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                aria-label="Dismiss"
-                className="shrink-0 text-destructive/80 hover:text-destructive"
-              >
-                <X className="h-4 w-4" />
-              </button>
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="flex items-start gap-2">
+                <span className="flex-1 leading-snug">{error}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setErrorAction(null);
+                  }}
+                  aria-label="Dismiss"
+                  className="shrink-0 text-destructive/80 hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {errorAction && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (errorAction === "location-settings") void openLocationSettings();
+                    else void openAppSettings();
+                  }}
+                  className="mt-3 w-full h-11 rounded-md bg-destructive text-destructive-foreground text-xs font-bold tracking-[0.16em] active:scale-[0.99] transition-transform"
+                >
+                  {errorAction === "location-settings" ? "TURN ON LOCATION" : "OPEN APP SETTINGS"}
+                </button>
+              )}
             </div>
           )}
           <button

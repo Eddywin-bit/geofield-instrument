@@ -282,8 +282,16 @@ function LocateScreen() {
             )}
           </button>
           {state === "error" && error && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <span className="flex-1 leading-snug">{error}</span>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                aria-label="Dismiss"
+                className="shrink-0 text-destructive/80 hover:text-destructive"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           )}
           <button

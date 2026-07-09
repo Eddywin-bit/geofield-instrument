@@ -68,6 +68,39 @@ const CAPITAL_NAMES = [
   "Dambai", "Nalerigu", "Damongo",
 ];
 
+function legacyToExpression(f: unknown): unknown[] | null {
+  if (!Array.isArray(f)) return null;
+  const [op, ...rest] = f as [string, ...unknown[]];
+  if (op === "all" || op === "any") {
+    const parts = rest.map(legacyToExpression);
+    if (parts.some((p) => p === null)) return null;
+    return [op, ...(parts as unknown[][])];
+  }
+  if ((op === "==" || op === "!=") && typeof rest[0] === "string" && rest.length === 2) {
+    return [op, ["get", rest[0]], rest[1]];
+  }
+  if (op === "in" && typeof rest[0] === "string" && rest.length >= 2) {
+    return ["in", ["get", rest[0]], ["literal", rest.slice(1)]];
+  }
+  if (op === "!in" && typeof rest[0] === "string" && rest.length >= 2) {
+    return ["!", ["in", ["get", rest[0]], ["literal", rest.slice(1)]]];
+  }
+  if (op === "has" && typeof rest[0] === "string" && rest.length === 1) {
+    return ["has", rest[0]];
+  }
+  if (op === "!has" && typeof rest[0] === "string" && rest.length === 1) {
+    return ["!", ["has", rest[0]]];
+  }
+  return null;
+}
+
+function buildPlacesFilter(existing: unknown, exclusion: unknown): unknown {
+  if (existing === undefined) return exclusion;
+  const converted = legacyToExpression(existing);
+  if (converted === null) return existing;
+  return ["all", converted, exclusion];
+}
+
 function buildBasemapLayers(): LayerSpecification[] {
   const capitalExclusion: unknown = [
     "!",

@@ -304,7 +304,7 @@ function LocateScreen() {
       {!fix && (
         <div className="px-4 space-y-2">
           <button
-            onClick={locate}
+            onClick={() => void locate()}
             disabled={state === "locating"}
             className="w-full h-32 rounded-lg bg-primary text-primary-foreground font-bold tracking-[0.2em] text-lg flex flex-col items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-80"
           >

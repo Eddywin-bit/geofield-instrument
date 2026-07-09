@@ -524,6 +524,20 @@ export function MapView() {
       ]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
       }
+
+      // Vector basemap already provides place + road labels; hide our GeoJSON fallback labels
+      // so towns like Kumasi don't render twice.
+      if (vectorBase) {
+        for (const id of ["place-labels-city", "place-labels-town", "road-labels"]) {
+          if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+        }
+      }
+
+      // Online = pure OSM street map; hide geology entirely.
+      const geologyVisibility = onlineRef.current ? "none" : "visible";
+      for (const id of ["geology-fill", "geology-line-soft", "geology-line"]) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", geologyVisibility);
+      }
     };
 
     map.on("error", (e) => {

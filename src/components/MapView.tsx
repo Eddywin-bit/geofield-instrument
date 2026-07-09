@@ -1,15 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import maplibregl, { type StyleSpecification } from "maplibre-gl";
+import maplibregl, { type StyleSpecification, type LayerSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
 import { Navigation2, Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
+import { Protocol, PMTiles, FileSource } from "pmtiles";
+import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#121417";
 
-function buildStyle(online: boolean): StyleSpecification {
+const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
+const BASEMAP_CACHE = "geofield-basemap-v1";
+const BASEMAP_KEY = "/basemap/ghana.pmtiles";
+const BASEMAP_SIZE = 92038624;
+const BASEMAP_FILE_NAME = "ghana.pmtiles";
+const BASEMAP_STYLE_URL = `pmtiles://${BASEMAP_FILE_NAME}`;
+
+const pmProtocol = new Protocol();
+maplibregl.addProtocol("pmtiles", pmProtocol.tile);
+
+function buildBasemapLayers(): LayerSpecification[] {
+  const list = basemapLayers("basemap", namedFlavor("black"), { lang: "en" }) as LayerSpecification[];
+  // Our app bundles ONLY "Noto Sans Regular" glyphs; force every symbol layer to that stack.
+  return list.map((l) => {
+    if (l.type === "symbol" && l.layout) {
+      return { ...l, layout: { ...l.layout, "text-font": ["Noto Sans Regular"] } } as LayerSpecification;
+    }
+    return l;
+  });
+}
+
+function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
   const layers: StyleSpecification["layers"] = [
     { id: "bg", type: "background", paint: { "background-color": BG } },
@@ -32,6 +55,9 @@ function buildStyle(online: boolean): StyleSpecification {
       source: "osm",
       paint: { "raster-opacity": 0.75 },
     });
+  } else if (basemap) {
+    sources.basemap = { type: "vector", url: BASEMAP_STYLE_URL };
+    for (const l of buildBasemapLayers()) layers.push(l);
   }
   return { version: 8, sources, layers, glyphs: "/fonts/{fontstack}/{range}.pbf", projection: { type: "globe" } as any };
 }

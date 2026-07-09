@@ -915,21 +915,21 @@ export function MapView() {
     map.fitBounds(GHANA_BOUNDS, { padding: 20 });
   };
 
-  const accuracyLabel = gps ? `±${Math.round(gps.accuracy)} m` : null;
-  const accuracyAmber = gps ? gps.accuracy > 30 : false;
-
   return (
     <div className="fixed left-0 right-0 top-11 bottom-16 overflow-hidden bg-[#121417]">
       <style>{`
         .maplibregl-ctrl-scale {
+          box-sizing: border-box;
           background: rgba(18,20,23,0.75) !important;
           border: 1px solid rgba(200,210,225,0.6) !important;
-          border-top: none !important;
+          border-radius: 6px !important;
           color: #E8EAF0 !important;
           font-size: 10px !important;
           font-weight: 600 !important;
           letter-spacing: 0.04em !important;
-          padding: 1px 4px !important;
+          height: 26px !important;
+          line-height: 24px !important;
+          padding: 0 6px !important;
           text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important;
         }
         .maplibregl-ctrl-bottom-left {
@@ -937,6 +937,7 @@ export function MapView() {
         }
       `}</style>
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+
 
       {initError && (
         <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">

@@ -150,7 +150,6 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
       id: "osm",
       type: "raster",
       source: "osm",
-      paint: { "raster-opacity": 0.75 },
     });
   } else if (basemap) {
     sources.basemap = { type: "vector", url: BASEMAP_STYLE_URL };

@@ -512,11 +512,22 @@ export function MapView() {
 
     const applyAll = () => {
       const vectorBase = basemapReadyRef.current && !onlineRef.current;
+      ensureWorldLandLayer();
       if (!onlineRef.current && !basemapReadyRef.current && baseDataRef.current) {
         ensureBaseLayers(baseDataRef.current);
       }
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       ensureCapitalsLayer();
+
+      // Move world-land to the very bottom (just above "bg").
+      if (map.getLayer("world-land")) {
+        const styleLayers = (map.getStyle().layers ?? []) as LayerSpecification[];
+        const firstOther = styleLayers.find(
+          (l) => l.id !== "bg" && l.id !== "world-land",
+        );
+        if (firstOther) map.moveLayer("world-land", firstOther.id);
+      }
+
 
       if (vectorBase) {
         // Insert geology BEFORE the first road-line or symbol layer in the basemap.
@@ -575,6 +586,7 @@ export function MapView() {
         "base-rivers",
         "base-roads",
         "base-regions",
+        "world-land",
       ]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
       }

@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
-import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
+import { Search, Image as ImageIcon, Mic, Trash2, FileDown, Loader2, X } from "lucide-react";
+import { buildTraverseReport, reportFilename, shareOrDownload } from "../lib/report";
 import {
   deleteLog,
   displayRef,
@@ -31,6 +32,24 @@ function MyLogsScreen() {
     void hydrateLogs().then(() => force((n) => n + 1));
   }, []);
   const logs = loadLogs();
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const exportLogs = async (items: LogEntry[]) => {
+    if (items.length === 0 || exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      // Yield a frame so the spinner paints before the blocking PDF build.
+      await new Promise((r) => setTimeout(r, 30));
+      const doc = buildTraverseReport(items);
+      await shareOrDownload(doc, reportFilename(items));
+    } catch {
+      setExportError("Could not create the report. If a log has many photos, try exporting fewer at a time.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const filtered = useMemo(
     () =>
@@ -59,6 +78,34 @@ function MyLogsScreen() {
         <p className="text-sm text-muted-foreground mt-1">
           <span className="mono">{logs.length}</span> observations · stored on device
         </p>
+        {filtered.length > 0 && (
+          <button
+            type="button"
+            onClick={() => void exportLogs(filtered)}
+            disabled={exporting}
+            className="mt-3 w-full h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
+          >
+            {exporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                BUILDING REPORT…
+              </>
+            ) : (
+              <>
+                <FileDown className="h-4 w-4" strokeWidth={2.5} />
+                EXPORT {filtered.length === logs.length ? "ALL" : `${filtered.length}`} AS PDF
+              </>
+            )}
+          </button>
+        )}
+        {exportError && (
+          <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+            <span className="flex-1 leading-snug">{exportError}</span>
+            <button type="button" onClick={() => setExportError(null)} aria-label="Dismiss" className="shrink-0">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="px-4">
@@ -97,6 +144,8 @@ function MyLogsScreen() {
                   initialOpen={l.id === openId}
                   autoScroll={l.id === openId}
                   onDeleted={() => force((n) => n + 1)}
+                  onExport={() => void exportLogs([l])}
+                  exporting={exporting}
                 />
               ))}
             </div>
@@ -107,7 +156,7 @@ function MyLogsScreen() {
   );
 }
 
-function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; initialOpen?: boolean; autoScroll?: boolean }) {
+function LogCard({ log, onDeleted, onExport, exporting, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; onExport: () => void; exporting: boolean; initialOpen?: boolean; autoScroll?: boolean }) {
   const [open, setOpen] = useState(initialOpen);
   const [confirming, setConfirming] = useState(false);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
@@ -274,14 +323,25 @@ function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { 
 
               <div className="pt-2">
                 {!confirming ? (
-                  <button
-                    type="button"
-                    onClick={() => setConfirming(true)}
-                    className="h-8 px-3 rounded-md border border-destructive/60 text-destructive text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    DELETE
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={onExport}
+                      disabled={exporting}
+                      className="h-8 px-3 rounded-md bg-panel-2 border border-border text-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-panel disabled:opacity-60"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(true)}
+                      className="h-8 px-3 rounded-md border border-destructive/60 text-destructive text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      DELETE
+                    </button>
+                  </div>
                 ) : (
                   <div className="rounded-md border border-destructive/60 bg-destructive/5 p-3">
                     <p className="text-xs text-foreground/90">

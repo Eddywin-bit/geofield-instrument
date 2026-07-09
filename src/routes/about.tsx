@@ -73,6 +73,21 @@ function Body({ children }: { children: React.ReactNode }) {
   return <p className="text-sm leading-relaxed text-foreground/85">{children}</p>;
 }
 
+function Ref({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] leading-relaxed text-muted-foreground pl-3 -indent-3">{children}</p>
+  );
+}
+
+function Credit({ name, detail }: { name: string; detail: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1.5 border-b border-border/40 last:border-0">
+      <span className="text-sm text-foreground/90 shrink-0">{name}</span>
+      <span className="mono text-[10px] text-muted-foreground text-right">{detail}</span>
+    </div>
+  );
+}
+
 function Row({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
   return (
     <div className="flex items-start gap-3">

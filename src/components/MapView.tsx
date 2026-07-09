@@ -110,6 +110,7 @@ function buildBasemapLayers(): LayerSpecification[] {
   const list = basemapLayers("basemap", namedFlavor("black"), { lang: "en" }) as LayerSpecification[];
   return list
     .filter((l) => {
+      if (l.type === "background") return false;
       if (l.type !== "symbol") return true;
       if (l.id.toLowerCase().includes("shield")) return false;
       const tf = (l.layout as { "text-field"?: unknown } | undefined)?.["text-field"];

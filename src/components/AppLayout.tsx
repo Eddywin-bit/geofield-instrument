@@ -1,11 +1,56 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { Crosshair, FileText, Info, Layers, Map } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { Capacitor } from "@capacitor/core";
 import { GEOFIELD_MARK } from "../lib/logo";
+import { runBackHandlers } from "../lib/back-button";
 import { SplashScreen } from "./SplashScreen";
 
+/**
+ * Android hardware back / back-swipe. Without this listener the WebView lets
+ * the press fall through to the OS and the activity is destroyed, so back
+ * anywhere in the app killed it outright.
+ *
+ * Order: an open overlay consumes the press, then in-app history, then the app
+ * is backgrounded. The app is never killed, so an in-flight GPS cycle and any
+ * unsaved observation survive.
+ */
+function useHardwareBackButton() {
+  const router = useRouter();
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let cleanup: (() => void) | null = null;
+    let cancelled = false;
+    void (async () => {
+      const { App } = await import("@capacitor/app");
+      const handle = await App.addListener("backButton", () => {
+        if (runBackHandlers()) return;
+        const history = router.history as { canGoBack?: () => boolean; back: () => void };
+        const canGoBack =
+          typeof history.canGoBack === "function"
+            ? history.canGoBack()
+            : typeof window !== "undefined" && window.history.length > 1;
+        if (canGoBack) {
+          history.back();
+          return;
+        }
+        void App.minimizeApp();
+      });
+      if (cancelled) {
+        void handle.remove();
+        return;
+      }
+      cleanup = () => void handle.remove();
+    })();
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, [router]);
+}
 
 export function AppLayout({ children }: { children: ReactNode }) {
+  useHardwareBackButton();
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <SplashScreen />

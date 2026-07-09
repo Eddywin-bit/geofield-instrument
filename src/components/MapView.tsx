@@ -85,13 +85,15 @@ function buildBasemapLayers(): LayerSpecification[] {
     .map((l) => {
       const srcLayer = (l as { "source-layer"?: string })["source-layer"];
       const idLower = l.id.toLowerCase();
-      const isWaterSrc = (srcLayer && /water/i.test(srcLayer)) || /water/i.test(idLower);
-      const isWaterwaySrc =
-        (srcLayer && /water(way)?/i.test(srcLayer)) || /water(way)?/i.test(idLower);
+      const srcLower = (srcLayer ?? "").toLowerCase();
+      const isWaterSrc = /water/.test(srcLower) || /water/.test(idLower);
+      const isWaterwaySrc = /water(way)?/.test(srcLower) || /water(way)?/.test(idLower);
+      const isRoadSrc =
+        /road|transport|highway/.test(srcLower) || /road|transport|highway/.test(idLower);
       if (l.type === "fill" && isWaterSrc) {
         return {
           ...l,
-          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": "#1D3A5C" },
+          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": "#20415E" },
         } as LayerSpecification;
       }
       if (l.type === "line" && isWaterwaySrc) {
@@ -99,8 +101,18 @@ function buildBasemapLayers(): LayerSpecification[] {
           ...l,
           paint: {
             ...((l as { paint?: object }).paint ?? {}),
-            "line-color": "#4A8FD4",
-            "line-opacity": 0.8,
+            "line-color": "#4A90C2",
+            "line-opacity": 0.85,
+          },
+        } as LayerSpecification;
+      }
+      if (l.type === "line" && isRoadSrc) {
+        const isMajor = /motorway|trunk|primary|highway_major|road_major/.test(idLower);
+        return {
+          ...l,
+          paint: {
+            ...((l as { paint?: object }).paint ?? {}),
+            "line-color": isMajor ? "#C9CFDA" : "#79808C",
           },
         } as LayerSpecification;
       }

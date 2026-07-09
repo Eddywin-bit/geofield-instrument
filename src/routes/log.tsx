@@ -336,6 +336,12 @@ function LogScreen() {
         </div>
       )}
 
+      {staleRef.current && locating && (
+        <div className="mx-4 mb-3 rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
+          Your last fix is over 30 minutes old. Acquiring a fresh position for this observation.
+        </div>
+      )}
+
       {/* Auto-attached context */}
       <div className="mx-4 rounded-lg border border-border bg-panel">
         <div className="px-4 py-2 border-b border-border flex items-center gap-2">

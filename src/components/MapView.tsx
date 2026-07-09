@@ -644,9 +644,11 @@ export function MapView() {
         fetchJson("/data/ghana-rivers.geojson").catch(() => null),
         fetchJson("/data/ghana-regions.geojson").catch(() => null),
         fetchJson("/data/ghana-places.geojson").catch(() => null),
-      ]).then(([geo, roads, rivers, regions, places]) => {
+        fetchJson("/data/world-land.geojson").catch(() => null),
+      ]).then(([geo, roads, rivers, regions, places, worldLand]) => {
         if (mapRef.current !== map) return;
         if (geo) geoRef.current = geo;
+        if (worldLand) worldLandRef.current = worldLand as GeoJSON.FeatureCollection;
         baseDataRef.current = {
           roads: roads ?? undefined,
           rivers: rivers ?? undefined,

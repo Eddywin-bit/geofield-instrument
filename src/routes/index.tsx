@@ -128,12 +128,13 @@ function LocateScreen() {
     };
   }, []);
 
-  // Auto-dismiss GPS error banner after 10s.
+  // Auto-dismiss transient GPS errors. An error that carries an action the user
+  // must take (location switched off, permission denied) stays until they act.
   useEffect(() => {
-    if (!error) return;
+    if (!error || errorAction) return;
     const t = setTimeout(() => setError(null), 10000);
     return () => clearTimeout(t);
-  }, [error]);
+  }, [error, errorAction]);
   const recent = loadLogs().slice(0, 3);
 
   const resolveAndCommit = async (best: AcquireCoords, manual = false) => {

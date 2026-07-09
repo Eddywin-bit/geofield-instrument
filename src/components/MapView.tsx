@@ -639,6 +639,7 @@ export function MapView() {
     }
     const map = mapRef.current;
     if (!map) return;
+    setPopup(null);
     map.setStyle(buildStyle(online, basemapReady), { diff: false });
     map.once("style.load", () => {
       reapplyGeologyRef.current?.();

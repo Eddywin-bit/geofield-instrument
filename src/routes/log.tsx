@@ -75,6 +75,7 @@ function LogScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [voice, setVoice] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
@@ -105,6 +106,14 @@ function LogScreen() {
     return () => clearInterval(id);
   }, []);
 
+  // Auto-dismiss GPS error banner after 10s.
+  useEffect(() => {
+    if (!locateError) return;
+    const t = setTimeout(() => setLocateError(null), 10000);
+    return () => clearTimeout(t);
+  }, [locateError]);
+
+
   const acqRef = useRef<Acquisition | null>(null);
 
   // Auto-acquire fix if we don't have a real one, or always when `fresh` is set
@@ -116,6 +125,7 @@ function LogScreen() {
       navigate({ to: "/log", search: {}, replace: true });
     }
     setLocating(true);
+    setLocateError(null);
     acqRef.current?.stop();
     acqRef.current = acquireFix({
       onUpdate: async (accuracy, coords) => {
@@ -159,9 +169,19 @@ function LogScreen() {
           setLocating(false);
         }
       },
-      onError: () => {
+      onError: (err) => {
         setLocating(false);
         setCtx((c) => ({ ...c, lat: null, lng: null, accuracy: null }));
+        const code = (err as GeolocationPositionError | undefined)?.code;
+        const msg =
+          code === 1
+            ? "Location permission denied. Turn on location in your phone settings and allow location access for this site, then tap LOCATE ME again."
+            : code === 2
+            ? "GPS position unavailable. Move to open sky and retry."
+            : code === 3
+            ? "GPS timed out. Retry with a clearer view of the sky."
+            : (err as Error | undefined)?.message || "Could not acquire GPS fix.";
+        setLocateError(msg);
       },
     });
     return () => {
@@ -298,6 +318,20 @@ function LogScreen() {
           <h1 className="text-2xl font-bold tracking-tight">Log Observation</h1>
         </div>
       </div>
+
+      {locateError && (
+        <div className="mx-4 mb-3 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <span className="flex-1 leading-snug">{locateError}</span>
+          <button
+            type="button"
+            onClick={() => setLocateError(null)}
+            aria-label="Dismiss"
+            className="shrink-0 text-destructive/80 hover:text-destructive"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Auto-attached context */}
       <div className="mx-4 rounded-lg border border-border bg-panel">

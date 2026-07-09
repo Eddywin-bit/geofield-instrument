@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
-import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard } from "lucide-react";
+import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard, X } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
 import { loadGeology, findUnitAt, unitByName, nearbyUnits, type GeoUnit } from "../lib/geology";
 import {
@@ -108,6 +108,13 @@ function LocateScreen() {
       acqRef.current?.stop();
     };
   }, []);
+
+  // Auto-dismiss GPS error banner after 10s.
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 10000);
+    return () => clearTimeout(t);
+  }, [error]);
   const recent = loadLogs().slice(0, 3);
 
   const resolveAndCommit = async (best: AcquireCoords, manual = false) => {
@@ -193,7 +200,7 @@ function LocateScreen() {
       onError: (err) => {
         const msg =
           "code" in err && (err as GeolocationPositionError).code === 1
-            ? "Location permission denied. Enable GPS access to continue."
+            ? "Location permission denied. Turn on location in your phone settings and allow location access for this site, then tap LOCATE ME again."
             : "code" in err && (err as GeolocationPositionError).code === 2
             ? "GPS position unavailable. Move to open sky and retry."
             : "code" in err && (err as GeolocationPositionError).code === 3
@@ -275,8 +282,16 @@ function LocateScreen() {
             )}
           </button>
           {state === "error" && error && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <span className="flex-1 leading-snug">{error}</span>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                aria-label="Dismiss"
+                className="shrink-0 text-destructive/80 hover:text-destructive"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           )}
           <button

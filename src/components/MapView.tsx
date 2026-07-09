@@ -9,10 +9,6 @@ import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
-const GHANA_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-4.8, 3.6],
-  [2.6, 12.2],
-];
 const BG = "#121417";
 
 const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
@@ -66,7 +62,17 @@ function geoErrMsg(code: number): string | null {
 const pmProtocol = new Protocol();
 maplibregl.addProtocol("pmtiles", pmProtocol.tile);
 
+const CAPITAL_NAMES = [
+  "Accra", "Kumasi", "Tamale", "Sekondi-Takoradi", "Cape Coast", "Koforidua",
+  "Sunyani", "Ho", "Bolgatanga", "Wa", "Techiman", "Goaso", "Sefwi Wiawso",
+  "Dambai", "Nalerigu", "Damongo",
+];
+
 function buildBasemapLayers(): LayerSpecification[] {
+  const capitalExclusion: unknown = [
+    "!",
+    ["in", ["coalesce", ["get", "name:en"], ["get", "name"]], ["literal", CAPITAL_NAMES]],
+  ];
   const list = basemapLayers("basemap", namedFlavor("black"), { lang: "en" }) as LayerSpecification[];
   return list
     .filter((l) => {
@@ -77,8 +83,43 @@ function buildBasemapLayers(): LayerSpecification[] {
       return true;
     })
     .map((l) => {
-      if (l.type === "symbol" && l.layout) {
-        return { ...l, layout: { ...l.layout, "text-font": ["Noto Sans Regular"] } } as LayerSpecification;
+      const srcLayer = (l as { "source-layer"?: string })["source-layer"];
+      const idLower = l.id.toLowerCase();
+      const isWaterSrc = (srcLayer && /water/i.test(srcLayer)) || /water/i.test(idLower);
+      const isWaterwaySrc =
+        (srcLayer && /water(way)?/i.test(srcLayer)) || /water(way)?/i.test(idLower);
+      if (l.type === "fill" && isWaterSrc) {
+        return {
+          ...l,
+          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": "#1D3A5C" },
+        } as LayerSpecification;
+      }
+      if (l.type === "line" && isWaterwaySrc) {
+        return {
+          ...l,
+          paint: {
+            ...((l as { paint?: object }).paint ?? {}),
+            "line-color": "#4A8FD4",
+            "line-opacity": 0.8,
+          },
+        } as LayerSpecification;
+      }
+      if (l.type === "symbol") {
+        const isPlaces = srcLayer === "places";
+        const existingFilter = (l as { filter?: unknown }).filter;
+        const mergedFilter = isPlaces
+          ? existingFilter
+            ? ["all", existingFilter, capitalExclusion]
+            : capitalExclusion
+          : existingFilter;
+        const nextLayout = l.layout
+          ? { ...l.layout, "text-font": ["Noto Sans Regular"] }
+          : l.layout;
+        return {
+          ...l,
+          ...(mergedFilter !== undefined ? { filter: mergedFilter } : {}),
+          ...(nextLayout ? { layout: nextLayout } : {}),
+        } as LayerSpecification;
       }
       return l;
     });
@@ -105,7 +146,6 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
       id: "osm",
       type: "raster",
       source: "osm",
-      paint: { "raster-opacity": 0.75 },
     });
   } else if (basemap) {
     sources.basemap = { type: "vector", url: BASEMAP_STYLE_URL };
@@ -177,8 +217,6 @@ export function MapView() {
         pitchWithRotate: false,
         touchPitch: false,
         maxPitch: 0,
-        maxBounds: GHANA_MAX_BOUNDS,
-        minZoom: 5.2,
       });
       map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
       map.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
@@ -481,6 +519,20 @@ export function MapView() {
         "regional-capitals-dot",
       ]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
+      }
+
+      // Vector basemap already provides place + road labels; hide our GeoJSON fallback labels
+      // so towns like Kumasi don't render twice.
+      if (vectorBase) {
+        for (const id of ["place-labels-city", "place-labels-town", "road-labels"]) {
+          if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+        }
+      }
+
+      // Online = pure OSM street map; hide geology entirely.
+      const geologyVisibility = onlineRef.current ? "none" : "visible";
+      for (const id of ["geology-fill", "geology-line-soft", "geology-line"]) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", geologyVisibility);
       }
     };
 
@@ -797,6 +849,9 @@ export function MapView() {
           padding: 1px 4px !important;
           text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important;
         }
+        .maplibregl-ctrl-bottom-left {
+          bottom: 56px !important;
+        }
       `}</style>
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
 
@@ -921,8 +976,8 @@ export function MapView() {
         <Crosshair className="h-5 w-5" strokeWidth={2.5} />
       </button>
 
-      {/* Legend */}
-      {!legendOpen && (
+      {/* Legend — hidden when Online (no geology shown) */}
+      {!online && !legendOpen && (
         <button
           type="button"
           onClick={() => setLegendOpen(true)}
@@ -932,7 +987,7 @@ export function MapView() {
           <span className="text-[10px] font-semibold text-foreground">Legend</span>
         </button>
       )}
-      {legendOpen && (
+      {!online && legendOpen && (
         <div className="absolute bottom-3 left-3 max-w-[60%] rounded-md border border-border bg-background/85 backdrop-blur-md shadow-lg shadow-black/40 z-10 flex flex-col max-h-[45%]">
           <div className="flex items-center justify-between px-2.5 py-2 border-b border-border shrink-0">
             <span className="text-[10px] font-semibold text-foreground">Legend</span>

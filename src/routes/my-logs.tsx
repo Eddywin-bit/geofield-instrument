@@ -156,7 +156,7 @@ function MyLogsScreen() {
   );
 }
 
-function LogCard({ log, onDeleted, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; initialOpen?: boolean; autoScroll?: boolean }) {
+function LogCard({ log, onDeleted, onExport, exporting, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; onExport: () => void; exporting: boolean; initialOpen?: boolean; autoScroll?: boolean }) {
   const [open, setOpen] = useState(initialOpen);
   const [confirming, setConfirming] = useState(false);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);

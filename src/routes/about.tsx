@@ -219,6 +219,91 @@ function AboutPage() {
               stamp your logs.
             </Body>
           </Section>
+
+          <Section icon={Scale} title="Attribution and licences" subtitle="Data, software and typefaces">
+            <div>
+              <div className="label-instrument pb-1.5">Geological data</div>
+              <Credit name="Geological map of Ghana" detail="Ghana Geological Survey Authority" />
+              <Credit name="Coordinate transformation" detail="Leigon → WGS 84 (EPSG)" />
+            </div>
+            <div className="pt-1">
+              <div className="label-instrument pb-1.5">Base map data</div>
+              <Credit name="Roads, rivers, towns" detail="© OpenStreetMap contributors · ODbL" />
+              <Credit name="Vector tile build" detail="Protomaps" />
+              <Credit name="World coastlines" detail="Natural Earth · public domain" />
+            </div>
+            <div className="pt-1">
+              <div className="label-instrument pb-1.5">Software</div>
+              <Credit name="MapLibre GL JS" detail="BSD-3-Clause" />
+              <Credit name="PMTiles" detail="BSD-3-Clause" />
+              <Credit name="Turf.js" detail="MIT" />
+              <Credit name="proj4js" detail="MIT" />
+              <Credit name="React · TanStack Router" detail="MIT" />
+              <Credit name="Lucide icons" detail="ISC" />
+              <Credit name="Noto Sans" detail="SIL Open Font License 1.1" />
+            </div>
+            <Body>
+              Unit descriptions were compiled with the assistance of Google Gemini Pro Deep Research.
+              Every claim is traced to the primary literature listed below. No description was
+              accepted on the strength of the model alone.
+            </Body>
+          </Section>
+
+          <Section icon={Library} title="References" subtitle="Primary literature behind the unit descriptions">
+            <Ref>
+              Davis, D. W., Hirdes, W., Schaltegger, U., &amp; Nunoo, E. A. (1994). U-Pb age
+              constraints on deposition and provenance of Birimian and gold-bearing Tarkwaian
+              sediments in Ghana, West Africa. Precambrian Research, 67(1-2), 89-107.
+            </Ref>
+            <Ref>
+              Feybesse, J.-L., Billa, M., Guerrot, C., Duguey, E., Lescuyer, J.-L., Milesi, J.-P.,
+              &amp; Bouchot, V. (2006). The Paleoproterozoic Ghanaian province: Geodynamic model and
+              ore controls. Precambrian Research, 149(3-4), 149-196.
+            </Ref>
+            <Ref>
+              John, T., Klemd, R., Hirdes, W., &amp; Loh, G. (1999). The metamorphic evolution of the
+              Paleoproterozoic (Birimian) volcanic Ashanti belt (Ghana, West Africa). Precambrian
+              Research, 98(1-2), 11-30.
+            </Ref>
+            <Ref>
+              Kesse, G. O. (1985). The mineral and rock resources of Ghana. Rotterdam: A. A. Balkema.
+            </Ref>
+            <Ref>
+              Leube, A., Hirdes, W., Mauer, R., &amp; Kesse, G. O. (1990). The Early Proterozoic
+              Birimian Supergroup of Ghana and some aspects of its associated gold mineralization.
+              Precambrian Research, 46(1-2), 139-165.
+            </Ref>
+            <Ref>
+              Oberthür, T., Weiser, T., Amanor, J. A., &amp; Chryssoulis, S. L. (1997). Mineralogical
+              siting and distribution of gold in the Ashanti belt of Ghana. Mineralium Deposita,
+              32(1), 2-15.
+            </Ref>
+            <Ref>
+              Oberthür, T., Vetter, U., Davis, D. W., &amp; Amanor, J. A. (1998). Age constraints on
+              gold mineralization and Paleoproterozoic crustal evolution in the Ashanti belt of
+              southern Ghana. Precambrian Research, 89(3-4), 129-143.
+            </Ref>
+            <Ref>
+              Perrouty, S., Ailleres, L., Jessell, M. W., Baratoux, L., Bourassa, Y., &amp; Crawford,
+              B. (2012). Revised Eburnean geodynamic evolution of the gold-rich southern Ashanti
+              Belt, Ghana. Precambrian Research, 204-205, 12-39.
+            </Ref>
+            <Ref>
+              Pigois, J.-P., Groves, D. I., Fletcher, I. R., McNaughton, N. J., &amp; Snee, L. W.
+              (2003). Age constraints on Tarkwaian palaeoplacer and lode-gold formation in the
+              Tarkwa-Damang district, southwest Ghana. Mineralium Deposita, 38(6), 695-714.
+            </Ref>
+            <Ref>
+              Sylvester, P. J., &amp; Attoh, K. (1992). Lithostratigraphy and composition of 2.1 Ga
+              greenstone belts of the West African Craton and their bearing on crustal evolution and
+              the Archean-Proterozoic boundary. The Journal of Geology, 100(4), 377-393.
+            </Ref>
+            <Ref>
+              Taylor, P. N., Moorbath, S., Leube, A., &amp; Hirdes, W. (1992). Early Proterozoic
+              crustal evolution in the Birimian of Ghana: Constraints from geochronology and isotope
+              geochemistry. Precambrian Research, 56(1-2), 97-111.
+            </Ref>
+          </Section>
         </div>
 
         {/* Contact */}

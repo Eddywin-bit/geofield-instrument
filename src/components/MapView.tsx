@@ -306,6 +306,9 @@ export function MapView() {
         "geology-fill",
         "geology-line-soft",
         "geology-line",
+        "road-labels",
+        "place-labels-town",
+        "place-labels-city",
       ]) {
         if (map.getLayer(id)) map.moveLayer(id);
       }

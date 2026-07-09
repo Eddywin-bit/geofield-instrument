@@ -9,7 +9,7 @@ import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
-const BG = "#121417";
+const BG = "#1B2027";
 
 const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
 const BASEMAP_CACHE = "geofield-basemap-v1";
@@ -85,13 +85,15 @@ function buildBasemapLayers(): LayerSpecification[] {
     .map((l) => {
       const srcLayer = (l as { "source-layer"?: string })["source-layer"];
       const idLower = l.id.toLowerCase();
-      const isWaterSrc = (srcLayer && /water/i.test(srcLayer)) || /water/i.test(idLower);
-      const isWaterwaySrc =
-        (srcLayer && /water(way)?/i.test(srcLayer)) || /water(way)?/i.test(idLower);
+      const srcLower = (srcLayer ?? "").toLowerCase();
+      const isWaterSrc = /water/.test(srcLower) || /water/.test(idLower);
+      const isWaterwaySrc = /water(way)?/.test(srcLower) || /water(way)?/.test(idLower);
+      const isRoadSrc =
+        /road|transport|highway/.test(srcLower) || /road|transport|highway/.test(idLower);
       if (l.type === "fill" && isWaterSrc) {
         return {
           ...l,
-          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": "#1D3A5C" },
+          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": "#20415E" },
         } as LayerSpecification;
       }
       if (l.type === "line" && isWaterwaySrc) {
@@ -99,8 +101,18 @@ function buildBasemapLayers(): LayerSpecification[] {
           ...l,
           paint: {
             ...((l as { paint?: object }).paint ?? {}),
-            "line-color": "#4A8FD4",
-            "line-opacity": 0.8,
+            "line-color": "#4A90C2",
+            "line-opacity": 0.85,
+          },
+        } as LayerSpecification;
+      }
+      if (l.type === "line" && isRoadSrc) {
+        const isMajor = /motorway|trunk|primary|highway_major|road_major/.test(idLower);
+        return {
+          ...l,
+          paint: {
+            ...((l as { paint?: object }).paint ?? {}),
+            "line-color": isMajor ? "#C9CFDA" : "#79808C",
           },
         } as LayerSpecification;
       }
@@ -151,7 +163,16 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
     sources.basemap = { type: "vector", url: BASEMAP_STYLE_URL };
     for (const l of buildBasemapLayers()) layers.push(l);
   }
-  return { version: 8, sources, layers, glyphs: "/fonts/{fontstack}/{range}.pbf", projection: { type: "globe" } as any };
+  return {
+    version: 8,
+    sources,
+    layers,
+    glyphs: "/fonts/{fontstack}/{range}.pbf",
+    projection: { type: "globe" } as any,
+    sky: {
+      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.4, 5, 0.2, 8, 0],
+    } as any,
+  } as StyleSpecification;
 }
 
 function unitMatchExpression(): maplibregl.ExpressionSpecification {
@@ -344,7 +365,7 @@ export function MapView() {
             id: "place-labels-city",
             type: "symbol",
             source: "base-places",
-            filter: ["==", ["get", "place"], "city"],
+            filter: ["all", ["==", ["get", "place"], "city"], ["!", ["in", ["get", "name"], ["literal", CAPITAL_NAMES]]]],
             minzoom: 6,
             layout: {
               "text-field": ["get", "name"],
@@ -366,7 +387,7 @@ export function MapView() {
             id: "place-labels-town",
             type: "symbol",
             source: "base-places",
-            filter: ["==", ["get", "place"], "town"],
+            filter: ["all", ["==", ["get", "place"], "town"], ["!", ["in", ["get", "name"], ["literal", CAPITAL_NAMES]]]],
             minzoom: 8,
             layout: {
               "text-field": ["get", "name"],
@@ -618,6 +639,7 @@ export function MapView() {
     }
     const map = mapRef.current;
     if (!map) return;
+    setPopup(null);
     map.setStyle(buildStyle(online, basemapReady), { diff: false });
     map.once("style.load", () => {
       reapplyGeologyRef.current?.();
@@ -850,7 +872,7 @@ export function MapView() {
           text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important;
         }
         .maplibregl-ctrl-bottom-left {
-          bottom: 56px !important;
+          margin-bottom: 46px !important;
         }
       `}</style>
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />

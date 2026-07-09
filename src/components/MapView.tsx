@@ -676,6 +676,32 @@ export function MapView() {
         </button>
       </div>
 
+      {/* Basemap download */}
+      {!online && !basemapReady && downloadState === "idle" && (
+        <button
+          type="button"
+          onClick={downloadBasemap}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-foreground"
+        >
+          Download Ghana Base Map · 92 MB
+        </button>
+      )}
+      {!online && downloadState === "downloading" && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground"
+        >
+          Downloading… {downloadPct}%
+        </div>
+      )}
+      {!online && downloadState === "error" && (
+        <button
+          type="button"
+          onClick={downloadBasemap}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-destructive bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-destructive"
+        >
+          Download failed — tap to retry
+        </button>
+      )}
+
       {/* Reset north (compass) */}
       <button
         type="button"

@@ -655,8 +655,18 @@ export function MapView() {
     const map = mapRef.current;
     if (!map) return;
     setPopup(null);
+    if (attributionRef.current) {
+      try {
+        map.removeControl(attributionRef.current);
+      } catch {
+        /* ignore */
+      }
+      attributionRef.current = null;
+    }
     map.setStyle(buildStyle(online, basemapReady), { diff: false });
     map.once("style.load", () => {
+      attributionRef.current = new maplibregl.AttributionControl({ compact: true });
+      map.addControl(attributionRef.current, "top-left");
       reapplyGeologyRef.current?.();
     });
   }, [online, basemapReady]);

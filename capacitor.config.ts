@@ -1,0 +1,16 @@
+import type { CapacitorConfig } from "@capacitor/cli";
+
+const config: CapacitorConfig = {
+  // PERMANENT. Android identifies the app by this string. It can never change
+  // without becoming a different app that cannot read the old app's data.
+  appId: "com.eondesigns.geofield",
+  appName: "GeoField",
+  webDir: "dist",
+  android: {
+    // Keep the WebView background matched to the app shell so there is no
+    // white flash between splash and first paint.
+    backgroundColor: "#121417",
+  },
+};
+
+export default config;

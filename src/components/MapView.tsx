@@ -13,7 +13,10 @@ const BG = "#1B2027";
 const OCEAN = "#14304A";
 const LAND = "#141414";
 
-const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
+// Hosted on GitHub Pages (public repo Eddywin-bit/geofield-assets) so the offline
+// basemap does not depend on the Lovable CDN. md5 ab08c5fba7f2992419b690cd2ec34663.
+const BASEMAP_ASSET_URL =
+  "https://eddywin-bit.github.io/geofield-assets/ghana.pmtiles";
 const BASEMAP_CACHE = "geofield-basemap-v1";
 const BASEMAP_KEY = "/basemap/ghana.pmtiles";
 const BASEMAP_SIZE = 92038624;

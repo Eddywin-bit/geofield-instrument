@@ -149,6 +149,7 @@ export function MapView() {
       roads?: GeoJSON.FeatureCollection;
       rivers?: GeoJSON.FeatureCollection;
       regions?: GeoJSON.FeatureCollection;
+      places?: GeoJSON.FeatureCollection;
     };
     const baseDataRef: { current: BaseData | null } = { current: null };
 

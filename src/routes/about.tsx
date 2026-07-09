@@ -33,7 +33,7 @@ export const Route = createFileRoute("/about")({
 const APP_VERSION = "0.1.0";
 const CHANNEL = "Beta"; // "Beta" while 0.x. Clear this string at 1.0.0.
 const EDITION = "Ghana Edition";
-const CONTACT_EMAIL = ""; // set to enable the Send feedback button
+const CONTACT_EMAIL = "ogstudios14@gmail.com"; // baked into every build; keep this address alive
 
 type SectionProps = {
   icon: React.ElementType;

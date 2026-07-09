@@ -106,6 +106,14 @@ function LogScreen() {
     return () => clearInterval(id);
   }, []);
 
+  // Auto-dismiss GPS error banner after 10s.
+  useEffect(() => {
+    if (!locateError) return;
+    const t = setTimeout(() => setLocateError(null), 10000);
+    return () => clearTimeout(t);
+  }, [locateError]);
+
+
   const acqRef = useRef<Acquisition | null>(null);
 
   // Auto-acquire fix if we don't have a real one, or always when `fresh` is set

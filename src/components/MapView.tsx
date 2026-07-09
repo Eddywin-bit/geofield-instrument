@@ -980,8 +980,8 @@ export function MapView() {
         <Crosshair className="h-5 w-5" strokeWidth={2.5} />
       </button>
 
-      {/* Legend */}
-      {!legendOpen && (
+      {/* Legend — hidden when Online (no geology shown) */}
+      {!online && !legendOpen && (
         <button
           type="button"
           onClick={() => setLegendOpen(true)}

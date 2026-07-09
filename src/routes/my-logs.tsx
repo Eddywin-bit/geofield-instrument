@@ -32,6 +32,24 @@ function MyLogsScreen() {
     void hydrateLogs().then(() => force((n) => n + 1));
   }, []);
   const logs = loadLogs();
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const exportLogs = async (items: LogEntry[]) => {
+    if (items.length === 0 || exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      // Yield a frame so the spinner paints before the blocking PDF build.
+      await new Promise((r) => setTimeout(r, 30));
+      const doc = buildTraverseReport(items);
+      await shareOrDownload(doc, reportFilename(items));
+    } catch {
+      setExportError("Could not create the report. If a log has many photos, try exporting fewer at a time.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const filtered = useMemo(
     () =>
@@ -60,6 +78,34 @@ function MyLogsScreen() {
         <p className="text-sm text-muted-foreground mt-1">
           <span className="mono">{logs.length}</span> observations · stored on device
         </p>
+        {filtered.length > 0 && (
+          <button
+            type="button"
+            onClick={() => void exportLogs(filtered)}
+            disabled={exporting}
+            className="mt-3 w-full h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
+          >
+            {exporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                BUILDING REPORT…
+              </>
+            ) : (
+              <>
+                <FileDown className="h-4 w-4" strokeWidth={2.5} />
+                EXPORT {filtered.length === logs.length ? "ALL" : `${filtered.length}`} AS PDF
+              </>
+            )}
+          </button>
+        )}
+        {exportError && (
+          <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+            <span className="flex-1 leading-snug">{exportError}</span>
+            <button type="button" onClick={() => setExportError(null)} aria-label="Dismiss" className="shrink-0">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="px-4">
@@ -98,6 +144,8 @@ function MyLogsScreen() {
                   initialOpen={l.id === openId}
                   autoScroll={l.id === openId}
                   onDeleted={() => force((n) => n + 1)}
+                  onExport={() => void exportLogs([l])}
+                  exporting={exporting}
                 />
               ))}
             </div>

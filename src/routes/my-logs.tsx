@@ -291,8 +291,14 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
     log.lat !== null && log.lng !== null && log.accuracy !== null;
 
   const handleDelete = () => {
+    if (selected) onToggleSelect();
     deleteLog(log.id);
     onDeleted();
+  };
+
+  const activate = () => {
+    if (selectMode) onToggleSelect();
+    else setOpen((v) => !v);
   };
 
   return (
@@ -300,19 +306,31 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
       ref={cardRef}
       role="button"
       tabIndex={0}
-      onClick={() => setOpen((v) => !v)}
+      onClick={activate}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          setOpen((v) => !v);
+          activate();
         }
       }}
-      className="w-full text-left rounded-lg border border-border bg-panel overflow-hidden cursor-pointer"
+      className={`w-full text-left rounded-lg border overflow-hidden cursor-pointer transition-colors ${
+        selectMode && selected ? "border-primary bg-primary/10" : "border-border bg-panel"
+      }`}
     >
       <div className="flex items-stretch">
         <div className="w-1.5 shrink-0" style={{ backgroundColor: stripeColor }} />
         <div className="flex-1 p-3 min-w-0">
           <div className="flex items-start gap-3">
+            {selectMode && (
+              <div
+                className={`h-5 w-5 shrink-0 mt-0.5 rounded border flex items-center justify-center ${
+                  selected ? "bg-primary border-primary" : "border-border bg-panel-2"
+                }`}
+                aria-hidden
+              >
+                {selected && <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />}
+              </div>
+            )}
             <div className="relative h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
               {photoCount > 0 ? (
                 <button

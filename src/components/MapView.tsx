@@ -221,8 +221,6 @@ export function MapView() {
         pitchWithRotate: false,
         touchPitch: false,
         maxPitch: 0,
-        maxBounds: GHANA_MAX_BOUNDS,
-        minZoom: 5.2,
       });
       map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
       map.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");

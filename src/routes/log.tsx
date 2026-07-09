@@ -319,6 +319,20 @@ function LogScreen() {
         </div>
       </div>
 
+      {locateError && (
+        <div className="mx-4 mb-3 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <span className="flex-1 leading-snug">{locateError}</span>
+          <button
+            type="button"
+            onClick={() => setLocateError(null)}
+            aria-label="Dismiss"
+            className="shrink-0 text-destructive/80 hover:text-destructive"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Auto-attached context */}
       <div className="mx-4 rounded-lg border border-border bg-panel">
         <div className="px-4 py-2 border-b border-border flex items-center gap-2">

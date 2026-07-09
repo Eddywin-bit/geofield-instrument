@@ -109,7 +109,7 @@ export function MapView() {
     try {
       map = new maplibregl.Map({
         container: containerRef.current,
-        style: buildStyle(false),
+        style: buildStyle(false, basemapReadyRef.current),
         bounds: GHANA_BOUNDS,
         fitBoundsOptions: { padding: 20 },
         attributionControl: false,

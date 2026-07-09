@@ -113,15 +113,36 @@ function AboutPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Offline-first field geology for Ghana
           </p>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center justify-center flex-wrap gap-2">
             <span className="mono text-[10px] font-semibold tracking-wider uppercase text-foreground border border-border rounded-full px-2.5 py-1">
               v{APP_VERSION}
             </span>
+            {CHANNEL && (
+              <span className="mono text-[10px] font-semibold tracking-wider uppercase text-amber-400 border border-amber-400/40 bg-amber-400/10 rounded-full px-2.5 py-1">
+                {CHANNEL}
+              </span>
+            )}
             <span className="mono text-[10px] font-semibold tracking-wider uppercase text-primary border border-primary/40 rounded-full px-2.5 py-1">
               {EDITION}
             </span>
           </div>
         </div>
+
+        {CHANNEL && (
+          <div className="px-4 pb-4">
+            <div className="border border-amber-400/30 bg-amber-400/[0.06] rounded-lg p-3.5 flex items-start gap-3">
+              <FlaskConical className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-foreground">Pre-release build</div>
+                <p className="text-[13px] leading-relaxed text-foreground/80 mt-1">
+                  This is a testing release. Features and data may change, and behaviour is not yet
+                  final. Do not rely on it as your only record of a traverse. Report anything that
+                  looks wrong.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Statement */}
         <div className="px-4">

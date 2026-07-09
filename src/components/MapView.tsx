@@ -9,10 +9,6 @@ import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
-const GHANA_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-4.8, 3.6],
-  [2.6, 12.2],
-];
 const BG = "#121417";
 
 const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";

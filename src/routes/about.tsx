@@ -266,66 +266,43 @@ function AboutPage() {
               <Credit name="Noto Sans" detail="SIL Open Font License 1.1" />
             </div>
             <Body>
-              Unit descriptions were compiled with the assistance of Google Gemini Pro Deep Research.
-              Every claim is traced to the primary literature listed below. No description was
-              accepted on the strength of the model alone.
+              Unit descriptions were compiled with the assistance of Google Gemini Pro Deep Research,
+              drawing on the literature listed below. Where the research found nothing to support a
+              claim, the field was left empty rather than filled. Five units carry no mineral note for
+              exactly that reason.
             </Body>
           </Section>
 
-          <Section icon={Library} title="References" subtitle="Primary literature behind the unit descriptions">
-            <Ref>
-              Davis, D. W., Hirdes, W., Schaltegger, U., &amp; Nunoo, E. A. (1994). U-Pb age
-              constraints on deposition and provenance of Birimian and gold-bearing Tarkwaian
-              sediments in Ghana, West Africa. Precambrian Research, 67(1-2), 89-107.
-            </Ref>
-            <Ref>
-              Feybesse, J.-L., Billa, M., Guerrot, C., Duguey, E., Lescuyer, J.-L., Milesi, J.-P.,
-              &amp; Bouchot, V. (2006). The Paleoproterozoic Ghanaian province: Geodynamic model and
-              ore controls. Precambrian Research, 149(3-4), 149-196.
-            </Ref>
-            <Ref>
-              John, T., Klemd, R., Hirdes, W., &amp; Loh, G. (1999). The metamorphic evolution of the
-              Paleoproterozoic (Birimian) volcanic Ashanti belt (Ghana, West Africa). Precambrian
-              Research, 98(1-2), 11-30.
-            </Ref>
-            <Ref>
-              Kesse, G. O. (1985). The mineral and rock resources of Ghana. Rotterdam: A. A. Balkema.
-            </Ref>
-            <Ref>
-              Leube, A., Hirdes, W., Mauer, R., &amp; Kesse, G. O. (1990). The Early Proterozoic
-              Birimian Supergroup of Ghana and some aspects of its associated gold mineralization.
-              Precambrian Research, 46(1-2), 139-165.
-            </Ref>
-            <Ref>
-              Oberthür, T., Weiser, T., Amanor, J. A., &amp; Chryssoulis, S. L. (1997). Mineralogical
-              siting and distribution of gold in the Ashanti belt of Ghana. Mineralium Deposita,
-              32(1), 2-15.
-            </Ref>
-            <Ref>
-              Oberthür, T., Vetter, U., Davis, D. W., &amp; Amanor, J. A. (1998). Age constraints on
-              gold mineralization and Paleoproterozoic crustal evolution in the Ashanti belt of
-              southern Ghana. Precambrian Research, 89(3-4), 129-143.
-            </Ref>
-            <Ref>
-              Perrouty, S., Ailleres, L., Jessell, M. W., Baratoux, L., Bourassa, Y., &amp; Crawford,
-              B. (2012). Revised Eburnean geodynamic evolution of the gold-rich southern Ashanti
-              Belt, Ghana. Precambrian Research, 204-205, 12-39.
-            </Ref>
-            <Ref>
-              Pigois, J.-P., Groves, D. I., Fletcher, I. R., McNaughton, N. J., &amp; Snee, L. W.
-              (2003). Age constraints on Tarkwaian palaeoplacer and lode-gold formation in the
-              Tarkwa-Damang district, southwest Ghana. Mineralium Deposita, 38(6), 695-714.
-            </Ref>
-            <Ref>
-              Sylvester, P. J., &amp; Attoh, K. (1992). Lithostratigraphy and composition of 2.1 Ga
-              greenstone belts of the West African Craton and their bearing on crustal evolution and
-              the Archean-Proterozoic boundary. The Journal of Geology, 100(4), 377-393.
-            </Ref>
-            <Ref>
-              Taylor, P. N., Moorbath, S., Leube, A., &amp; Hirdes, W. (1992). Early Proterozoic
-              crustal evolution in the Birimian of Ghana: Constraints from geochronology and isotope
-              geochemistry. Precambrian Research, 56(1-2), 97-111.
-            </Ref>
+          <Section icon={Library} title="References" subtitle="Sources cited for the unit descriptions">
+            <Ref>Abanyie et al. (2018). Petrography and geochemistry of granitoids.</Ref>
+            <Ref>Abu et al. (2022). Voltaian Basin studies.</Ref>
+            <Ref>Affaton et al. (1980). The Buem Structural Unit.</Ref>
+            <Ref>Affaton et al. (1991). The Volta Basin.</Ref>
+            <Ref>Amponsah (2016). High-pressure granulites and eclogites of the Dahomeyide suture zone.</Ref>
+            <Ref>Anani (1999). Stratigraphy of the Volta Basin.</Ref>
+            <Ref>Anani et al. (2017). Petrography of detrital zircons from sandstones of the Lower Devonian Accraian Formation.</Ref>
+            <Ref>Asamoah. Geology of Ghana.</Ref>
+            <Ref>Asiedu et al. (2005). Provenance of late Ordovician to early Cretaceous sedimentary rocks.</Ref>
+            <Ref>Atta-Peters &amp; Garrey (2014). Source rock evaluation and hydrocarbon potential in the Tano Basin.</Ref>
+            <Ref>Attoh et al. (1991). The Dahomeyide Orogen.</Ref>
+            <Ref>Attoh &amp; Nude (2008). Tectonic significance of carbonatite.</Ref>
+            <Ref>Carney et al. (2010). Lithostratigraphy of the Voltaian Supergroup.</Ref>
+            <Ref>Chardon (2023). The Continental Terminal in West Africa.</Ref>
+            <Ref>Crow (1952). The rocks of the Sekondi Series.</Ref>
+            <Ref>Dampare et al. (2008). Geochemistry of Paleoproterozoic metavolcanic rocks.</Ref>
+            <Ref>Hirdes &amp; Leube (1989). Orogenic gold mineralisation in the Kumasi Basin.</Ref>
+            <Ref>Hirdes et al. (1996). Geology of the Birimian Supergroup in Ghana.</Ref>
+            <Ref>Jones (1990). The Buem volcanic and associated sedimentary rocks.</Ref>
+            <Ref>Junner (1940). Geology of the Gold Coast and Western Togoland.</Ref>
+            <Ref>Junner &amp; Hirst (1946). The geology and hydrogeology of the Volta Basin.</Ref>
+            <Ref>Kalsbeek et al. (2008). The Togo structural unit.</Ref>
+            <Ref>Kesse (1985). Geology and mineral resources of Ghana.</Ref>
+            <Ref>Kwayisi et al. (2020). Lithotectonic evolution of the Buem structural unit.</Ref>
+            <Ref>Kwayisi et al. (2022). Petrogenesis of the Buem mafic suite.</Ref>
+            <Ref>Mani (1978). The geology of the Dahomeyan of Ghana.</Ref>
+            <Ref>McCallien (1962). Geology of the Accraian Series.</Ref>
+            <Ref>Nelson (2024). Changing beach dynamics.</Ref>
+            <Ref>Pigois et al. (2003). Tarkwaian palaeoplacer and lode-gold formation.</Ref>
           </Section>
         </div>
 

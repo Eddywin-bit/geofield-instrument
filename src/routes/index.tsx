@@ -193,7 +193,7 @@ function LocateScreen() {
       onError: (err) => {
         const msg =
           "code" in err && (err as GeolocationPositionError).code === 1
-            ? "Location permission denied. Enable GPS access to continue."
+            ? "Location permission denied. Turn on location in your phone settings and allow location access for this site, then tap LOCATE ME again."
             : "code" in err && (err as GeolocationPositionError).code === 2
             ? "GPS position unavailable. Move to open sky and retry."
             : "code" in err && (err as GeolocationPositionError).code === 3

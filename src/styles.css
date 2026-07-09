@@ -87,6 +87,10 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
+    /* Kills app-wide pinch zoom and double-tap zoom. MapLibre sets
+       touch-action: none on its own canvas container, so map pinch and
+       rotate gestures are unaffected. */
+    touch-action: pan-x pan-y;
   }
   body {
     font-family: var(--font-sans);

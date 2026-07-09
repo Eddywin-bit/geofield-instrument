@@ -12,7 +12,12 @@ import {
   type AcquireCoords,
 } from "../lib/geo-acquire";
 import { ManualCoordsSheet, type ManualCoords } from "../components/ManualCoordsSheet";
-import { ensureLocationPermission } from "../lib/native";
+import {
+  ensureLocationPermission,
+  checkLocationReadiness,
+  openLocationSettings,
+  openAppSettings,
+} from "../lib/native";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -103,6 +108,7 @@ function LocateScreen() {
   const [fix, setFix] = useState<Fix | null>(null);
   const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorAction, setErrorAction] = useState<"location-settings" | "app-settings" | null>(null);
   const [showManual, setShowManual] = useState(false);
   const acqRef = useRef<Acquisition | null>(null);
   const stateRef = useRef(state);
@@ -122,12 +128,13 @@ function LocateScreen() {
     };
   }, []);
 
-  // Auto-dismiss GPS error banner after 10s.
+  // Auto-dismiss transient GPS errors. An error that carries an action the user
+  // must take (location switched off, permission denied) stays until they act.
   useEffect(() => {
-    if (!error) return;
+    if (!error || errorAction) return;
     const t = setTimeout(() => setError(null), 10000);
     return () => clearTimeout(t);
-  }, [error]);
+  }, [error, errorAction]);
   const recent = loadLogs().slice(0, 3);
 
   const resolveAndCommit = async (best: AcquireCoords, manual = false) => {
@@ -211,6 +218,7 @@ function LocateScreen() {
         }
       },
       onError: (err) => {
+        setErrorAction(null);
         const msg =
           "code" in err && (err as GeolocationPositionError).code === 1
             ? "Location permission denied. Turn on location and allow access for this site in your browser settings, then try again."
@@ -225,12 +233,30 @@ function LocateScreen() {
     });
   };
 
-  const locate = () => {
+  const locate = async () => {
     acqRef.current?.stop();
-    setState("locating");
     setError(null);
+    setErrorAction(null);
     setFix(null);
     setLiveAccuracy(null);
+
+    // A phone with location services switched off never fires watchPosition, so
+    // the old path sat silently for 60s and then reported "GPS timed out".
+    // Detect it up front and route the user straight to the system toggle.
+    const readiness = await checkLocationReadiness();
+    if (!readiness.ok) {
+      if (readiness.reason === "services-off") {
+        setError("Location is switched off on this phone. Turn it on, then tap LOCATE ME again.");
+        setErrorAction("location-settings");
+      } else {
+        setError("GeoField does not have permission to use this phone's location.");
+        setErrorAction("app-settings");
+      }
+      setState("error");
+      return;
+    }
+
+    setState("locating");
     startCycle();
   };
 
@@ -278,7 +304,7 @@ function LocateScreen() {
       {!fix && (
         <div className="px-4 space-y-2">
           <button
-            onClick={locate}
+            onClick={() => void locate()}
             disabled={state === "locating"}
             className="w-full h-32 rounded-lg bg-primary text-primary-foreground font-bold tracking-[0.2em] text-lg flex flex-col items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-80"
           >
@@ -295,16 +321,33 @@ function LocateScreen() {
             )}
           </button>
           {state === "error" && error && (
-            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              <span className="flex-1 leading-snug">{error}</span>
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                aria-label="Dismiss"
-                className="shrink-0 text-destructive/80 hover:text-destructive"
-              >
-                <X className="h-4 w-4" />
-              </button>
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="flex items-start gap-2">
+                <span className="flex-1 leading-snug">{error}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setErrorAction(null);
+                  }}
+                  aria-label="Dismiss"
+                  className="shrink-0 text-destructive/80 hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {errorAction && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (errorAction === "location-settings") void openLocationSettings();
+                    else void openAppSettings();
+                  }}
+                  className="mt-3 w-full h-11 rounded-md bg-destructive text-destructive-foreground text-xs font-bold tracking-[0.16em] active:scale-[0.99] transition-transform"
+                >
+                  {errorAction === "location-settings" ? "TURN ON LOCATION" : "OPEN APP SETTINGS"}
+                </button>
+              )}
             </div>
           )}
           <button

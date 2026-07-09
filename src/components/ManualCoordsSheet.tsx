@@ -1,5 +1,6 @@
 import { useState } from "react";
 import proj4 from "proj4";
+import { useBackHandler } from "../lib/back-button";
 
 export type ManualCoords = { latitude: number; longitude: number };
 
@@ -33,6 +34,9 @@ export function ManualCoordsSheet({
   const [utmZone, setUtmZone] = useState<"30" | "31">("30");
   const [easting, setEasting] = useState("");
   const [northing, setNorthing] = useState("");
+
+  // Android hardware back closes the sheet instead of leaving the Locate screen.
+  useBackHandler(open, onClose);
 
   if (!open) return null;
 

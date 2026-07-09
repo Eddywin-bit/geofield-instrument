@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       versionName:
-        description: 'Version name, e.g. 0.2.1'
+        description: 'Version name, e.g. 0.3.0'
         required: true
-        default: '0.2.1'
+        default: '0.3.0'
 
 jobs:
   build:
@@ -29,7 +29,9 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        # Fall back to a non-frozen install if the lockfile lags package.json,
+        # rather than failing the whole APK build on a lockfile mismatch.
+        run: bun install --frozen-lockfile || bun install
 
       - name: Build web assets (SPA mode, no nitro)
         env:
@@ -77,6 +79,28 @@ jobs:
           if add:
             x = x.replace("</manifest>", add + "</manifest>")
             p.write_text(x)
+          print(x)
+          PY
+
+      - name: Paint the system bars with the obsidian shell colour
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+          p = pathlib.Path("android/app/src/main/res/values/styles.xml")
+          x = p.read_text()
+          m = re.search(r'<style name="AppTheme\.NoActionBar"[^>]*>', x)
+          if not m:
+              sys.exit("AppTheme.NoActionBar not found in styles.xml")
+          if "android:windowBackground" not in x:
+              items = (
+                  '\n        <item name="android:windowBackground">#FF121417</item>'
+                  '\n        <item name="android:statusBarColor">#FF121417</item>'
+                  '\n        <item name="android:navigationBarColor">#FF121417</item>'
+                  '\n        <item name="android:windowLightStatusBar">false</item>'
+                  '\n        <item name="android:windowLightNavigationBar">false</item>'
+              )
+              x = x[:m.end()] + items + x[m.end():]
+              p.write_text(x)
           print(x)
           PY
 

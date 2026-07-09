@@ -13,6 +13,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@capacitor/app": "^7",
     "@capacitor/geolocation": "^7",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
@@ -54,6 +55,7 @@
     "@turf/buffer": "^7.3.5",
     "@turf/helpers": "^7.3.5",
     "@types/proj4": "^2.19.0",
+    "capacitor-native-settings": "^7.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

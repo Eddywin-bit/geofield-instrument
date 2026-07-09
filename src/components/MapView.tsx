@@ -186,16 +186,22 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
     { id: "bg", type: "background", paint: { "background-color": OCEAN } },
   ];
   if (online) {
+    // openstreetmap.org's own tile servers throttle third-party apps hard,
+    // which is half the reason this layer took minutes to appear. CARTO serves
+    // the same OSM data from a global CDN, needs no API key, and its dark
+    // basemap matches the obsidian shell.
     sources.osm = {
       type: "raster",
       tiles: [
-        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
-      maxzoom: 19,
+      attribution: "© OpenStreetMap contributors, © CARTO",
+      minzoom: 0,
+      maxzoom: 20,
     };
     layers.push({
       id: "osm",
@@ -211,10 +217,18 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
     sources,
     layers,
     glyphs: "/fonts/{fontstack}/{range}.pbf",
-    projection: { type: "globe" } as any,
-    sky: {
-      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.4, 5, 0.2, 8, 0],
-    } as any,
+    // Globe is a zoomed-out aesthetic for the local vector basemap only. Left on
+    // for the online raster layer it makes MapLibre request tiles across the
+    // whole visible sphere before Ghana ever paints, which is the other half of
+    // the slow-load bug.
+    projection: { type: online ? "mercator" : "globe" } as any,
+    ...(online
+      ? {}
+      : {
+          sky: {
+            "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.4, 5, 0.2, 8, 0],
+          } as any,
+        }),
   } as StyleSpecification;
 }
 

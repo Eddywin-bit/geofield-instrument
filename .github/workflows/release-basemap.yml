@@ -1,0 +1,23 @@
+name: Archive basemap to Release
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download basemap from current CDN
+        run: |
+          curl -sL "https://geofield-instrument.lovable.app/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles" -o ghana.pmtiles
+          echo "ab08c5fba7f2992419b690cd2ec34663  ghana.pmtiles" | md5sum -c -
+          stat -c "%s" ghana.pmtiles
+      - name: Create or update release with asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create basemap-v1 ghana.pmtiles \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Ghana offline basemap v1" \
+            --notes "ghana.pmtiles — Ghana bbox, maxzoom 14, Protomaps build 20260708 (OpenStreetMap data, ODbL). md5 ab08c5fba7f2992419b690cd2ec34663, 92038624 bytes. Regenerable via scripts/regenerate-basemap.sh." \
+            || gh release upload basemap-v1 ghana.pmtiles --repo "$GITHUB_REPOSITORY" --clobber

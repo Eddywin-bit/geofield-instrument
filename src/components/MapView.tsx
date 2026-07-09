@@ -387,7 +387,7 @@ export function MapView() {
             id: "place-labels-town",
             type: "symbol",
             source: "base-places",
-            filter: ["==", ["get", "place"], "town"],
+            filter: ["all", ["==", ["get", "place"], "town"], ["!", ["in", ["get", "name"], ["literal", CAPITAL_NAMES]]]],
             minzoom: 8,
             layout: {
               "text-field": ["get", "name"],

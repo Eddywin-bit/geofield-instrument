@@ -18,4 +18,8 @@ export default defineConfig({
     server: { entry: "server" },
     ...(capacitorBuild ? { spa: { enabled: true } } : {}),
   },
+  // Nitro bundles the SSR output into a Cloudflare Worker and replaces dist/server/.
+  // The SPA prerender needs the raw Vite SSR output to boot its preview server, and
+  // the APK needs no server at all, so skip nitro entirely for the Capacitor build.
+  ...(capacitorBuild ? { nitro: false as const } : {}),
 });

@@ -435,28 +435,6 @@ export function MapView() {
             },
           });
         }
-        if (base.roads && !map.getLayer("road-labels")) {
-          map.addLayer({
-            id: "road-labels",
-            type: "symbol",
-            source: "base-roads",
-            minzoom: 9,
-            layout: {
-              "text-field": ["coalesce", ["get", "ref"], ""],
-              "text-font": ["Noto Sans Regular"],
-              "text-size": 11,
-              "symbol-placement": "line",
-              "text-rotation-alignment": "map",
-              "text-allow-overlap": false,
-              "text-optional": true,
-            },
-            paint: {
-              "text-color": "#C9CFDA",
-              "text-halo-color": "#0B0E14",
-              "text-halo-width": 1.3,
-            },
-          });
-        }
       } catch (err) {
         console.warn("[MapView] ensureBaseLayers failed", err);
       }

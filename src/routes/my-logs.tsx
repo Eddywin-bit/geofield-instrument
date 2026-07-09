@@ -269,7 +269,7 @@ function MyLogsScreen() {
   );
 }
 
-function LogCard({ log, onDeleted, onExport, exporting, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; onExport: () => void; exporting: boolean; initialOpen?: boolean; autoScroll?: boolean }) {
+function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, onToggleSelect, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; onExport: () => void; exporting: boolean; selectMode: boolean; selected: boolean; onToggleSelect: () => void; initialOpen?: boolean; autoScroll?: boolean }) {
   const [open, setOpen] = useState(initialOpen);
   const [confirming, setConfirming] = useState(false);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);

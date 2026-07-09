@@ -323,14 +323,25 @@ function LogCard({ log, onDeleted, onExport, exporting, initialOpen = false, aut
 
               <div className="pt-2">
                 {!confirming ? (
-                  <button
-                    type="button"
-                    onClick={() => setConfirming(true)}
-                    className="h-8 px-3 rounded-md border border-destructive/60 text-destructive text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    DELETE
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={onExport}
+                      disabled={exporting}
+                      className="h-8 px-3 rounded-md bg-panel-2 border border-border text-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-panel disabled:opacity-60"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(true)}
+                      className="h-8 px-3 rounded-md border border-destructive/60 text-destructive text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      DELETE
+                    </button>
+                  </div>
                 ) : (
                   <div className="rounded-md border border-destructive/60 bg-destructive/5 p-3">
                     <p className="text-xs text-foreground/90">

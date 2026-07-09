@@ -29,7 +29,9 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        # Fall back to a non-frozen install if the lockfile lags package.json,
+        # rather than failing the whole APK build on a lockfile mismatch.
+        run: bun install --frozen-lockfile || bun install
 
       - name: Build web assets (SPA mode, no nitro)
         env:

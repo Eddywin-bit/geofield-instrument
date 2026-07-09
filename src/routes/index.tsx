@@ -233,12 +233,30 @@ function LocateScreen() {
     });
   };
 
-  const locate = () => {
+  const locate = async () => {
     acqRef.current?.stop();
-    setState("locating");
     setError(null);
+    setErrorAction(null);
     setFix(null);
     setLiveAccuracy(null);
+
+    // A phone with location services switched off never fires watchPosition, so
+    // the old path sat silently for 60s and then reported "GPS timed out".
+    // Detect it up front and route the user straight to the system toggle.
+    const readiness = await checkLocationReadiness();
+    if (!readiness.ok) {
+      if (readiness.reason === "services-off") {
+        setError("Location is switched off on this phone. Turn it on, then tap LOCATE ME again.");
+        setErrorAction("location-settings");
+      } else {
+        setError("GeoField does not have permission to use this phone's location.");
+        setErrorAction("app-settings");
+      }
+      setState("error");
+      return;
+    }
+
+    setState("locating");
     startCycle();
   };
 

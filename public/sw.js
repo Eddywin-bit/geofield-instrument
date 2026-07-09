@@ -55,7 +55,7 @@ self.addEventListener("fetch", (event) => {
 
   // Stale-while-revalidate for /data: serve cache instantly (offline-safe),
   // refresh in the background so data edits propagate on the next load.
-  if (url.pathname.startsWith("/data/")) {
+  if (url.pathname.startsWith("/data/") && url.pathname !== "/data/ghana.pmtiles") {
     event.respondWith(
       caches.open(DATA_CACHE).then(async (cache) => {
         const cached = await cache.match(req);

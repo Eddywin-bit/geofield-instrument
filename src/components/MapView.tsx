@@ -11,6 +11,7 @@ import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#1B2027";
 const OCEAN = "#14304A";
+const LAND = "#141414";
 
 const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
 const BASEMAP_CACHE = "geofield-basemap-v1";
@@ -125,10 +126,16 @@ function buildBasemapLayers(): LayerSpecification[] {
       const isWaterwaySrc = /water(way)?/.test(srcLower) || /water(way)?/.test(idLower);
       const isRoadSrc =
         /road|transport|highway/.test(srcLower) || /road|transport|highway/.test(idLower);
+      if (l.type === "fill" && srcLower === "earth") {
+        return {
+          ...l,
+          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": LAND },
+        } as LayerSpecification;
+      }
       if (l.type === "fill" && isWaterSrc) {
         return {
           ...l,
-          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": "#20415E" },
+          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": OCEAN },
         } as LayerSpecification;
       }
       if (l.type === "line" && isWaterwaySrc) {
@@ -503,7 +510,7 @@ export function MapView() {
             id: "world-land",
             type: "fill",
             source: "world-land",
-            paint: { "fill-color": BG, "fill-opacity": 1 },
+            paint: { "fill-color": LAND, "fill-opacity": 1 },
           });
         }
       } catch (err) {

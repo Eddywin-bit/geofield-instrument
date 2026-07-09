@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
-import { Search, Image as ImageIcon, Mic, Trash2, FileDown, Loader2, X } from "lucide-react";
+import { Search, Image as ImageIcon, Mic, Trash2, FileDown, Loader2, X, Check, CheckSquare } from "lucide-react";
 import { buildTraverseReport, reportFilename, shareOrDownload } from "../lib/report";
 import {
   deleteLog,
@@ -59,6 +59,35 @@ function MyLogsScreen() {
     [logs, query],
   );
 
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Only ever count logs that still exist and still match the filter.
+  const selectedLogs = useMemo(
+    () => filtered.filter((l) => selectedIds.has(l.id)),
+    [filtered, selectedIds],
+  );
+  const allFilteredSelected = filtered.length > 0 && selectedLogs.length === filtered.length;
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelect = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleAll = () => {
+    if (allFilteredSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filtered.map((l) => l.id)));
+  };
+
   const grouped = useMemo(() => {
     const map = new Map<string, LogEntry[]>();
     for (const l of filtered) {
@@ -78,25 +107,85 @@ function MyLogsScreen() {
         <p className="text-sm text-muted-foreground mt-1">
           <span className="mono">{logs.length}</span> observations · stored on device
         </p>
-        {filtered.length > 0 && (
-          <button
-            type="button"
-            onClick={() => void exportLogs(filtered)}
-            disabled={exporting}
-            className="mt-3 w-full h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
-          >
-            {exporting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                BUILDING REPORT…
-              </>
-            ) : (
-              <>
-                <FileDown className="h-4 w-4" strokeWidth={2.5} />
-                EXPORT {filtered.length === logs.length ? "ALL" : `${filtered.length}`} AS PDF
-              </>
-            )}
-          </button>
+        {filtered.length > 0 && !selectMode && (
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void exportLogs(filtered)}
+              disabled={exporting}
+              className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  BUILDING REPORT…
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4" strokeWidth={2.5} />
+                  EXPORT {filtered.length === logs.length ? "ALL" : `${filtered.length}`} AS PDF
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectMode(true)}
+              disabled={exporting}
+              className="h-11 px-3 rounded-lg border border-border bg-panel text-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-panel-2 disabled:opacity-60"
+            >
+              <CheckSquare className="h-4 w-4" />
+              SELECT
+            </button>
+          </div>
+        )}
+
+        {selectMode && (
+          <div className="mt-3 rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="mono text-[11px] text-foreground">
+                {selectedLogs.length} of {filtered.length} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  className="h-8 px-2.5 rounded-md border border-border bg-panel text-[10px] font-bold tracking-[0.14em] text-foreground hover:bg-panel-2"
+                >
+                  {allFilteredSelected ? "CLEAR" : "ALL"}
+                </button>
+                <button
+                  type="button"
+                  onClick={exitSelect}
+                  className="h-8 px-2.5 rounded-md border border-border bg-panel text-[10px] font-bold tracking-[0.14em] text-muted-foreground hover:bg-panel-2"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await exportLogs(selectedLogs);
+                exitSelect();
+              }}
+              disabled={exporting || selectedLogs.length === 0}
+              className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-50"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  BUILDING REPORT…
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4" strokeWidth={2.5} />
+                  {selectedLogs.length === 0
+                    ? "SELECT LOGS TO EXPORT"
+                    : `EXPORT ${selectedLogs.length} AS PDF`}
+                </>
+              )}
+            </button>
+          </div>
         )}
         {exportError && (
           <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
@@ -134,18 +223,42 @@ function MyLogsScreen() {
             <div className="px-4 flex items-center gap-3 mb-2">
               <span className="label-instrument">{date}</span>
               <div className="flex-1 h-px bg-border" />
-              <span className="mono text-[11px] text-muted-foreground">{items.length}</span>
+              {selectMode ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ids = items.map((l) => l.id);
+                    const everyOne = ids.every((id) => selectedIds.has(id));
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      for (const id of ids) {
+                        if (everyOne) next.delete(id);
+                        else next.add(id);
+                      }
+                      return next;
+                    });
+                  }}
+                  className="mono text-[10px] font-bold tracking-[0.14em] text-primary hover:underline"
+                >
+                  {items.every((l) => selectedIds.has(l.id)) ? "NONE" : "ALL"}
+                </button>
+              ) : (
+                <span className="mono text-[11px] text-muted-foreground">{items.length}</span>
+              )}
             </div>
             <div className="space-y-2 px-4">
               {items.map((l) => (
                 <LogCard
                   key={l.id}
                   log={l}
-                  initialOpen={l.id === openId}
-                  autoScroll={l.id === openId}
+                  initialOpen={!selectMode && l.id === openId}
+                  autoScroll={!selectMode && l.id === openId}
                   onDeleted={() => force((n) => n + 1)}
                   onExport={() => void exportLogs([l])}
                   exporting={exporting}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(l.id)}
+                  onToggleSelect={() => toggleSelect(l.id)}
                 />
               ))}
             </div>
@@ -156,7 +269,7 @@ function MyLogsScreen() {
   );
 }
 
-function LogCard({ log, onDeleted, onExport, exporting, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; onExport: () => void; exporting: boolean; initialOpen?: boolean; autoScroll?: boolean }) {
+function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, onToggleSelect, initialOpen = false, autoScroll = false }: { log: LogEntry; onDeleted: () => void; onExport: () => void; exporting: boolean; selectMode: boolean; selected: boolean; onToggleSelect: () => void; initialOpen?: boolean; autoScroll?: boolean }) {
   const [open, setOpen] = useState(initialOpen);
   const [confirming, setConfirming] = useState(false);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
@@ -178,8 +291,14 @@ function LogCard({ log, onDeleted, onExport, exporting, initialOpen = false, aut
     log.lat !== null && log.lng !== null && log.accuracy !== null;
 
   const handleDelete = () => {
+    if (selected) onToggleSelect();
     deleteLog(log.id);
     onDeleted();
+  };
+
+  const activate = () => {
+    if (selectMode) onToggleSelect();
+    else setOpen((v) => !v);
   };
 
   return (
@@ -187,24 +306,37 @@ function LogCard({ log, onDeleted, onExport, exporting, initialOpen = false, aut
       ref={cardRef}
       role="button"
       tabIndex={0}
-      onClick={() => setOpen((v) => !v)}
+      onClick={activate}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          setOpen((v) => !v);
+          activate();
         }
       }}
-      className="w-full text-left rounded-lg border border-border bg-panel overflow-hidden cursor-pointer"
+      className={`w-full text-left rounded-lg border overflow-hidden cursor-pointer transition-colors ${
+        selectMode && selected ? "border-primary bg-primary/10" : "border-border bg-panel"
+      }`}
     >
       <div className="flex items-stretch">
         <div className="w-1.5 shrink-0" style={{ backgroundColor: stripeColor }} />
         <div className="flex-1 p-3 min-w-0">
           <div className="flex items-start gap-3">
+            {selectMode && (
+              <div
+                className={`h-5 w-5 shrink-0 mt-0.5 rounded border flex items-center justify-center ${
+                  selected ? "bg-primary border-primary" : "border-border bg-panel-2"
+                }`}
+                aria-hidden
+              >
+                {selected && <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />}
+              </div>
+            )}
             <div className="relative h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
               {photoCount > 0 ? (
                 <button
                   type="button"
                   onClick={(e) => {
+                    if (selectMode) return;
                     e.stopPropagation();
                     setViewingIndex(0);
                   }}

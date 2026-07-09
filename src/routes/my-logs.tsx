@@ -223,18 +223,42 @@ function MyLogsScreen() {
             <div className="px-4 flex items-center gap-3 mb-2">
               <span className="label-instrument">{date}</span>
               <div className="flex-1 h-px bg-border" />
-              <span className="mono text-[11px] text-muted-foreground">{items.length}</span>
+              {selectMode ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ids = items.map((l) => l.id);
+                    const everyOne = ids.every((id) => selectedIds.has(id));
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      for (const id of ids) {
+                        if (everyOne) next.delete(id);
+                        else next.add(id);
+                      }
+                      return next;
+                    });
+                  }}
+                  className="mono text-[10px] font-bold tracking-[0.14em] text-primary hover:underline"
+                >
+                  {items.every((l) => selectedIds.has(l.id)) ? "NONE" : "ALL"}
+                </button>
+              ) : (
+                <span className="mono text-[11px] text-muted-foreground">{items.length}</span>
+              )}
             </div>
             <div className="space-y-2 px-4">
               {items.map((l) => (
                 <LogCard
                   key={l.id}
                   log={l}
-                  initialOpen={l.id === openId}
-                  autoScroll={l.id === openId}
+                  initialOpen={!selectMode && l.id === openId}
+                  autoScroll={!selectMode && l.id === openId}
                   onDeleted={() => force((n) => n + 1)}
                   onExport={() => void exportLogs([l])}
                   exporting={exporting}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(l.id)}
+                  onToggleSelect={() => toggleSelect(l.id)}
                 />
               ))}
             </div>

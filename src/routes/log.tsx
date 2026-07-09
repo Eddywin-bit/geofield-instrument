@@ -161,9 +161,19 @@ function LogScreen() {
           setLocating(false);
         }
       },
-      onError: () => {
+      onError: (err) => {
         setLocating(false);
         setCtx((c) => ({ ...c, lat: null, lng: null, accuracy: null }));
+        const code = (err as GeolocationPositionError | undefined)?.code;
+        const msg =
+          code === 1
+            ? "Location permission denied. Turn on location in your phone settings and allow location access for this site, then tap LOCATE ME again."
+            : code === 2
+            ? "GPS position unavailable. Move to open sky and retry."
+            : code === 3
+            ? "GPS timed out. Retry with a clearer view of the sky."
+            : (err as Error | undefined)?.message || "Could not acquire GPS fix.";
+        setLocateError(msg);
       },
     });
     return () => {

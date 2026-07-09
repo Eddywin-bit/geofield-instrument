@@ -67,6 +67,8 @@ export function MapView() {
   const [bearing, setBearing] = useState(0);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
+  const onlineRef = useRef(online);
+  onlineRef.current = online;
 
   // Init map once
   useEffect(() => {
@@ -299,6 +301,10 @@ export function MapView() {
         "place-labels-city",
       ]) {
         if (map.getLayer(id)) map.moveLayer(id);
+      }
+      const placeLabelVisibility = onlineRef.current ? "none" : "visible";
+      for (const id of ["place-labels-town", "place-labels-city"]) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
       }
     };
 

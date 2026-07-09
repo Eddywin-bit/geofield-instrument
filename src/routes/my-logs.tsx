@@ -336,6 +336,7 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
                 <button
                   type="button"
                   onClick={(e) => {
+                    if (selectMode) return;
                     e.stopPropagation();
                     setViewingIndex(0);
                   }}

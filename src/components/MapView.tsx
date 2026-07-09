@@ -95,10 +95,6 @@ export function MapView() {
     mapRef.current = map;
 
     const ensureGeologyLayers = (geo: GeoData) => {
-      if (!map.isStyleLoaded()) {
-        map.once("styledata", () => ensureGeologyLayers(geo));
-        return;
-      }
       if (map.getSource("geology")) return;
       try {
         map.addSource("geology", { type: "geojson", data: geo.geo });
@@ -154,10 +150,6 @@ export function MapView() {
     const baseDataRef: { current: BaseData | null } = { current: null };
 
     const ensureBaseLayers = (base: BaseData) => {
-      if (!map.isStyleLoaded()) {
-        map.once("styledata", () => ensureBaseLayers(base));
-        return;
-      }
       const beforeId = map.getLayer("geology-fill") ? "geology-fill" : undefined;
       try {
         if (base.rivers && !map.getSource("base-rivers")) {
@@ -292,10 +284,6 @@ export function MapView() {
     };
 
     const applyAll = () => {
-      if (!map.isStyleLoaded()) {
-        map.once("styledata", applyAll);
-        return;
-      }
       if (baseDataRef.current) ensureBaseLayers(baseDataRef.current);
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       // Enforce draw order bottom→top by moving each existing layer to the top in sequence.

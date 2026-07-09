@@ -163,7 +163,16 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
     sources.basemap = { type: "vector", url: BASEMAP_STYLE_URL };
     for (const l of buildBasemapLayers()) layers.push(l);
   }
-  return { version: 8, sources, layers, glyphs: "/fonts/{fontstack}/{range}.pbf", projection: { type: "globe" } as any };
+  return {
+    version: 8,
+    sources,
+    layers,
+    glyphs: "/fonts/{fontstack}/{range}.pbf",
+    projection: { type: "globe" } as any,
+    sky: {
+      "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.4, 5, 0.2, 8, 0],
+    } as any,
+  } as StyleSpecification;
 }
 
 function unitMatchExpression(): maplibregl.ExpressionSpecification {

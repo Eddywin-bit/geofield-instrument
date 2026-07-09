@@ -12,9 +12,15 @@ const config: CapacitorConfig = {
     // Keep the WebView background matched to the app shell so there is no
     // white flash between splash and first paint.
     backgroundColor: "#121417",
-    // Android 15+ enforces edge-to-edge. Without this the WebView renders behind
-    // the status bar and the app header collides with the system clock.
-    adjustMarginsForEdgeToEdge: "auto",
+    // Inset the WebView clear of the status bar, camera cutout and navigation
+    // bar on EVERY Android version, not just 15+. The strips left behind the
+    // system bars are painted #121417 by the styles.xml patch in
+    // .github/workflows/build-apk.yml, so the obsidian shell still reads as
+    // edge-to-edge while the header never collides with the system clock.
+    // Chose this over @capacitor-community/safe-area because Chromium < 140
+    // reports env(safe-area-inset-top) as 0px, and stale WebViews are common
+    // on the target devices.
+    adjustMarginsForEdgeToEdge: "force",
   },
 };
 

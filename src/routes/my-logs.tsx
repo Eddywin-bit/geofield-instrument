@@ -107,25 +107,85 @@ function MyLogsScreen() {
         <p className="text-sm text-muted-foreground mt-1">
           <span className="mono">{logs.length}</span> observations · stored on device
         </p>
-        {filtered.length > 0 && (
-          <button
-            type="button"
-            onClick={() => void exportLogs(filtered)}
-            disabled={exporting}
-            className="mt-3 w-full h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
-          >
-            {exporting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                BUILDING REPORT…
-              </>
-            ) : (
-              <>
-                <FileDown className="h-4 w-4" strokeWidth={2.5} />
-                EXPORT {filtered.length === logs.length ? "ALL" : `${filtered.length}`} AS PDF
-              </>
-            )}
-          </button>
+        {filtered.length > 0 && !selectMode && (
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void exportLogs(filtered)}
+              disabled={exporting}
+              className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  BUILDING REPORT…
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4" strokeWidth={2.5} />
+                  EXPORT {filtered.length === logs.length ? "ALL" : `${filtered.length}`} AS PDF
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectMode(true)}
+              disabled={exporting}
+              className="h-11 px-3 rounded-lg border border-border bg-panel text-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-panel-2 disabled:opacity-60"
+            >
+              <CheckSquare className="h-4 w-4" />
+              SELECT
+            </button>
+          </div>
+        )}
+
+        {selectMode && (
+          <div className="mt-3 rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="mono text-[11px] text-foreground">
+                {selectedLogs.length} of {filtered.length} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  className="h-8 px-2.5 rounded-md border border-border bg-panel text-[10px] font-bold tracking-[0.14em] text-foreground hover:bg-panel-2"
+                >
+                  {allFilteredSelected ? "CLEAR" : "ALL"}
+                </button>
+                <button
+                  type="button"
+                  onClick={exitSelect}
+                  className="h-8 px-2.5 rounded-md border border-border bg-panel text-[10px] font-bold tracking-[0.14em] text-muted-foreground hover:bg-panel-2"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await exportLogs(selectedLogs);
+                exitSelect();
+              }}
+              disabled={exporting || selectedLogs.length === 0}
+              className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-50"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  BUILDING REPORT…
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4" strokeWidth={2.5} />
+                  {selectedLogs.length === 0
+                    ? "SELECT LOGS TO EXPORT"
+                    : `EXPORT ${selectedLogs.length} AS PDF`}
+                </>
+              )}
+            </button>
+          </div>
         )}
         {exportError && (
           <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">

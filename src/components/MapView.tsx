@@ -91,10 +91,15 @@ export function MapView() {
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [bearing, setBearing] = useState(0);
+  const [basemapReady, setBasemapReady] = useState(false);
+  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "error">("idle");
+  const [downloadPct, setDownloadPct] = useState(0);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
   const onlineRef = useRef(online);
   onlineRef.current = online;
+  const basemapReadyRef = useRef(basemapReady);
+  basemapReadyRef.current = basemapReady;
 
   // Init map once
   useEffect(() => {

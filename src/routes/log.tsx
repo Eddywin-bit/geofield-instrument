@@ -117,6 +117,7 @@ function LogScreen() {
       navigate({ to: "/log", search: {}, replace: true });
     }
     setLocating(true);
+    setLocateError(null);
     acqRef.current?.stop();
     acqRef.current = acquireFix({
       onUpdate: async (accuracy, coords) => {

@@ -75,6 +75,7 @@ function LogScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [voice, setVoice] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);

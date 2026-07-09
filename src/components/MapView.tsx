@@ -489,6 +489,27 @@ export function MapView() {
       }
     };
 
+    const worldLandRef: { current: GeoJSON.FeatureCollection | null } = { current: null };
+    const ensureWorldLandLayer = () => {
+      const data = worldLandRef.current;
+      if (!data) return;
+      try {
+        if (!map.getSource("world-land")) {
+          map.addSource("world-land", { type: "geojson", data });
+        }
+        if (!map.getLayer("world-land")) {
+          map.addLayer({
+            id: "world-land",
+            type: "fill",
+            source: "world-land",
+            paint: { "fill-color": BG, "fill-opacity": 1 },
+          });
+        }
+      } catch (err) {
+        console.warn("[MapView] ensureWorldLandLayer failed", err);
+      }
+    };
+
     const applyAll = () => {
       const vectorBase = basemapReadyRef.current && !onlineRef.current;
       if (!onlineRef.current && !basemapReadyRef.current && baseDataRef.current) {

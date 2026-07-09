@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
-import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard, X } from "lucide-react";
+import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard, NotebookPen, X } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
 import { loadGeology, findUnitAt, unitByName, nearbyUnits, type GeoUnit } from "../lib/geology";
 import {
@@ -30,6 +30,7 @@ type Fix = {
   lng: number;
   accuracy: number | null;
   manual?: boolean;
+  acquiredAt?: number;
   expectedRocks: string[];
   expectedStructures: string[];
   mineralization: string;
@@ -82,10 +83,18 @@ export function readCurrentFix(): Fix | null {
 }
 function writeCurrentFix(f: Fix) {
   try {
-    window.localStorage.setItem(FIX_KEY, JSON.stringify(f));
+    window.localStorage.setItem(FIX_KEY, JSON.stringify({ ...f, acquiredAt: Date.now() }));
   } catch {
     /* ignore */
   }
+}
+
+// A fix older than this must not be silently attached to a new observation.
+export const FIX_MAX_AGE_MS = 30 * 60 * 1000;
+export function isFixStale(f: { acquiredAt?: number } | null): boolean {
+  if (!f) return true;
+  if (typeof f.acquiredAt !== "number") return true; // legacy entries have no stamp
+  return Date.now() - f.acquiredAt > FIX_MAX_AGE_MS;
 }
 
 function LocateScreen() {
@@ -325,6 +334,15 @@ function LocateScreen() {
                 Your GPS accuracy circle overlaps: <span className="font-semibold">{fix.nearby.join(", ")}</span>. Move a few metres or select the unit manually to confirm.
               </div>
             </div>
+          )}
+          {state === "found" && (
+            <Link
+              to="/log"
+              className="w-full h-14 rounded-lg bg-primary text-primary-foreground text-sm font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+            >
+              <NotebookPen className="h-5 w-5" strokeWidth={2.5} />
+              LOG OBSERVATION HERE
+            </Link>
           )}
           {state === "found" && (
             <>

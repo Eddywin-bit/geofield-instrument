@@ -637,7 +637,7 @@ export function MapView() {
       )}
 
       {/* Offline / Online pill */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
         <div className="inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md overflow-hidden text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40">
           <button
             type="button"
@@ -654,29 +654,6 @@ export function MapView() {
             Online
           </button>
         </div>
-        {!online && !basemapReady && downloadState === "idle" && (
-          <button
-            type="button"
-            onClick={downloadBasemap}
-            className="mt-2 inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-3 py-1.5 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-foreground"
-          >
-            Download Ghana Base Map · 92 MB
-          </button>
-        )}
-        {!online && downloadState === "downloading" && (
-          <div className="mt-2 inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-3 py-1.5 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground">
-            Downloading… {downloadPct}%
-          </div>
-        )}
-        {!online && downloadState === "error" && (
-          <button
-            type="button"
-            onClick={downloadBasemap}
-            className="mt-2 inline-flex items-center rounded-full border border-destructive bg-background/85 backdrop-blur-md px-3 py-1.5 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-destructive"
-          >
-            Download failed — tap to retry
-          </button>
-        )}
       </div>
 
       {/* Zoom controls */}
@@ -698,6 +675,32 @@ export function MapView() {
           <Minus className="h-4 w-4" strokeWidth={2.5} />
         </button>
       </div>
+
+      {/* Basemap download */}
+      {!online && !basemapReady && downloadState === "idle" && (
+        <button
+          type="button"
+          onClick={downloadBasemap}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-foreground"
+        >
+          Download Ghana Base Map · 92 MB
+        </button>
+      )}
+      {!online && downloadState === "downloading" && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground"
+        >
+          Downloading… {downloadPct}%
+        </div>
+      )}
+      {!online && downloadState === "error" && (
+        <button
+          type="button"
+          onClick={downloadBasemap}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-destructive bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-destructive"
+        >
+          Download failed — tap to retry
+        </button>
+      )}
 
       {/* Reset north (compass) */}
       <button

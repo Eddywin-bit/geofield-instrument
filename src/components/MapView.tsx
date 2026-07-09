@@ -271,7 +271,8 @@ export function MapView() {
         touchPitch: false,
         maxPitch: 0,
       });
-      map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
+      attributionRef.current = new maplibregl.AttributionControl({ compact: true });
+      map.addControl(attributionRef.current, "top-left");
       map.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
     } catch (err) {
       console.warn("[MapView] map construction failed", err);

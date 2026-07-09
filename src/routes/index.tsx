@@ -12,6 +12,7 @@ import {
   type AcquireCoords,
 } from "../lib/geo-acquire";
 import { ManualCoordsSheet, type ManualCoords } from "../components/ManualCoordsSheet";
+import { ensureLocationPermission } from "../lib/native";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -112,6 +113,9 @@ function LocateScreen() {
   const [, force] = useState(0);
   useEffect(() => {
     void hydrateLogs().then(() => force((n) => n + 1));
+    // Native only: ask Android for the location permission up front, otherwise
+    // navigator.geolocation silently times out with no dialog.
+    void ensureLocationPermission();
 
     return () => {
       acqRef.current?.stop();

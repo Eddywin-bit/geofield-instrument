@@ -12,6 +12,9 @@ const config: CapacitorConfig = {
     // Keep the WebView background matched to the app shell so there is no
     // white flash between splash and first paint.
     backgroundColor: "#121417",
+    // Android 15+ enforces edge-to-edge. Without this the WebView renders behind
+    // the status bar and the app header collides with the system clock.
+    adjustMarginsForEdgeToEdge: "auto",
   },
 };
 

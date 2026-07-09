@@ -153,9 +153,7 @@ function buildBasemapLayers(): LayerSpecification[] {
         const isPlaces = srcLayer === "places";
         const existingFilter = (l as { filter?: unknown }).filter;
         const mergedFilter = isPlaces
-          ? existingFilter
-            ? ["all", existingFilter, capitalExclusion]
-            : capitalExclusion
+          ? buildPlacesFilter(existingFilter, capitalExclusion)
           : existingFilter;
         const nextLayout = l.layout
           ? { ...l.layout, "text-font": ["Noto Sans Regular"] }

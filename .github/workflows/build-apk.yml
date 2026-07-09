@@ -82,6 +82,28 @@ jobs:
           print(x)
           PY
 
+      - name: Paint the system bars with the obsidian shell colour
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+          p = pathlib.Path("android/app/src/main/res/values/styles.xml")
+          x = p.read_text()
+          m = re.search(r'<style name="AppTheme\.NoActionBar"[^>]*>', x)
+          if not m:
+              sys.exit("AppTheme.NoActionBar not found in styles.xml")
+          if "android:windowBackground" not in x:
+              items = (
+                  '\n        <item name="android:windowBackground">#FF121417</item>'
+                  '\n        <item name="android:statusBarColor">#FF121417</item>'
+                  '\n        <item name="android:navigationBarColor">#FF121417</item>'
+                  '\n        <item name="android:windowLightStatusBar">false</item>'
+                  '\n        <item name="android:windowLightNavigationBar">false</item>'
+              )
+              x = x[:m.end()] + items + x[m.end():]
+              p.write_text(x)
+          print(x)
+          PY
+
       - name: Set versionCode and versionName
         env:
           VN: ${{ inputs.versionName }}

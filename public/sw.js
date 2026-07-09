@@ -1,5 +1,5 @@
 /* GeoField Companion Service Worker */
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL_CACHE = `geofield-shell-${VERSION}`;
 const DATA_CACHE = `geofield-data-${VERSION}`;
 
@@ -8,6 +8,8 @@ const SHELL_URLS = [
   "/log",
   "/my-logs",
   "/manifest.webmanifest",
+  "/fonts/Noto%20Sans%20Regular/0-255.pbf",
+  "/fonts/Noto%20Sans%20Regular/256-511.pbf",
 ];
 
 const DATA_URLS = [

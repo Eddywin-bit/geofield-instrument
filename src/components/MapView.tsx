@@ -108,7 +108,7 @@ export function MapView() {
           source: "geology",
           paint: {
             "fill-color": unitMatchExpression(),
-            "fill-opacity": 0.35,
+            "fill-opacity": 0.45,
           },
         });
         map.addLayer({

@@ -68,6 +68,39 @@ const CAPITAL_NAMES = [
   "Dambai", "Nalerigu", "Damongo",
 ];
 
+function legacyToExpression(f: unknown): unknown[] | null {
+  if (!Array.isArray(f)) return null;
+  const [op, ...rest] = f as [string, ...unknown[]];
+  if (op === "all" || op === "any") {
+    const parts = rest.map(legacyToExpression);
+    if (parts.some((p) => p === null)) return null;
+    return [op, ...(parts as unknown[][])];
+  }
+  if ((op === "==" || op === "!=") && typeof rest[0] === "string" && rest.length === 2) {
+    return [op, ["get", rest[0]], rest[1]];
+  }
+  if (op === "in" && typeof rest[0] === "string" && rest.length >= 2) {
+    return ["in", ["get", rest[0]], ["literal", rest.slice(1)]];
+  }
+  if (op === "!in" && typeof rest[0] === "string" && rest.length >= 2) {
+    return ["!", ["in", ["get", rest[0]], ["literal", rest.slice(1)]]];
+  }
+  if (op === "has" && typeof rest[0] === "string" && rest.length === 1) {
+    return ["has", rest[0]];
+  }
+  if (op === "!has" && typeof rest[0] === "string" && rest.length === 1) {
+    return ["!", ["has", rest[0]]];
+  }
+  return null;
+}
+
+function buildPlacesFilter(existing: unknown, exclusion: unknown): unknown {
+  if (existing === undefined) return exclusion;
+  const converted = legacyToExpression(existing);
+  if (converted === null) return existing;
+  return ["all", converted, exclusion];
+}
+
 function buildBasemapLayers(): LayerSpecification[] {
   const capitalExclusion: unknown = [
     "!",
@@ -120,9 +153,7 @@ function buildBasemapLayers(): LayerSpecification[] {
         const isPlaces = srcLayer === "places";
         const existingFilter = (l as { filter?: unknown }).filter;
         const mergedFilter = isPlaces
-          ? existingFilter
-            ? ["all", existingFilter, capitalExclusion]
-            : capitalExclusion
+          ? buildPlacesFilter(existingFilter, capitalExclusion)
           : existingFilter;
         const nextLayout = l.layout
           ? { ...l.layout, "text-font": ["Noto Sans Regular"] }
@@ -197,6 +228,7 @@ export function MapView() {
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
   const accuracyMarkerRef = useRef<maplibregl.Marker | null>(null);
   const reapplyGeologyRef = useRef<(() => void) | null>(null);
+  const attributionRef = useRef<maplibregl.AttributionControl | null>(null);
   const firstRunRef = useRef(true);
   const [online, setOnline] = useState(false);
   const [popup, setPopup] = useState<Popup | null>(null);
@@ -239,7 +271,8 @@ export function MapView() {
         touchPitch: false,
         maxPitch: 0,
       });
-      map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
+      attributionRef.current = new maplibregl.AttributionControl({ compact: true });
+      map.addControl(attributionRef.current, "top-left");
       map.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
     } catch (err) {
       console.warn("[MapView] map construction failed", err);
@@ -404,28 +437,6 @@ export function MapView() {
             },
           });
         }
-        if (base.roads && !map.getLayer("road-labels")) {
-          map.addLayer({
-            id: "road-labels",
-            type: "symbol",
-            source: "base-roads",
-            minzoom: 9,
-            layout: {
-              "text-field": ["coalesce", ["get", "ref"], ""],
-              "text-font": ["Noto Sans Regular"],
-              "text-size": 11,
-              "symbol-placement": "line",
-              "text-rotation-alignment": "map",
-              "text-allow-overlap": false,
-              "text-optional": true,
-            },
-            paint: {
-              "text-color": "#C9CFDA",
-              "text-halo-color": "#0B0E14",
-              "text-halo-width": 1.3,
-            },
-          });
-        }
       } catch (err) {
         console.warn("[MapView] ensureBaseLayers failed", err);
       }
@@ -479,7 +490,9 @@ export function MapView() {
 
     const applyAll = () => {
       const vectorBase = basemapReadyRef.current && !onlineRef.current;
-      if (!vectorBase && baseDataRef.current) ensureBaseLayers(baseDataRef.current);
+      if (!onlineRef.current && !basemapReadyRef.current && baseDataRef.current) {
+        ensureBaseLayers(baseDataRef.current);
+      }
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       ensureCapitalsLayer();
 
@@ -524,7 +537,6 @@ export function MapView() {
           "geology-line",
           "regional-capitals-dot",
           "regional-capitals",
-          "road-labels",
           "place-labels-town",
           "place-labels-city",
         ]) {
@@ -538,14 +550,17 @@ export function MapView() {
         "place-labels-city",
         "regional-capitals",
         "regional-capitals-dot",
+        "base-rivers",
+        "base-roads",
+        "base-regions",
       ]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
       }
 
-      // Vector basemap already provides place + road labels; hide our GeoJSON fallback labels
+      // Vector basemap already provides place labels; hide our GeoJSON fallback labels
       // so towns like Kumasi don't render twice.
       if (vectorBase) {
-        for (const id of ["place-labels-city", "place-labels-town", "road-labels"]) {
+        for (const id of ["place-labels-city", "place-labels-town"]) {
           if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
         }
       }
@@ -640,8 +655,18 @@ export function MapView() {
     const map = mapRef.current;
     if (!map) return;
     setPopup(null);
+    if (attributionRef.current) {
+      try {
+        map.removeControl(attributionRef.current);
+      } catch {
+        /* ignore */
+      }
+      attributionRef.current = null;
+    }
     map.setStyle(buildStyle(online, basemapReady), { diff: false });
     map.once("style.load", () => {
+      attributionRef.current = new maplibregl.AttributionControl({ compact: true });
+      map.addControl(attributionRef.current, "top-left");
       reapplyGeologyRef.current?.();
     });
   }, [online, basemapReady]);

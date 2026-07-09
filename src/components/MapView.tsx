@@ -10,6 +10,7 @@ import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#1B2027";
+const OCEAN = "#14304A";
 
 const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
 const BASEMAP_CACHE = "geofield-basemap-v1";
@@ -171,7 +172,7 @@ function buildBasemapLayers(): LayerSpecification[] {
 function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
   const layers: StyleSpecification["layers"] = [
-    { id: "bg", type: "background", paint: { "background-color": BG } },
+    { id: "bg", type: "background", paint: { "background-color": OCEAN } },
   ];
   if (online) {
     sources.osm = {
@@ -273,7 +274,7 @@ export function MapView() {
       });
       attributionRef.current = new maplibregl.AttributionControl({ compact: true });
       map.addControl(attributionRef.current, "top-left");
-      map.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
+      map.addControl(new maplibregl.ScaleControl({ maxWidth: 96, unit: "metric" }), "bottom-left");
     } catch (err) {
       console.warn("[MapView] map construction failed", err);
       setInitError("Map cannot render on this device (WebGL unavailable).");
@@ -488,13 +489,45 @@ export function MapView() {
       }
     };
 
+    const worldLandRef: { current: GeoJSON.FeatureCollection | null } = { current: null };
+    const ensureWorldLandLayer = () => {
+      const data = worldLandRef.current;
+      if (!data) return;
+      try {
+        if (!map.getSource("world-land")) {
+          map.addSource("world-land", { type: "geojson", data });
+        }
+        if (!map.getLayer("world-land")) {
+          map.addLayer({
+            id: "world-land",
+            type: "fill",
+            source: "world-land",
+            paint: { "fill-color": BG, "fill-opacity": 1 },
+          });
+        }
+      } catch (err) {
+        console.warn("[MapView] ensureWorldLandLayer failed", err);
+      }
+    };
+
     const applyAll = () => {
       const vectorBase = basemapReadyRef.current && !onlineRef.current;
+      ensureWorldLandLayer();
       if (!onlineRef.current && !basemapReadyRef.current && baseDataRef.current) {
         ensureBaseLayers(baseDataRef.current);
       }
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       ensureCapitalsLayer();
+
+      // Move world-land to the very bottom (just above "bg").
+      if (map.getLayer("world-land")) {
+        const styleLayers = (map.getStyle().layers ?? []) as LayerSpecification[];
+        const firstOther = styleLayers.find(
+          (l) => l.id !== "bg" && l.id !== "world-land",
+        );
+        if (firstOther) map.moveLayer("world-land", firstOther.id);
+      }
+
 
       if (vectorBase) {
         // Insert geology BEFORE the first road-line or symbol layer in the basemap.
@@ -553,6 +586,7 @@ export function MapView() {
         "base-rivers",
         "base-roads",
         "base-regions",
+        "world-land",
       ]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
       }
@@ -610,9 +644,11 @@ export function MapView() {
         fetchJson("/data/ghana-rivers.geojson").catch(() => null),
         fetchJson("/data/ghana-regions.geojson").catch(() => null),
         fetchJson("/data/ghana-places.geojson").catch(() => null),
-      ]).then(([geo, roads, rivers, regions, places]) => {
+        fetchJson("/data/world-land.geojson").catch(() => null),
+      ]).then(([geo, roads, rivers, regions, places, worldLand]) => {
         if (mapRef.current !== map) return;
         if (geo) geoRef.current = geo;
+        if (worldLand) worldLandRef.current = worldLand as GeoJSON.FeatureCollection;
         baseDataRef.current = {
           roads: roads ?? undefined,
           rivers: rivers ?? undefined,
@@ -879,21 +915,21 @@ export function MapView() {
     map.fitBounds(GHANA_BOUNDS, { padding: 20 });
   };
 
-  const accuracyLabel = gps ? `±${Math.round(gps.accuracy)} m` : null;
-  const accuracyAmber = gps ? gps.accuracy > 30 : false;
-
   return (
     <div className="fixed left-0 right-0 top-11 bottom-16 overflow-hidden bg-[#121417]">
       <style>{`
         .maplibregl-ctrl-scale {
+          box-sizing: border-box;
           background: rgba(18,20,23,0.75) !important;
           border: 1px solid rgba(200,210,225,0.6) !important;
-          border-top: none !important;
+          border-radius: 6px !important;
           color: #E8EAF0 !important;
           font-size: 10px !important;
           font-weight: 600 !important;
           letter-spacing: 0.04em !important;
-          padding: 1px 4px !important;
+          height: 26px !important;
+          line-height: 24px !important;
+          padding: 0 6px !important;
           text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important;
         }
         .maplibregl-ctrl-bottom-left {
@@ -901,6 +937,7 @@ export function MapView() {
         }
       `}</style>
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+
 
       {initError && (
         <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">
@@ -1002,16 +1039,8 @@ export function MapView() {
         <Navigation2 className="h-5 w-5" strokeWidth={2.5} style={{ transform: `rotate(${-bearing}deg)` }} />
       </button>
 
-      {/* GPS accuracy chip */}
-      {accuracyLabel && (
-        <div
-          className={`absolute bottom-3 right-16 z-10 inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 mono ${
-            accuracyAmber ? "text-amber-400" : "text-foreground"
-          }`}
-        >
-          {accuracyLabel}
-        </div>
-      )}
+
+
 
       {/* Recenter / locate FAB */}
       <button
@@ -1028,10 +1057,11 @@ export function MapView() {
         <button
           type="button"
           onClick={() => setLegendOpen(true)}
-          className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/85 backdrop-blur-md px-3 py-1.5 shadow-lg shadow-black/40"
+          className="absolute bottom-3 left-3 z-10 inline-flex items-center justify-center gap-1.5 border border-border bg-background/85 backdrop-blur-md shadow-lg shadow-black/40"
+          style={{ width: 96, height: 26, borderRadius: 6, fontSize: 10 }}
         >
-          <Layers className="h-3.5 w-3.5 text-foreground" />
-          <span className="text-[10px] font-semibold text-foreground">Legend</span>
+          <Layers className="h-3 w-3 text-foreground" />
+          <span className="font-semibold text-foreground uppercase tracking-wider" style={{ fontSize: 10 }}>Legend</span>
         </button>
       )}
       {!online && legendOpen && (

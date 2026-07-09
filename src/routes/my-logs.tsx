@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
-import { Search, Image as ImageIcon, Mic, Trash2 } from "lucide-react";
+import { Search, Image as ImageIcon, Mic, Trash2, FileDown, Loader2, X } from "lucide-react";
+import { buildTraverseReport, reportFilename, shareOrDownload } from "../lib/report";
 import {
   deleteLog,
   displayRef,

@@ -29,7 +29,7 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-const APP_VERSION = "v2.1";
+const APP_VERSION = "1.0.0";
 const EDITION = "Ghana Edition";
 const CONTACT_EMAIL = ""; // set to enable the Send feedback button
 
@@ -115,7 +115,7 @@ function AboutPage() {
           </p>
           <div className="mt-3 flex items-center gap-2">
             <span className="mono text-[10px] font-semibold tracking-wider uppercase text-foreground border border-border rounded-full px-2.5 py-1">
-              {APP_VERSION}
+              v{APP_VERSION}
             </span>
             <span className="mono text-[10px] font-semibold tracking-wider uppercase text-primary border border-primary/40 rounded-full px-2.5 py-1">
               {EDITION}
@@ -365,7 +365,7 @@ function AboutPage() {
             survey-grade positioning.
           </p>
           <p className="mono text-[10px] tracking-wider uppercase text-muted-foreground">
-            {APP_VERSION} · {EDITION}
+            v{APP_VERSION} · {EDITION}
           </p>
           <p className="text-[11px] text-muted-foreground">&copy; 2026 Eon Designs</p>
         </footer>

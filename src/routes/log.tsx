@@ -175,7 +175,7 @@ function LogScreen() {
         const code = (err as GeolocationPositionError | undefined)?.code;
         const msg =
           code === 1
-            ? "Location permission denied. Turn on location in your phone settings and allow location access for this site, then tap LOCATE ME again."
+            ? "Location permission denied. Turn on location and allow access for this site in your browser settings, then try again."
             : code === 2
             ? "GPS position unavailable. Move to open sky and retry."
             : code === 3

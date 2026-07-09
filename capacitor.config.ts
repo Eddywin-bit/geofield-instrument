@@ -5,6 +5,11 @@ const config: CapacitorConfig = {
   // without becoming a different app that cannot read the old app's data.
   appId: "com.eondesigns.geofield",
   appName: "GeoField",
+  // Pinch-zoom off across the whole WebView UI. Capacitor defaults this to
+  // false, but we set it explicitly so a future Capacitor default flip cannot
+  // silently re-enable zooming on the nav bar and buttons. MapLibre sets
+  // touch-action:none on its own canvas, so map gestures are unaffected.
+  zoomEnabled: false,
   // TanStack Start emits client assets here. CI copies dist/client/_shell.html
   // to dist/client/index.html before `cap add android` runs.
   webDir: "dist/client",

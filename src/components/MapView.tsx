@@ -2,13 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification, type LayerSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
-import { Navigation2, Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
+import { Navigation2, Crosshair, ChevronDown, Layers, Minus, Plus, X } from "lucide-react";
 import { Protocol, PMTiles, FileSource } from "pmtiles";
 import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
+const GHANA_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [-4.8, 3.6],
+  [2.6, 12.2],
+];
 const BG = "#121417";
 
 const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
@@ -18,18 +22,66 @@ const BASEMAP_SIZE = 92038624;
 const BASEMAP_FILE_NAME = "ghana.pmtiles";
 const BASEMAP_STYLE_URL = `pmtiles://${BASEMAP_FILE_NAME}`;
 
+const REGIONAL_CAPITALS: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: (
+    [
+      ["Accra", 5.6037, -0.187],
+      ["Kumasi", 6.6885, -1.6244],
+      ["Tamale", 9.4008, -0.8393],
+      ["Sekondi-Takoradi", 4.934, -1.7137],
+      ["Cape Coast", 5.1054, -1.2466],
+      ["Koforidua", 6.0941, -0.2591],
+      ["Sunyani", 7.3349, -2.3123],
+      ["Ho", 6.611, 0.4713],
+      ["Bolgatanga", 10.7856, -0.8514],
+      ["Wa", 10.0601, -2.5099],
+      ["Techiman", 7.5909, -1.9344],
+      ["Goaso", 6.8036, -2.517],
+      ["Sefwi Wiawso", 6.2059, -2.4854],
+      ["Dambai", 8.0654, 0.1786],
+      ["Nalerigu", 10.5273, -0.3697],
+      ["Damongo", 9.083, -1.8188],
+    ] as Array<[string, number, number]>
+  ).map(([name, lat, lng]) => ({
+    type: "Feature" as const,
+    properties: { name },
+    geometry: { type: "Point" as const, coordinates: [lng, lat] },
+  })),
+};
+
+const PERM_DENIED_MSG =
+  "Location is blocked for this app. Enable location permission in your browser or site settings, then try again.";
+const POS_UNAVAILABLE_MSG =
+  "Location unavailable. Check that your device's GPS/location is switched on.";
+const TIMEOUT_MSG = "GPS timed out. Move to open sky and try again.";
+
+function geoErrMsg(code: number): string | null {
+  if (code === 1) return PERM_DENIED_MSG;
+  if (code === 2) return POS_UNAVAILABLE_MSG;
+  if (code === 3) return TIMEOUT_MSG;
+  return null;
+}
+
 const pmProtocol = new Protocol();
 maplibregl.addProtocol("pmtiles", pmProtocol.tile);
 
 function buildBasemapLayers(): LayerSpecification[] {
   const list = basemapLayers("basemap", namedFlavor("black"), { lang: "en" }) as LayerSpecification[];
-  // Our app bundles ONLY "Noto Sans Regular" glyphs; force every symbol layer to that stack.
-  return list.map((l) => {
-    if (l.type === "symbol" && l.layout) {
-      return { ...l, layout: { ...l.layout, "text-font": ["Noto Sans Regular"] } } as LayerSpecification;
-    }
-    return l;
-  });
+  return list
+    .filter((l) => {
+      if (l.type !== "symbol") return true;
+      if (l.id.toLowerCase().includes("shield")) return false;
+      const tf = (l.layout as { "text-field"?: unknown } | undefined)?.["text-field"];
+      if (tf !== undefined && JSON.stringify(tf).includes('"ref"')) return false;
+      return true;
+    })
+    .map((l) => {
+      if (l.type === "symbol" && l.layout) {
+        return { ...l, layout: { ...l.layout, "text-font": ["Noto Sans Regular"] } } as LayerSpecification;
+      }
+      return l;
+    });
 }
 
 function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
@@ -94,12 +146,20 @@ export function MapView() {
   const [basemapReady, setBasemapReady] = useState(false);
   const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "error">("idle");
   const [downloadPct, setDownloadPct] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
   const onlineRef = useRef(online);
   onlineRef.current = online;
   const basemapReadyRef = useRef(basemapReady);
   basemapReadyRef.current = basemapReady;
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 6000);
+  };
 
   // Init map once
   useEffect(() => {
@@ -117,10 +177,12 @@ export function MapView() {
         pitchWithRotate: false,
         touchPitch: false,
         maxPitch: 0,
+        maxBounds: GHANA_MAX_BOUNDS,
+        minZoom: 5.2,
       });
       map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
+      map.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
     } catch (err) {
-      const msg = (err as Error).message;
       console.warn("[MapView] map construction failed", err);
       setInitError("Map cannot render on this device (WebGL unavailable).");
       return;
@@ -144,10 +206,7 @@ export function MapView() {
           id: "geology-line-soft",
           type: "line",
           source: "geology",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
+          layout: { "line-join": "round", "line-cap": "round" },
           paint: {
             "line-color": "#000000",
             "line-opacity": 0.14,
@@ -159,10 +218,7 @@ export function MapView() {
           id: "geology-line",
           type: "line",
           source: "geology",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
+          layout: { "line-join": "round", "line-cap": "round" },
           paint: {
             "line-color": "#000000",
             "line-opacity": 0.4,
@@ -316,26 +372,114 @@ export function MapView() {
       }
     };
 
+    const ensureCapitalsLayer = () => {
+      try {
+        if (!map.getSource("regional-capitals")) {
+          map.addSource("regional-capitals", { type: "geojson", data: REGIONAL_CAPITALS });
+        }
+        if (!map.getLayer("regional-capitals-dot")) {
+          map.addLayer({
+            id: "regional-capitals-dot",
+            type: "circle",
+            source: "regional-capitals",
+            minzoom: 5.2,
+            paint: {
+              "circle-radius": 2.5,
+              "circle-color": "#E8EAF0",
+              "circle-stroke-color": "#0B0E14",
+              "circle-stroke-width": 1,
+            },
+          });
+        }
+        if (!map.getLayer("regional-capitals")) {
+          map.addLayer({
+            id: "regional-capitals",
+            type: "symbol",
+            source: "regional-capitals",
+            minzoom: 5.2,
+            layout: {
+              "text-field": ["get", "name"],
+              "text-font": ["Noto Sans Regular"],
+              "text-size": 11,
+              "text-anchor": "top",
+              "text-offset": [0, 0.6],
+              "text-allow-overlap": false,
+              "text-optional": true,
+            },
+            paint: {
+              "text-color": "#D6DAE2",
+              "text-halo-color": "#0B0E14",
+              "text-halo-width": 1.4,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn("[MapView] ensureCapitalsLayer failed", err);
+      }
+    };
+
     const applyAll = () => {
       const vectorBase = basemapReadyRef.current && !onlineRef.current;
       if (!vectorBase && baseDataRef.current) ensureBaseLayers(baseDataRef.current);
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
-      // Enforce draw order bottom→top by moving each existing layer to the top in sequence.
+      ensureCapitalsLayer();
+
+      if (vectorBase) {
+        // Insert geology BEFORE the first road-line or symbol layer in the basemap.
+        const styleLayers = (map.getStyle().layers ?? []) as LayerSpecification[];
+        let beforeId: string | undefined;
+        for (const l of styleLayers) {
+          if (
+            l.id.startsWith("geology") ||
+            l.id === "regional-capitals" ||
+            l.id === "regional-capitals-dot"
+          ) {
+            continue;
+          }
+          const sourceLayer = (l as { "source-layer"?: string })["source-layer"];
+          const isRoadLine =
+            l.type === "line" &&
+            (((sourceLayer && /road|transport/i.test(sourceLayer)) as boolean) ||
+              /road|transport/i.test(l.id));
+          if (isRoadLine || l.type === "symbol") {
+            beforeId = l.id;
+            break;
+          }
+        }
+        if (beforeId) {
+          for (const id of ["geology-fill", "geology-line-soft", "geology-line"]) {
+            if (map.getLayer(id)) map.moveLayer(id, beforeId);
+          }
+        }
+        // Capitals sit above geology (moveLayer with no arg = top).
+        for (const id of ["regional-capitals-dot", "regional-capitals"]) {
+          if (map.getLayer(id)) map.moveLayer(id);
+        }
+      } else {
+        for (const id of [
+          "base-rivers",
+          "base-roads",
+          "base-regions",
+          "geology-fill",
+          "geology-line-soft",
+          "geology-line",
+          "regional-capitals-dot",
+          "regional-capitals",
+          "road-labels",
+          "place-labels-town",
+          "place-labels-city",
+        ]) {
+          if (map.getLayer(id)) map.moveLayer(id);
+        }
+      }
+
+      const placeLabelVisibility = onlineRef.current ? "none" : "visible";
       for (const id of [
-        "base-rivers",
-        "base-roads",
-        "base-regions",
-        "geology-fill",
-        "geology-line-soft",
-        "geology-line",
-        "road-labels",
         "place-labels-town",
         "place-labels-city",
+        "regional-capitals",
+        "regional-capitals-dot",
       ]) {
-        if (map.getLayer(id)) map.moveLayer(id);
-      }
-      const placeLabelVisibility = onlineRef.current ? "none" : "visible";
-      for (const id of ["place-labels-town", "place-labels-city"]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
       }
     };
@@ -346,7 +490,12 @@ export function MapView() {
     });
 
     const onWindowResize = () => map.resize();
+    const onVisibility = () => {
+      if (!document.hidden) map.resize();
+    };
     window.addEventListener("resize", onWindowResize);
+    window.addEventListener("focus", onWindowResize);
+    document.addEventListener("visibilitychange", onVisibility);
     requestAnimationFrame(() => {
       try {
         map.resize();
@@ -386,8 +535,6 @@ export function MapView() {
       });
     });
 
-    // Register click / hover handlers once. Layer-scoped listeners are safe
-    // even if the layer is re-added later (e.g. after setStyle).
     map.on("click", "geology-fill", (e) => {
       const f = e.features?.[0];
       const name = (f?.properties as { unit_name?: string } | undefined)?.unit_name;
@@ -405,12 +552,13 @@ export function MapView() {
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", onWindowResize);
+      window.removeEventListener("focus", onWindowResize);
+      document.removeEventListener("visibilitychange", onVisibility);
       map.remove();
       mapRef.current = null;
     };
   }, []);
 
-  // Online / basemap-ready toggle — skip first run so we don't race the initial style load.
   useEffect(() => {
     if (firstRunRef.current) {
       firstRunRef.current = false;
@@ -424,7 +572,6 @@ export function MapView() {
     });
   }, [online, basemapReady]);
 
-  // On mount: if the basemap is already cached, register it with the pmtiles protocol.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -498,7 +645,6 @@ export function MapView() {
     }
   };
 
-
   // Watch GPS
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -510,8 +656,9 @@ export function MapView() {
           accuracy: pos.coords.accuracy,
         });
       },
-      () => {
-        /* silent */
+      (err) => {
+        const msg = geoErrMsg(err.code);
+        if (msg) showToast(msg);
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
     );
@@ -570,7 +717,6 @@ export function MapView() {
     }
   }, [gps]);
 
-  // Resize accuracy circle on zoom
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -590,7 +736,6 @@ export function MapView() {
     };
   }, []);
 
-  // Hide popup on map move
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -601,7 +746,6 @@ export function MapView() {
     };
   }, []);
 
-  // Track bearing so the compass button reflects the map rotation
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -614,18 +758,46 @@ export function MapView() {
 
   const zoomIn = () => mapRef.current?.zoomIn();
   const zoomOut = () => mapRef.current?.zoomOut();
-  const recenter = () => {
+  const recenter = async () => {
     const map = mapRef.current;
     if (!map) return;
-    if (gps) {
-      map.flyTo({ center: [gps.lng, gps.lat], zoom: Math.max(map.getZoom(), 12) });
-    } else {
-      map.fitBounds(GHANA_BOUNDS, { padding: 20 });
+    try {
+      if (typeof navigator !== "undefined" && navigator.permissions) {
+        const p = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+        if (p.state === "denied") {
+          showToast(PERM_DENIED_MSG);
+          return;
+        }
+      }
+    } catch {
+      /* ignore — some browsers don't support this */
     }
+    if (gpsRef.current) {
+      const g = gpsRef.current;
+      map.flyTo({ center: [g.lng, g.lat], zoom: Math.max(map.getZoom(), 12) });
+      return;
+    }
+    map.fitBounds(GHANA_BOUNDS, { padding: 20 });
   };
+
+  const accuracyLabel = gps ? `±${Math.round(gps.accuracy)} m` : null;
+  const accuracyAmber = gps ? gps.accuracy > 30 : false;
 
   return (
     <div className="fixed left-0 right-0 top-11 bottom-16 overflow-hidden bg-[#121417]">
+      <style>{`
+        .maplibregl-ctrl-scale {
+          background: rgba(18,20,23,0.75) !important;
+          border: 1px solid rgba(200,210,225,0.6) !important;
+          border-top: none !important;
+          color: #E8EAF0 !important;
+          font-size: 10px !important;
+          font-weight: 600 !important;
+          letter-spacing: 0.04em !important;
+          padding: 1px 4px !important;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important;
+        }
+      `}</style>
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
 
       {initError && (
@@ -655,6 +827,23 @@ export function MapView() {
           </button>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 max-w-[92%]">
+          <div className="flex items-start gap-2 rounded-md border border-border bg-background/95 backdrop-blur-md px-3 py-2 shadow-lg shadow-black/50">
+            <span className="text-[11px] leading-snug text-foreground">{toast}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Zoom controls */}
       <div className="absolute top-16 right-3 flex flex-col rounded-md border border-border bg-background/85 backdrop-blur-md overflow-hidden shadow-lg shadow-black/40 z-10">
@@ -687,8 +876,7 @@ export function MapView() {
         </button>
       )}
       {!online && downloadState === "downloading" && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground"
-        >
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground">
           Downloading… {downloadPct}%
         </div>
       )}
@@ -712,7 +900,18 @@ export function MapView() {
         <Navigation2 className="h-5 w-5" strokeWidth={2.5} style={{ transform: `rotate(${-bearing}deg)` }} />
       </button>
 
-      {/* Recenter FAB */}
+      {/* GPS accuracy chip */}
+      {accuracyLabel && (
+        <div
+          className={`absolute bottom-3 right-16 z-10 inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 mono ${
+            accuracyAmber ? "text-amber-400" : "text-foreground"
+          }`}
+        >
+          {accuracyLabel}
+        </div>
+      )}
+
+      {/* Recenter / locate FAB */}
       <button
         type="button"
         onClick={recenter}

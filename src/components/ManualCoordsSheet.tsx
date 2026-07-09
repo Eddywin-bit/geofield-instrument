@@ -35,6 +35,9 @@ export function ManualCoordsSheet({
   const [easting, setEasting] = useState("");
   const [northing, setNorthing] = useState("");
 
+  // Android hardware back closes the sheet instead of leaving the Locate screen.
+  useBackHandler(open, onClose);
+
   if (!open) return null;
 
   const parseNum = (s: string): number | null => {

@@ -466,9 +466,9 @@ function FixCard({
         </div>
         <button
           onClick={onRelocate}
-          className="px-3 py-1.5 rounded-md border border-primary/70 bg-primary/10 text-primary text-[11px] font-semibold tracking-[0.14em] hover:bg-primary/20 active:scale-95 transition flex items-center gap-1.5"
+          className="h-9 px-3.5 rounded-md bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.14em] shadow-md shadow-black/30 active:scale-95 transition flex items-center gap-1.5"
         >
-          <Crosshair className="h-3.5 w-3.5" />
+          <Crosshair className="h-3.5 w-3.5" strokeWidth={2.5} />
           RE-LOCATE
         </button>
       </div>

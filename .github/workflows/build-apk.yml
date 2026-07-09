@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       versionName:
-        description: 'Version name, e.g. 0.2.0'
+        description: 'Version name, e.g. 0.2.1'
         required: true
-        default: '0.2.0'
+        default: '0.2.1'
 
 jobs:
   build:
@@ -48,6 +48,15 @@ jobs:
 
       - name: Sync web assets into Android project
         run: ./node_modules/.bin/cap sync android
+
+      - name: Generate app icons and splash from the GeoField mark
+        run: |
+          ./node_modules/.bin/capacitor-assets generate --android \
+            --iconBackgroundColor '#121417' \
+            --iconBackgroundColorDark '#121417' \
+            --splashBackgroundColor '#121417' \
+            --splashBackgroundColorDark '#121417'
+          find android/app/src/main/res -name "ic_launcher*" | head -20
 
       - name: Add required permissions to AndroidManifest
         run: |

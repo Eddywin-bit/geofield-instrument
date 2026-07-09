@@ -52,6 +52,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/__l5e/")) return;
 
   // Stale-while-revalidate for /data: serve cache instantly (offline-safe),
   // refresh in the background so data edits propagate on the next load.

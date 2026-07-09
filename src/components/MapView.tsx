@@ -1,15 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import maplibregl, { type StyleSpecification } from "maplibre-gl";
+import maplibregl, { type StyleSpecification, type LayerSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
 import { Navigation2, Crosshair, ChevronDown, Layers, Minus, Plus } from "lucide-react";
+import { Protocol, PMTiles, FileSource } from "pmtiles";
+import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#121417";
 
-function buildStyle(online: boolean): StyleSpecification {
+const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
+const BASEMAP_CACHE = "geofield-basemap-v1";
+const BASEMAP_KEY = "/basemap/ghana.pmtiles";
+const BASEMAP_SIZE = 92038624;
+const BASEMAP_FILE_NAME = "ghana.pmtiles";
+const BASEMAP_STYLE_URL = `pmtiles://${BASEMAP_FILE_NAME}`;
+
+const pmProtocol = new Protocol();
+maplibregl.addProtocol("pmtiles", pmProtocol.tile);
+
+function buildBasemapLayers(): LayerSpecification[] {
+  const list = basemapLayers("basemap", namedFlavor("black"), { lang: "en" }) as LayerSpecification[];
+  // Our app bundles ONLY "Noto Sans Regular" glyphs; force every symbol layer to that stack.
+  return list.map((l) => {
+    if (l.type === "symbol" && l.layout) {
+      return { ...l, layout: { ...l.layout, "text-font": ["Noto Sans Regular"] } } as LayerSpecification;
+    }
+    return l;
+  });
+}
+
+function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
   const layers: StyleSpecification["layers"] = [
     { id: "bg", type: "background", paint: { "background-color": BG } },
@@ -32,6 +55,9 @@ function buildStyle(online: boolean): StyleSpecification {
       source: "osm",
       paint: { "raster-opacity": 0.75 },
     });
+  } else if (basemap) {
+    sources.basemap = { type: "vector", url: BASEMAP_STYLE_URL };
+    for (const l of buildBasemapLayers()) layers.push(l);
   }
   return { version: 8, sources, layers, glyphs: "/fonts/{fontstack}/{range}.pbf", projection: { type: "globe" } as any };
 }
@@ -65,10 +91,15 @@ export function MapView() {
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [bearing, setBearing] = useState(0);
+  const [basemapReady, setBasemapReady] = useState(false);
+  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "error">("idle");
+  const [downloadPct, setDownloadPct] = useState(0);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
   const onlineRef = useRef(online);
   onlineRef.current = online;
+  const basemapReadyRef = useRef(basemapReady);
+  basemapReadyRef.current = basemapReady;
 
   // Init map once
   useEffect(() => {
@@ -78,7 +109,7 @@ export function MapView() {
     try {
       map = new maplibregl.Map({
         container: containerRef.current,
-        style: buildStyle(false),
+        style: buildStyle(false, basemapReadyRef.current),
         bounds: GHANA_BOUNDS,
         fitBoundsOptions: { padding: 20 },
         attributionControl: false,
@@ -286,7 +317,8 @@ export function MapView() {
     };
 
     const applyAll = () => {
-      if (baseDataRef.current) ensureBaseLayers(baseDataRef.current);
+      const vectorBase = basemapReadyRef.current && !onlineRef.current;
+      if (!vectorBase && baseDataRef.current) ensureBaseLayers(baseDataRef.current);
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       // Enforce draw order bottom→top by moving each existing layer to the top in sequence.
       for (const id of [
@@ -378,7 +410,7 @@ export function MapView() {
     };
   }, []);
 
-  // Online toggle — skip first run so we don't race the initial style load.
+  // Online / basemap-ready toggle — skip first run so we don't race the initial style load.
   useEffect(() => {
     if (firstRunRef.current) {
       firstRunRef.current = false;
@@ -386,11 +418,86 @@ export function MapView() {
     }
     const map = mapRef.current;
     if (!map) return;
-    map.setStyle(buildStyle(online), { diff: false });
+    map.setStyle(buildStyle(online, basemapReady), { diff: false });
     map.once("style.load", () => {
       reapplyGeologyRef.current?.();
     });
-  }, [online]);
+  }, [online, basemapReady]);
+
+  // On mount: if the basemap is already cached, register it with the pmtiles protocol.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (typeof caches === "undefined") return;
+        const cache = await caches.open(BASEMAP_CACHE);
+        const hit = await cache.match(BASEMAP_KEY);
+        if (!hit || cancelled) return;
+        const blob = await hit.blob();
+        if (cancelled) return;
+        const file = new File([blob], BASEMAP_FILE_NAME);
+        pmProtocol.add(new PMTiles(new FileSource(file)));
+        setBasemapReady(true);
+      } catch (err) {
+        console.warn("[MapView] basemap cache load failed", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const downloadBasemap = async () => {
+    setDownloadState("downloading");
+    setDownloadPct(0);
+    try {
+      const res = await fetch(BASEMAP_ASSET_URL);
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      const total = Number(res.headers.get("Content-Length")) || BASEMAP_SIZE;
+      const [progressBranch, cacheBranch] = res.body.tee();
+
+      const cache = await caches.open(BASEMAP_CACHE);
+      const cachePut = cache.put(
+        BASEMAP_KEY,
+        new Response(cacheBranch, { headers: { "Content-Type": "application/octet-stream" } }),
+      );
+
+      const reader = progressBranch.getReader();
+      let received = 0;
+      const readAll = (async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            received += value.byteLength;
+            const pct = Math.min(99, Math.floor((received / total) * 100));
+            setDownloadPct(pct);
+          }
+        }
+      })();
+
+      await Promise.all([cachePut, readAll]);
+
+      const hit = await cache.match(BASEMAP_KEY);
+      if (!hit) throw new Error("cache miss after put");
+      const blob = await hit.blob();
+      const file = new File([blob], BASEMAP_FILE_NAME);
+      pmProtocol.add(new PMTiles(new FileSource(file)));
+      setDownloadPct(100);
+      setBasemapReady(true);
+      setDownloadState("idle");
+    } catch (err) {
+      console.warn("[MapView] basemap download failed", err);
+      try {
+        const cache = await caches.open(BASEMAP_CACHE);
+        await cache.delete(BASEMAP_KEY);
+      } catch {
+        /* ignore */
+      }
+      setDownloadState("error");
+    }
+  };
+
 
   // Watch GPS
   useEffect(() => {
@@ -530,7 +637,7 @@ export function MapView() {
       )}
 
       {/* Offline / Online pill */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
         <div className="inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md overflow-hidden text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40">
           <button
             type="button"
@@ -547,6 +654,29 @@ export function MapView() {
             Online
           </button>
         </div>
+        {!online && !basemapReady && downloadState === "idle" && (
+          <button
+            type="button"
+            onClick={downloadBasemap}
+            className="mt-2 inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-3 py-1.5 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-foreground"
+          >
+            Download Ghana Base Map · 92 MB
+          </button>
+        )}
+        {!online && downloadState === "downloading" && (
+          <div className="mt-2 inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-3 py-1.5 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground">
+            Downloading… {downloadPct}%
+          </div>
+        )}
+        {!online && downloadState === "error" && (
+          <button
+            type="button"
+            onClick={downloadBasemap}
+            className="mt-2 inline-flex items-center rounded-full border border-destructive bg-background/85 backdrop-blur-md px-3 py-1.5 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-destructive"
+          >
+            Download failed — tap to retry
+          </button>
+        )}
       </div>
 
       {/* Zoom controls */}

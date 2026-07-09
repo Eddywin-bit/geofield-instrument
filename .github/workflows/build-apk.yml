@@ -1,0 +1,116 @@
+name: Build APK
+on:
+  workflow_dispatch:
+    inputs:
+      versionName:
+        description: 'Version name, e.g. 0.2.0'
+        required: true
+        default: '0.2.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build web assets
+        run: bun run build
+
+      - name: Verify dist exists
+        run: test -f dist/index.html && du -sh dist
+
+      - name: Generate Android project
+        run: ./node_modules/.bin/cap add android
+
+      - name: Sync web assets into Android project
+        run: ./node_modules/.bin/cap sync android
+
+      - name: Add required permissions to AndroidManifest
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          p = pathlib.Path("android/app/src/main/AndroidManifest.xml")
+          x = p.read_text()
+          perms = [
+            "android.permission.ACCESS_FINE_LOCATION",
+            "android.permission.ACCESS_COARSE_LOCATION",
+            "android.permission.RECORD_AUDIO",
+            "android.permission.INTERNET",
+          ]
+          add = "".join(
+            f'    <uses-permission android:name="{n}" />\n'
+            for n in perms if n not in x
+          )
+          if add:
+            x = x.replace("</manifest>", add + "</manifest>")
+            p.write_text(x)
+          print(x)
+          PY
+
+      - name: Set versionCode and versionName
+        env:
+          VN: ${{ inputs.versionName }}
+          VC: ${{ github.run_number }}
+        run: |
+          f=android/app/build.gradle
+          sed -i "s/versionCode .*/versionCode $VC/" "$f"
+          sed -i "s/versionName \".*\"/versionName \"$VN\"/" "$f"
+          grep -E "versionCode|versionName|applicationId" "$f"
+
+      - name: Restore keystore
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/geofield.keystore"
+          ls -l "$RUNNER_TEMP/geofield.keystore"
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/geofield.keystore" \
+            -Pandroid.injected.signing.store.password="$KS_PASS" \
+            -Pandroid.injected.signing.key.alias="$KS_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASS"
+
+      - name: Verify the APK is signed by our key
+        run: |
+          APK=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          echo "APK: $APK"
+          ls -lh "$APK"
+          SIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner | sort | tail -1)
+          "$SIGNER" verify --print-certs "$APK"
+          cp "$APK" "GeoField-${{ inputs.versionName }}.apk"
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/geofield.keystore"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GeoField-apk
+          path: GeoField-*.apk
+          retention-days: 7

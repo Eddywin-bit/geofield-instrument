@@ -191,7 +191,7 @@ export function MapView() {
               layout: { "line-join": "round", "line-cap": "round" },
               paint: {
                 "line-color": "#B8BEC9",
-                "line-opacity": 0.4,
+                "line-opacity": 0.55,
                 "line-width": ["interpolate", ["linear"], ["zoom"], 6, 0.4, 10, 1.0, 14, 2.4],
               },
             },

@@ -365,7 +365,8 @@ function AboutPage() {
             survey-grade positioning.
           </p>
           <p className="mono text-[10px] tracking-wider uppercase text-muted-foreground">
-            v{APP_VERSION} · {EDITION}
+            v{APP_VERSION}
+            {CHANNEL ? ` ${CHANNEL}` : ""} · {EDITION}
           </p>
           <p className="text-[11px] text-muted-foreground">&copy; 2026 Eon Designs</p>
         </footer>

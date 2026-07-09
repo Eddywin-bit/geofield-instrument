@@ -871,7 +871,7 @@ export function MapView() {
           text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important;
         }
         .maplibregl-ctrl-bottom-left {
-          bottom: 56px !important;
+          margin-bottom: 46px !important;
         }
       `}</style>
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />

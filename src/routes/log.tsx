@@ -4,7 +4,7 @@ import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
 import { Camera, Mic, Check, MapPin, Square, X } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
-import { readCurrentFix } from "./index";
+import { readCurrentFix, isFixStale } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
 import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
 
@@ -86,8 +86,11 @@ function LogScreen() {
   const chunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const staleRef = useRef(false);
   const [ctx, setCtx] = useState<Ctx>(() => {
-    const f = fresh ? null : readCurrentFix();
+    const stored = fresh ? null : readCurrentFix();
+    if (stored && isFixStale(stored)) staleRef.current = true;
+    const f = stored && !isFixStale(stored) ? stored : null;
     const hasFix = !!f && !(f.lat === 0 && f.lng === 0);
     return {
       unit: f?.unit ?? "Unmapped",
@@ -330,6 +333,12 @@ function LogScreen() {
           >
             <X className="h-4 w-4" />
           </button>
+        </div>
+      )}
+
+      {staleRef.current && locating && (
+        <div className="mx-4 mb-3 rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
+          Your last fix is over 30 minutes old. Acquiring a fresh position for this observation.
         </div>
       )}
 

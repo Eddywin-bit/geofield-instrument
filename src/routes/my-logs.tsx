@@ -59,6 +59,35 @@ function MyLogsScreen() {
     [logs, query],
   );
 
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Only ever count logs that still exist and still match the filter.
+  const selectedLogs = useMemo(
+    () => filtered.filter((l) => selectedIds.has(l.id)),
+    [filtered, selectedIds],
+  );
+  const allFilteredSelected = filtered.length > 0 && selectedLogs.length === filtered.length;
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelect = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleAll = () => {
+    if (allFilteredSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filtered.map((l) => l.id)));
+  };
+
   const grouped = useMemo(() => {
     const map = new Map<string, LogEntry[]>();
     for (const l of filtered) {

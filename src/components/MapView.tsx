@@ -365,7 +365,7 @@ export function MapView() {
             id: "place-labels-city",
             type: "symbol",
             source: "base-places",
-            filter: ["==", ["get", "place"], "city"],
+            filter: ["all", ["==", ["get", "place"], "city"], ["!", ["in", ["get", "name"], ["literal", CAPITAL_NAMES]]]],
             minzoom: 6,
             layout: {
               "text-field": ["get", "name"],

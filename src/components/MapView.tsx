@@ -10,6 +10,7 @@ import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#1B2027";
+const OCEAN = "#14304A";
 
 const BASEMAP_ASSET_URL = "/__l5e/assets-v1/3df05f2c-d083-43a1-9753-5c88e4ba4d40/ghana.pmtiles";
 const BASEMAP_CACHE = "geofield-basemap-v1";
@@ -171,7 +172,7 @@ function buildBasemapLayers(): LayerSpecification[] {
 function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
   const layers: StyleSpecification["layers"] = [
-    { id: "bg", type: "background", paint: { "background-color": BG } },
+    { id: "bg", type: "background", paint: { "background-color": OCEAN } },
   ];
   if (online) {
     sources.osm = {
@@ -273,7 +274,7 @@ export function MapView() {
       });
       attributionRef.current = new maplibregl.AttributionControl({ compact: true });
       map.addControl(attributionRef.current, "top-left");
-      map.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: "metric" }), "bottom-left");
+      map.addControl(new maplibregl.ScaleControl({ maxWidth: 96, unit: "metric" }), "bottom-left");
     } catch (err) {
       console.warn("[MapView] map construction failed", err);
       setInitError("Map cannot render on this device (WebGL unavailable).");

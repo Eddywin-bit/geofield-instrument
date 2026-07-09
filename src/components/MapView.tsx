@@ -317,7 +317,8 @@ export function MapView() {
     };
 
     const applyAll = () => {
-      if (baseDataRef.current) ensureBaseLayers(baseDataRef.current);
+      const vectorBase = basemapReadyRef.current && !onlineRef.current;
+      if (!vectorBase && baseDataRef.current) ensureBaseLayers(baseDataRef.current);
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       // Enforce draw order bottom→top by moving each existing layer to the top in sequence.
       for (const id of [
@@ -409,7 +410,7 @@ export function MapView() {
     };
   }, []);
 
-  // Online toggle — skip first run so we don't race the initial style load.
+  // Online / basemap-ready toggle — skip first run so we don't race the initial style load.
   useEffect(() => {
     if (firstRunRef.current) {
       firstRunRef.current = false;
@@ -417,11 +418,86 @@ export function MapView() {
     }
     const map = mapRef.current;
     if (!map) return;
-    map.setStyle(buildStyle(online), { diff: false });
+    map.setStyle(buildStyle(online, basemapReady), { diff: false });
     map.once("style.load", () => {
       reapplyGeologyRef.current?.();
     });
-  }, [online]);
+  }, [online, basemapReady]);
+
+  // On mount: if the basemap is already cached, register it with the pmtiles protocol.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (typeof caches === "undefined") return;
+        const cache = await caches.open(BASEMAP_CACHE);
+        const hit = await cache.match(BASEMAP_KEY);
+        if (!hit || cancelled) return;
+        const blob = await hit.blob();
+        if (cancelled) return;
+        const file = new File([blob], BASEMAP_FILE_NAME);
+        pmProtocol.add(new PMTiles(new FileSource(file)));
+        setBasemapReady(true);
+      } catch (err) {
+        console.warn("[MapView] basemap cache load failed", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const downloadBasemap = async () => {
+    setDownloadState("downloading");
+    setDownloadPct(0);
+    try {
+      const res = await fetch(BASEMAP_ASSET_URL);
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      const total = Number(res.headers.get("Content-Length")) || BASEMAP_SIZE;
+      const [progressBranch, cacheBranch] = res.body.tee();
+
+      const cache = await caches.open(BASEMAP_CACHE);
+      const cachePut = cache.put(
+        BASEMAP_KEY,
+        new Response(cacheBranch, { headers: { "Content-Type": "application/octet-stream" } }),
+      );
+
+      const reader = progressBranch.getReader();
+      let received = 0;
+      const readAll = (async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            received += value.byteLength;
+            const pct = Math.min(99, Math.floor((received / total) * 100));
+            setDownloadPct(pct);
+          }
+        }
+      })();
+
+      await Promise.all([cachePut, readAll]);
+
+      const hit = await cache.match(BASEMAP_KEY);
+      if (!hit) throw new Error("cache miss after put");
+      const blob = await hit.blob();
+      const file = new File([blob], BASEMAP_FILE_NAME);
+      pmProtocol.add(new PMTiles(new FileSource(file)));
+      setDownloadPct(100);
+      setBasemapReady(true);
+      setDownloadState("idle");
+    } catch (err) {
+      console.warn("[MapView] basemap download failed", err);
+      try {
+        const cache = await caches.open(BASEMAP_CACHE);
+        await cache.delete(BASEMAP_KEY);
+      } catch {
+        /* ignore */
+      }
+      setDownloadState("error");
+    }
+  };
+
 
   // Watch GPS
   useEffect(() => {

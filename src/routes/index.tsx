@@ -218,6 +218,7 @@ function LocateScreen() {
         }
       },
       onError: (err) => {
+        setErrorAction(null);
         const msg =
           "code" in err && (err as GeolocationPositionError).code === 1
             ? "Location permission denied. Turn on location and allow access for this site in your browser settings, then try again."

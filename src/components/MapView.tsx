@@ -346,13 +346,15 @@ export function MapView() {
         fetchJson("/data/ghana-roads.geojson").catch(() => null),
         fetchJson("/data/ghana-rivers.geojson").catch(() => null),
         fetchJson("/data/ghana-regions.geojson").catch(() => null),
-      ]).then(([geo, roads, rivers, regions]) => {
+        fetchJson("/data/ghana-places.geojson").catch(() => null),
+      ]).then(([geo, roads, rivers, regions, places]) => {
         if (mapRef.current !== map) return;
         if (geo) geoRef.current = geo;
         baseDataRef.current = {
           roads: roads ?? undefined,
           rivers: rivers ?? undefined,
           regions: regions ?? undefined,
+          places: places ?? undefined,
         };
         applyAll();
       });

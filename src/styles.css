@@ -110,3 +110,18 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+/* Native shell: no browser pinch-zoom and no text auto-inflation anywhere in
+   the UI chrome. The MapLibre canvas opts back in so map gestures still work. */
+html,
+body {
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.maplibregl-map,
+.maplibregl-canvas-container,
+.maplibregl-canvas {
+  touch-action: none;
+}

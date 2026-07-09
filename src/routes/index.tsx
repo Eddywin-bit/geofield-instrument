@@ -108,6 +108,7 @@ function LocateScreen() {
   const [fix, setFix] = useState<Fix | null>(null);
   const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorAction, setErrorAction] = useState<"location-settings" | "app-settings" | null>(null);
   const [showManual, setShowManual] = useState(false);
   const acqRef = useRef<Acquisition | null>(null);
   const stateRef = useRef(state);

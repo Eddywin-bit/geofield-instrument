@@ -66,7 +66,17 @@ function geoErrMsg(code: number): string | null {
 const pmProtocol = new Protocol();
 maplibregl.addProtocol("pmtiles", pmProtocol.tile);
 
+const CAPITAL_NAMES = [
+  "Accra", "Kumasi", "Tamale", "Sekondi-Takoradi", "Cape Coast", "Koforidua",
+  "Sunyani", "Ho", "Bolgatanga", "Wa", "Techiman", "Goaso", "Sefwi Wiawso",
+  "Dambai", "Nalerigu", "Damongo",
+];
+
 function buildBasemapLayers(): LayerSpecification[] {
+  const capitalExclusion: unknown = [
+    "!",
+    ["in", ["coalesce", ["get", "name:en"], ["get", "name"]], ["literal", CAPITAL_NAMES]],
+  ];
   const list = basemapLayers("basemap", namedFlavor("black"), { lang: "en" }) as LayerSpecification[];
   return list
     .filter((l) => {
@@ -77,8 +87,43 @@ function buildBasemapLayers(): LayerSpecification[] {
       return true;
     })
     .map((l) => {
-      if (l.type === "symbol" && l.layout) {
-        return { ...l, layout: { ...l.layout, "text-font": ["Noto Sans Regular"] } } as LayerSpecification;
+      const srcLayer = (l as { "source-layer"?: string })["source-layer"];
+      const idLower = l.id.toLowerCase();
+      const isWaterSrc = (srcLayer && /water/i.test(srcLayer)) || /water/i.test(idLower);
+      const isWaterwaySrc =
+        (srcLayer && /water(way)?/i.test(srcLayer)) || /water(way)?/i.test(idLower);
+      if (l.type === "fill" && isWaterSrc) {
+        return {
+          ...l,
+          paint: { ...((l as { paint?: object }).paint ?? {}), "fill-color": "#1D3A5C" },
+        } as LayerSpecification;
+      }
+      if (l.type === "line" && isWaterwaySrc) {
+        return {
+          ...l,
+          paint: {
+            ...((l as { paint?: object }).paint ?? {}),
+            "line-color": "#4A8FD4",
+            "line-opacity": 0.8,
+          },
+        } as LayerSpecification;
+      }
+      if (l.type === "symbol") {
+        const isPlaces = srcLayer === "places";
+        const existingFilter = (l as { filter?: unknown }).filter;
+        const mergedFilter = isPlaces
+          ? existingFilter
+            ? ["all", existingFilter, capitalExclusion]
+            : capitalExclusion
+          : existingFilter;
+        const nextLayout = l.layout
+          ? { ...l.layout, "text-font": ["Noto Sans Regular"] }
+          : l.layout;
+        return {
+          ...l,
+          ...(mergedFilter !== undefined ? { filter: mergedFilter } : {}),
+          ...(nextLayout ? { layout: nextLayout } : {}),
+        } as LayerSpecification;
       }
       return l;
     });

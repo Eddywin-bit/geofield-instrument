@@ -1039,16 +1039,8 @@ export function MapView() {
         <Navigation2 className="h-5 w-5" strokeWidth={2.5} style={{ transform: `rotate(${-bearing}deg)` }} />
       </button>
 
-      {/* GPS accuracy chip */}
-      {accuracyLabel && (
-        <div
-          className={`absolute bottom-3 right-16 z-10 inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 mono ${
-            accuracyAmber ? "text-amber-400" : "text-foreground"
-          }`}
-        >
-          {accuracyLabel}
-        </div>
-      )}
+
+
 
       {/* Recenter / locate FAB */}
       <button
@@ -1065,10 +1057,11 @@ export function MapView() {
         <button
           type="button"
           onClick={() => setLegendOpen(true)}
-          className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/85 backdrop-blur-md px-3 py-1.5 shadow-lg shadow-black/40"
+          className="absolute bottom-3 left-3 z-10 inline-flex items-center justify-center gap-1.5 border border-border bg-background/85 backdrop-blur-md shadow-lg shadow-black/40"
+          style={{ width: 96, height: 26, borderRadius: 6, fontSize: 10 }}
         >
-          <Layers className="h-3.5 w-3.5 text-foreground" />
-          <span className="text-[10px] font-semibold text-foreground">Legend</span>
+          <Layers className="h-3 w-3 text-foreground" />
+          <span className="font-semibold text-foreground uppercase tracking-wider" style={{ fontSize: 10 }}>Legend</span>
         </button>
       )}
       {!online && legendOpen && (

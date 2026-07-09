@@ -488,7 +488,9 @@ export function MapView() {
 
     const applyAll = () => {
       const vectorBase = basemapReadyRef.current && !onlineRef.current;
-      if (!vectorBase && baseDataRef.current) ensureBaseLayers(baseDataRef.current);
+      if (!onlineRef.current && !basemapReadyRef.current && baseDataRef.current) {
+        ensureBaseLayers(baseDataRef.current);
+      }
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       ensureCapitalsLayer();
 
@@ -533,7 +535,6 @@ export function MapView() {
           "geology-line",
           "regional-capitals-dot",
           "regional-capitals",
-          "road-labels",
           "place-labels-town",
           "place-labels-city",
         ]) {
@@ -547,14 +548,17 @@ export function MapView() {
         "place-labels-city",
         "regional-capitals",
         "regional-capitals-dot",
+        "base-rivers",
+        "base-roads",
+        "base-regions",
       ]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
       }
 
-      // Vector basemap already provides place + road labels; hide our GeoJSON fallback labels
+      // Vector basemap already provides place labels; hide our GeoJSON fallback labels
       // so towns like Kumasi don't render twice.
       if (vectorBase) {
-        for (const id of ["place-labels-city", "place-labels-town", "road-labels"]) {
+        for (const id of ["place-labels-city", "place-labels-town"]) {
           if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
         }
       }

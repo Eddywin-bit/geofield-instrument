@@ -637,7 +637,7 @@ export function MapView() {
       )}
 
       {/* Offline / Online pill */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
         <div className="inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md overflow-hidden text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40">
           <button
             type="button"

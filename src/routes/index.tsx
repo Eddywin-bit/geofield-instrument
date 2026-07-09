@@ -12,7 +12,12 @@ import {
   type AcquireCoords,
 } from "../lib/geo-acquire";
 import { ManualCoordsSheet, type ManualCoords } from "../components/ManualCoordsSheet";
-import { ensureLocationPermission } from "../lib/native";
+import {
+  ensureLocationPermission,
+  checkLocationReadiness,
+  openLocationSettings,
+  openAppSettings,
+} from "../lib/native";
 
 export const Route = createFileRoute("/")({
   head: () => ({

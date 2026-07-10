@@ -979,7 +979,7 @@ export function MapView() {
   };
 
   return (
-    <div className="fixed left-0 right-0 top-11 bottom-16 overflow-hidden bg-[#121417]">
+    <div className="fixed left-0 right-0 top-[calc(2.75rem+env(safe-area-inset-top))] bottom-[calc(4rem+env(safe-area-inset-bottom))] overflow-hidden bg-[#121417]">
       <style>{`
         .maplibregl-ctrl-scale {
           box-sizing: border-box;

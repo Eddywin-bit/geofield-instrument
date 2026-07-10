@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 import { formatCoord, formatTime, type LogEntry } from "./logs-store";
 
 // Keep in sync with APP_VERSION / CHANNEL in src/routes/about.tsx.
-const APP_VERSION = "0.1.0 Beta";
+const APP_VERSION = "0.5.0 Beta";
 
 const PAGE_W = 210;
 const PAGE_H = 297;
@@ -246,9 +246,35 @@ export function reportFilename(logs: LogEntry[]): string {
 
 export type ShareResult = "shared" | "downloaded" | "cancelled";
 
-// Hands the PDF to the OS share sheet where supported, otherwise downloads it.
-// Under Capacitor this is the only function that will need to change.
+// Hands the PDF to the OS.
+//
+// Native: the WebView supports neither Web Share with files nor blob-URL
+// anchor downloads, so doc.save() was a silent no-op in the APK. Write the
+// PDF into the app cache and hand its URI to the Android share sheet, where
+// saving to Files or Drive, or sending on WhatsApp, is one tap.
+//
+// Web: unchanged. Web Share where available, browser download otherwise.
 export async function shareOrDownload(doc: jsPDF, filename: string): Promise<ShareResult> {
+  const { Capacitor } = await import("@capacitor/core");
+  if (Capacitor.isNativePlatform()) {
+    const base64 = doc.output("datauristring").split(",")[1];
+    const { Filesystem, Directory } = await import("@capacitor/filesystem");
+    const written = await Filesystem.writeFile({
+      path: filename,
+      data: base64,
+      directory: Directory.Cache,
+    });
+    const { Share } = await import("@capacitor/share");
+    try {
+      await Share.share({ title: filename, files: [written.uri] });
+      return "shared";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/cancel/i.test(msg)) return "cancelled";
+      throw err;
+    }
+  }
+
   const blob = doc.output("blob");
   const file = new File([blob], filename, { type: "application/pdf" });
   const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };

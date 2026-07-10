@@ -6,7 +6,9 @@
       "name": "tanstack_start_ts",
       "dependencies": {
         "@capacitor/app": "^7",
+        "@capacitor/filesystem": "^7.1.8",
         "@capacitor/geolocation": "^7",
+        "@capacitor/share": "^7.0.4",
         "@fontsource/inter": "^5.2.8",
         "@fontsource/jetbrains-mono": "^5.2.8",
         "@hookform/resolvers": "^5.2.2",
@@ -153,9 +155,11 @@
 
     "@capacitor/core": ["@capacitor/core@7.6.7", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/core/-/core-7.6.7.tgz", { "dependencies": { "tslib": "^2.1.0" } }, "sha512-DR0kqfcsDzWhvskz+sJWy41cdv+P1ITjmOYYG5WSV88EO6tx5Tf82M61vp4NjV7rfQDUAQjBAypgaTiB2/2oEg=="],
 
-    "@capacitor/filesystem": ["@capacitor/filesystem@8.1.2", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/filesystem/-/filesystem-8.1.2.tgz", { "dependencies": { "@capacitor/synapse": "^1.0.4" }, "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-doaaMfGoFR2hWU6aV6u83I+5ZsGyJVq+Gz4r9lMpJzUKMm1eMu0hLnFdV1aXZlU9FlK/RndFrVD8oRZfNOqWgQ=="],
+    "@capacitor/filesystem": ["@capacitor/filesystem@7.1.8", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/filesystem/-/filesystem-7.1.8.tgz", { "dependencies": { "@capacitor/synapse": "^1.0.3" }, "peerDependencies": { "@capacitor/core": ">=7.0.0" } }, "sha512-Qpw/2SE4/CzqAUvGgSM9hw/uXQ5qoOaF4wxbToXwpAaKPS+tzletS1h5ti3jjLmGcqizTs2sEXMtcsARW/Ceew=="],
 
     "@capacitor/geolocation": ["@capacitor/geolocation@7.1.8", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/geolocation/-/geolocation-7.1.8.tgz", { "dependencies": { "@capacitor/synapse": "^1.0.3" }, "peerDependencies": { "@capacitor/core": ">=7.0.0" } }, "sha512-x/rJieD2N2zlGvXFRD3ru4ArJWTwXAIYmyhfo5zg4F1DKGos7mCCOvIOSVMdfQmt14SCsmJeO9Qe8EtDGNGCrw=="],
+
+    "@capacitor/share": ["@capacitor/share@7.0.4", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/share/-/share-7.0.4.tgz", { "peerDependencies": { "@capacitor/core": ">=7.0.0" } }, "sha512-wNXxmXUcChrtbZ5jQv8scFIbIGKo3rk6B7qpWySxfUhYJP5NANgAqQ9Z69m0k/zYsucdh66SBU7XW1ykd9aUug=="],
 
     "@capacitor/synapse": ["@capacitor/synapse@1.0.4", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@capacitor/synapse/-/synapse-1.0.4.tgz", {}, "sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw=="],
 

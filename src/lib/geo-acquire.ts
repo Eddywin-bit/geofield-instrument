@@ -38,6 +38,7 @@ export function startPositionWatch(
   onReading: (coords: AcquireCoords) => void,
   onError: (err: GeolocationPositionError | Error) => void,
   onStarted?: () => void,
+  opts?: { pump?: boolean },
 ): PositionWatch {
   if (Capacitor.isNativePlatform()) {
     let stopped = false;

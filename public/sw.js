@@ -1,7 +1,11 @@
 /* GeoField Companion Service Worker */
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL_CACHE = `geofield-shell-${VERSION}`;
 const DATA_CACHE = `geofield-data-${VERSION}`;
+// Owned by MapView, not by this worker. Holds the 92 MB offline basemap and its
+// resumable part files. It must survive every activation: re-downloading it
+// costs a field geologist real money on Ghanaian mobile data.
+const BASEMAP_CACHE = "geofield-basemap-v1";
 
 const SHELL_URLS = [
   "/",

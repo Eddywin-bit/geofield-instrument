@@ -299,11 +299,31 @@ function LogScreen() {
       recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
     } catch (err) {
       const name = (err as { name?: string })?.name;
+      // WebView audio capture failed. On native, fall back to recording
+      // through the plugin itself: it talks to Android's recorder directly
+      // and does not depend on the WebView's getUserMedia at all.
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { VoiceRecorder } = await import("capacitor-voice-recorder");
+          const started = await VoiceRecorder.startRecording();
+          if (started.value) {
+            nativeRecRef.current = true;
+            setRecording(true);
+            setRecordSec(0);
+            recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
+            return;
+          }
+        } catch (fallbackErr) {
+          console.warn("[voice] native fallback failed", fallbackErr);
+        }
+      }
       setVoiceError(
         name === "NotAllowedError"
-          ? "Microphone permission denied. Allow it in Settings, Apps, GeoField, Permissions, then try again."
+          ? "Microphone permission denied. Tap OPEN SETTINGS below, choose Permissions, then Microphone, then Allow."
           : "Could not start the microphone. Close any other app that may be using it and try again.",
       );
+      if (name === "NotAllowedError") setMicDenied(true);
       releaseMic();
     }
   };

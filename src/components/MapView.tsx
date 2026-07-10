@@ -23,6 +23,31 @@ const BASEMAP_KEY = "/basemap/ghana.pmtiles";
 const BASEMAP_SIZE = 92038624;
 const BASEMAP_FILE_NAME = "ghana.pmtiles";
 const BASEMAP_STYLE_URL = `pmtiles://${BASEMAP_FILE_NAME}`;
+// Downloaded as ranged chunks so a dropped connection resumes instead of
+// restarting. Each completed chunk is written straight to Cache Storage, so
+// peak memory is one chunk, not the whole 92 MB.
+const BASEMAP_CHUNK = 8 * 1024 * 1024;
+const BASEMAP_PART_PREFIX = "/basemap/ghana.pmtiles.part.";
+
+/** One ranged chunk, with a short backoff. Rejects if the server ignores Range. */
+async function fetchBasemapRange(start: number, end: number): Promise<Blob> {
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(BASEMAP_ASSET_URL, {
+        headers: { Range: `bytes=${start}-${end}` },
+        cache: "no-store",
+      });
+      if (res.status === 206) return await res.blob();
+      if (res.status === 200) throw new Error("server ignored Range header");
+      throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("range fetch failed");
+}
 
 const REGIONAL_CAPITALS: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",

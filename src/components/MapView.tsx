@@ -49,6 +49,109 @@ async function fetchBasemapRange(start: number, end: number): Promise<Blob> {
   throw lastErr instanceof Error ? lastErr : new Error("range fetch failed");
 }
 
+type BasemapDl = { status: "idle" | "downloading" | "error" | "done"; pct: number };
+
+/**
+ * Module-level so the download outlives the component. Switching tabs unmounts
+ * MapView; without this the progress UI reset while the chunk loop kept
+ * running, and two taps could race two loops against the same cache.
+ */
+const basemapDl = (() => {
+  let state: BasemapDl = { status: "idle", pct: 0 };
+  const listeners = new Set<(s: BasemapDl) => void>();
+  let inFlight = false;
+
+  const emit = (next: BasemapDl) => {
+    state = next;
+    for (const l of listeners) l(state);
+  };
+
+  const start = async () => {
+    if (inFlight) return;
+    inFlight = true;
+    emit({ status: "downloading", pct: state.pct });
+    try {
+      if (typeof caches === "undefined") throw new Error("Cache Storage unavailable");
+      const cache = await caches.open(BASEMAP_CACHE);
+      const partCount = Math.ceil(BASEMAP_SIZE / BASEMAP_CHUNK);
+
+      // Resume: count chunks already on disk from a previous attempt.
+      let done = 0;
+      for (let i = 0; i < partCount; i++) {
+        if (await cache.match(BASEMAP_PART_PREFIX + i)) done++;
+      }
+      emit({ status: "downloading", pct: Math.min(99, Math.floor((done / partCount) * 100)) });
+
+      for (let i = 0; i < partCount; i++) {
+        const key = BASEMAP_PART_PREFIX + i;
+        if (await cache.match(key)) continue;
+        const start_ = i * BASEMAP_CHUNK;
+        const end = Math.min(start_ + BASEMAP_CHUNK, BASEMAP_SIZE) - 1;
+        const chunk = await fetchBasemapRange(start_, end);
+        await cache.put(
+          key,
+          new Response(chunk, { headers: { "Content-Type": "application/octet-stream" } }),
+        );
+        done++;
+        emit({ status: "downloading", pct: Math.min(99, Math.floor((done / partCount) * 100)) });
+      }
+
+      // Assemble. Blob parts stay disk-backed, so this does not load 92 MB into RAM.
+      const parts: Blob[] = [];
+      for (let i = 0; i < partCount; i++) {
+        const hit = await cache.match(BASEMAP_PART_PREFIX + i);
+        if (!hit) throw new Error(`missing chunk ${i}`);
+        parts.push(await hit.blob());
+      }
+      const full = new Blob(parts, { type: "application/octet-stream" });
+      if (full.size !== BASEMAP_SIZE) {
+        throw new Error(`size mismatch: got ${full.size}, expected ${BASEMAP_SIZE}`);
+      }
+
+      await cache.put(
+        BASEMAP_KEY,
+        new Response(full, { headers: { "Content-Type": "application/octet-stream" } }),
+      );
+      for (let i = 0; i < partCount; i++) {
+        await cache.delete(BASEMAP_PART_PREFIX + i);
+      }
+
+      pmProtocol.add(new PMTiles(new FileSource(new File([full], BASEMAP_FILE_NAME))));
+      emit({ status: "done", pct: 100 });
+    } catch (err) {
+      console.warn("[MapView] basemap download failed", err);
+      // Completed chunks are deliberately kept. They are the resume point.
+      try {
+        const cache = await caches.open(BASEMAP_CACHE);
+        const hit = await cache.match(BASEMAP_KEY);
+        if (hit) {
+          const size = (await hit.blob()).size;
+          if (size !== BASEMAP_SIZE) await cache.delete(BASEMAP_KEY);
+        }
+      } catch {
+        /* ignore */
+      }
+      emit({ status: "error", pct: state.pct });
+    } finally {
+      inFlight = false;
+    }
+  };
+
+  return {
+    get: () => state,
+    subscribe(fn: (s: BasemapDl) => void) {
+      listeners.add(fn);
+      return () => {
+        listeners.delete(fn);
+      };
+    },
+    start,
+    dismissDone() {
+      if (state.status === "done") emit({ status: "idle", pct: 100 });
+    },
+  };
+})();
+
 const REGIONAL_CAPITALS: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: (
@@ -214,15 +317,15 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
   if (online) {
     // openstreetmap.org's own tile servers throttle third-party apps hard,
     // which is half the reason this layer took minutes to appear. CARTO serves
-    // the same OSM data from a global CDN, needs no API key, and its dark
-    // basemap matches the obsidian shell.
+    // the same OSM data from a global CDN with no API key. Voyager is the
+    // colourful street style: field-tested dark_all and it was unreadable.
     sources.osm = {
       type: "raster",
       tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
       attribution: "© OpenStreetMap contributors, © CARTO",
@@ -289,8 +392,7 @@ export function MapView() {
   const [legendOpen, setLegendOpen] = useState(false);
   const [bearing, setBearing] = useState(0);
   const [basemapReady, setBasemapReady] = useState(false);
-  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "error">("idle");
-  const [downloadPct, setDownloadPct] = useState(0);
+  const [dl, setDl] = useState<BasemapDl>(basemapDl.get());
   const [toast, setToast] = useState<string | null>(null);
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
@@ -780,75 +882,17 @@ export function MapView() {
     };
   }, []);
 
-  const downloadBasemap = async () => {
-    setDownloadState("downloading");
-    try {
-      if (typeof caches === "undefined") throw new Error("Cache Storage unavailable");
-      const cache = await caches.open(BASEMAP_CACHE);
-      const partCount = Math.ceil(BASEMAP_SIZE / BASEMAP_CHUNK);
+  // Re-attach to any in-flight download after a tab switch remounts this view,
+  // and flip to ready the moment the manager finishes.
+  useEffect(() => {
+    const unsub = basemapDl.subscribe(setDl);
+    setDl(basemapDl.get());
+    return unsub;
+  }, []);
 
-      // Resume: count chunks already on disk from a previous attempt.
-      let done = 0;
-      for (let i = 0; i < partCount; i++) {
-        if (await cache.match(BASEMAP_PART_PREFIX + i)) done++;
-      }
-      setDownloadPct(Math.min(99, Math.floor((done / partCount) * 100)));
-
-      for (let i = 0; i < partCount; i++) {
-        const key = BASEMAP_PART_PREFIX + i;
-        if (await cache.match(key)) continue;
-        const start = i * BASEMAP_CHUNK;
-        const end = Math.min(start + BASEMAP_CHUNK, BASEMAP_SIZE) - 1;
-        const chunk = await fetchBasemapRange(start, end);
-        await cache.put(
-          key,
-          new Response(chunk, { headers: { "Content-Type": "application/octet-stream" } }),
-        );
-        done++;
-        setDownloadPct(Math.min(99, Math.floor((done / partCount) * 100)));
-      }
-
-      // Assemble. Blob parts stay disk-backed, so this does not load 92 MB into RAM.
-      const parts: Blob[] = [];
-      for (let i = 0; i < partCount; i++) {
-        const hit = await cache.match(BASEMAP_PART_PREFIX + i);
-        if (!hit) throw new Error(`missing chunk ${i}`);
-        parts.push(await hit.blob());
-      }
-      const full = new Blob(parts, { type: "application/octet-stream" });
-      if (full.size !== BASEMAP_SIZE) {
-        throw new Error(`size mismatch: got ${full.size}, expected ${BASEMAP_SIZE}`);
-      }
-
-      await cache.put(
-        BASEMAP_KEY,
-        new Response(full, { headers: { "Content-Type": "application/octet-stream" } }),
-      );
-      for (let i = 0; i < partCount; i++) {
-        await cache.delete(BASEMAP_PART_PREFIX + i);
-      }
-
-      pmProtocol.add(new PMTiles(new FileSource(new File([full], BASEMAP_FILE_NAME))));
-      setDownloadPct(100);
-      setBasemapReady(true);
-      setDownloadState("idle");
-    } catch (err) {
-      console.warn("[MapView] basemap download failed", err);
-      // Completed chunks are deliberately kept. They are the resume point.
-      // Only a corrupt assembled file is discarded.
-      try {
-        const cache = await caches.open(BASEMAP_CACHE);
-        const hit = await cache.match(BASEMAP_KEY);
-        if (hit) {
-          const size = (await hit.blob()).size;
-          if (size !== BASEMAP_SIZE) await cache.delete(BASEMAP_KEY);
-        }
-      } catch {
-        /* ignore */
-      }
-      setDownloadState("error");
-    }
-  };
+  useEffect(() => {
+    if (dl.status === "done") setBasemapReady(true);
+  }, [dl.status]);
 
   // Watch GPS. Uses the fused provider on native; navigator.geolocation on web.
   useEffect(() => {
@@ -1068,24 +1112,34 @@ export function MapView() {
       </div>
 
       {/* Basemap download */}
-      {!online && !basemapReady && downloadState === "idle" && (
+      {!online && !basemapReady && dl.status === "idle" && (
         <button
           type="button"
-          onClick={downloadBasemap}
+          onClick={() => void basemapDl.start()}
           className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-foreground"
         >
           Download Ghana Base Map · 92 MB
         </button>
       )}
-      {!online && downloadState === "downloading" && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground">
-          Downloading… {downloadPct}%
+      {!online && dl.status === "downloading" && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground"
+        >
+          Downloading… {dl.pct}%
         </div>
       )}
-      {!online && downloadState === "error" && (
+      {!online && dl.status === "done" && (
         <button
           type="button"
-          onClick={downloadBasemap}
+          onClick={() => basemapDl.dismissDone()}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full border border-success bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-success"
+        >
+          Base map downloaded ✓
+        </button>
+      )}
+      {!online && dl.status === "error" && (
+        <button
+          type="button"
+          onClick={() => void basemapDl.start()}
           className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-destructive bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-destructive"
         >
           Download failed. Tap to resume.

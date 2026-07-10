@@ -241,7 +241,7 @@ function buildBasemapLayers(): LayerSpecification[] {
     ["in", ["coalesce", ["get", "name:en"], ["get", "name"]], ["literal", CAPITAL_NAMES]],
   ];
   const list = basemapLayers("basemap", namedFlavor("black"), { lang: "en" }) as LayerSpecification[];
-  return list
+  const layers = list
     .filter((l) => {
       if (l.type === "background") return false;
       if (l.type !== "symbol") return true;
@@ -307,6 +307,34 @@ function buildBasemapLayers(): LayerSpecification[] {
       }
       return l;
     });
+  const waterFillIdx = layers.findIndex(
+    (l) =>
+      l.type === "fill" &&
+      /water/.test(((l as { "source-layer"?: string })["source-layer"] ?? "").toLowerCase()),
+  );
+  if (waterFillIdx !== -1) {
+    layers.splice(waterFillIdx + 1, 0, {
+      id: "water-label",
+      type: "symbol",
+      source: "basemap",
+      "source-layer": "water",
+      minzoom: 10,
+      filter: ["has", "name"],
+      layout: {
+        "text-field": ["get", "name"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10.5,
+        "text-letter-spacing": 0.05,
+        "text-max-width": 8,
+      },
+      paint: {
+        "text-color": "#8FB4D9",
+        "text-halo-color": "#0B0E14",
+        "text-halo-width": 1.2,
+      },
+    } as LayerSpecification);
+  }
+  return layers;
 }
 
 function buildStyle(online: boolean, basemap: boolean): StyleSpecification {

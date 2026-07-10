@@ -125,3 +125,19 @@ body {
 .maplibregl-canvas {
   touch-action: none;
 }
+
+/* Native feel: UI chrome is not selectable copy. Inputs and notes keep
+   selection so people can edit and copy their own content. */
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}

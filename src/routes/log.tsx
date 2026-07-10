@@ -8,7 +8,7 @@ import { readCurrentFix, isFixStale } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
 import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
 import { ensureMicPermission, openAppSettings } from "../lib/mic";
-import { Capacitor } from "@capacitor/core";
+
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
@@ -88,6 +88,7 @@ function LogScreen() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const nativeRecRef = useRef(false);
 
   const staleRef = useRef(false);
   const [ctx, setCtx] = useState<Ctx>(() => {
@@ -209,7 +210,12 @@ function LogScreen() {
   };
 
   const stopRecording = () => {
-    if (Capacitor.isNativePlatform()) {
+    if (nativeRecRef.current) {
+      nativeRecRef.current = false;
+      if (recordTimerRef.current) {
+        clearInterval(recordTimerRef.current);
+        recordTimerRef.current = null;
+      }
       void (async () => {
         try {
           const { VoiceRecorder } = await import("capacitor-voice-recorder");
@@ -219,13 +225,9 @@ function LogScreen() {
             setVoice(`data:${d.mimeType || "audio/aac"};base64,${d.recordDataBase64}`);
           }
         } catch (err) {
-          setVoiceError("Recording could not be saved. Try again.");
           console.warn("[voice] native stop failed", err);
+          setVoiceError("Recording could not be saved. Try again.");
         } finally {
-          if (recordTimerRef.current) {
-            clearInterval(recordTimerRef.current);
-            recordTimerRef.current = null;
-          }
           setRecording(false);
         }
       })();
@@ -270,21 +272,6 @@ function LogScreen() {
       }
       return;
     }
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const { VoiceRecorder } = await import("capacitor-voice-recorder");
-        const res = await VoiceRecorder.startRecording();
-        if (!res.value) throw new Error("recorder refused to start");
-        setRecording(true);
-        setRecordSec(0);
-        recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
-      } catch (err) {
-        setVoiceError(
-          `Could not start the native recorder: ${err instanceof Error ? err.message : String(err)}. Close any other app using the microphone and try again.`,
-        );
-      }
-      return;
-    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -312,11 +299,31 @@ function LogScreen() {
       recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
     } catch (err) {
       const name = (err as { name?: string })?.name;
+      // WebView audio capture failed. On native, fall back to recording
+      // through the plugin itself: it talks to Android's recorder directly
+      // and does not depend on the WebView's getUserMedia at all.
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { VoiceRecorder } = await import("capacitor-voice-recorder");
+          const started = await VoiceRecorder.startRecording();
+          if (started.value) {
+            nativeRecRef.current = true;
+            setRecording(true);
+            setRecordSec(0);
+            recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
+            return;
+          }
+        } catch (fallbackErr) {
+          console.warn("[voice] native fallback failed", fallbackErr);
+        }
+      }
       setVoiceError(
         name === "NotAllowedError"
-          ? "Microphone permission denied. Allow it in Settings, Apps, GeoField, Permissions, then try again."
+          ? "Microphone permission denied. Tap OPEN SETTINGS below, choose Permissions, then Microphone, then Allow."
           : "Could not start the microphone. Close any other app that may be using it and try again.",
       );
+      if (name === "NotAllowedError") setMicDenied(true);
       releaseMic();
     }
   };

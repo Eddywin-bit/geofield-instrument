@@ -339,23 +339,26 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
     });
   } else if (basemap) {
     sources.basemap = { type: "vector", url: BASEMAP_STYLE_URL };
-    // The bundled PMTiles labels 15 of Ghana's 16 regional capitals; Cape
-    // Coast is missing from the generated asset. Patched here until the
-    // basemap is regenerated. Coordinates: Cape Coast, Central Region.
-    sources["cape-coast"] = {
+    sources["capital-fix"] = {
       type: "geojson",
       data: {
-        type: "Feature",
-        properties: { name: "Cape Coast" },
-        geometry: { type: "Point", coordinates: [-1.2466, 5.1054] },
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { name: "Cape Coast" },
+            geometry: { type: "Point", coordinates: [-1.2466, 5.1053] },
+          },
+        ],
       },
-    } as never;
+    };
     for (const l of buildBasemapLayers()) layers.push(l);
     layers.push({
-      id: "cape-coast-dot",
+      id: "capital-fix-dot",
       type: "circle",
-      source: "cape-coast",
+      source: "capital-fix",
       minzoom: 5.2,
+      maxzoom: 9,
       paint: {
         "circle-radius": 2.5,
         "circle-color": "#E8EAF0",
@@ -364,17 +367,19 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
       },
     });
     layers.push({
-      id: "cape-coast-label",
+      id: "capital-fix-label",
       type: "symbol",
-      source: "cape-coast",
+      source: "capital-fix",
       minzoom: 5.2,
+      maxzoom: 9,
       layout: {
         "text-field": ["get", "name"],
         "text-font": ["Noto Sans Regular"],
         "text-size": 11,
         "text-anchor": "top",
         "text-offset": [0, 0.6],
-        "text-allow-overlap": false,
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
         "text-optional": true,
       },
       paint: {

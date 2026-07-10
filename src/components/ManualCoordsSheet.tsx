@@ -189,6 +189,35 @@ export function ManualCoordsSheet({
           </div>
         )}
 
+        {format === "DMS" && (
+          <div className="space-y-3">
+            <Field label="Latitude (deg / min / sec / hemi)">
+              <div className="grid grid-cols-[1fr_1fr_1.3fr_4.5rem] gap-2">
+                <NumInput value={latDegD} onChange={(v) => setLatDegD(v.replace(/^-+/, ""))} placeholder="6" />
+                <NumInput value={latMinD} onChange={setLatMinD} placeholder="40" />
+                <NumInput value={latSecD} onChange={setLatSecD} placeholder="42.8" />
+                <HemiToggle
+                  value={latHemD}
+                  onChange={(v) => setLatHemD(v as "N" | "S")}
+                  options={["N", "S"]}
+                />
+              </div>
+            </Field>
+            <Field label="Longitude (deg / min / sec / hemi)">
+              <div className="grid grid-cols-[1fr_1fr_1.3fr_4.5rem] gap-2">
+                <NumInput value={lngDegD} onChange={(v) => setLngDegD(v.replace(/^-+/, ""))} placeholder="1" />
+                <NumInput value={lngMinD} onChange={setLngMinD} placeholder="33" />
+                <NumInput value={lngSecD} onChange={setLngSecD} placeholder="53.7" />
+                <HemiToggle
+                  value={lngHemD}
+                  onChange={(v) => setLngHemD(v as "E" | "W")}
+                  options={["E", "W"]}
+                />
+              </div>
+            </Field>
+          </div>
+        )}
+
         {format === "UTM" && (
           <div className="space-y-3">
             <Field label="Zone / Hemisphere">

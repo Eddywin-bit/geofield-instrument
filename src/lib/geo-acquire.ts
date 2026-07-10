@@ -109,6 +109,44 @@ export function startPositionWatch(
         }
         release = () => void Geolocation.clearWatch({ id });
         onStarted?.();
+
+        // The Android plugin's watch delivers roughly one reading every 10s,
+        // which starves the convergence: five readings for a plateau takes
+        // ~50s. During an active LOCATE cycle, pump one-shot high-accuracy
+        // requests every 2.5s into the same stream. Bounded at 90s and torn
+        // down with the watch, so it can never become a battery drain.
+        if (opts?.pump) {
+          const pumpStarted = Date.now();
+          let inFlight = false;
+          pumpTimer = setInterval(() => {
+            if (stopped || inFlight) return;
+            if (Date.now() - pumpStarted > 90_000) {
+              if (pumpTimer !== null) clearInterval(pumpTimer);
+              pumpTimer = null;
+              return;
+            }
+            inFlight = true;
+            Geolocation.getCurrentPosition({
+              enableHighAccuracy: true,
+              timeout: 9_000,
+              maximumAge: 0,
+            })
+              .then((pos) => {
+                if (stopped || !pos) return;
+                onReading({
+                  latitude: pos.coords.latitude,
+                  longitude: pos.coords.longitude,
+                  accuracy: pos.coords.accuracy,
+                });
+              })
+              .catch(() => {
+                /* single missed poll; the watch continues */
+              })
+              .finally(() => {
+                inFlight = false;
+              });
+          }, 2_500);
+        }
       } catch (err) {
         onError(err as Error);
       }

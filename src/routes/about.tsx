@@ -30,7 +30,9 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-const APP_VERSION = "0.1.0";
+// Single source of truth for the app version. The APK build workflow greps this
+// exact line, so keep the format `const APP_VERSION = "X.Y.Z";` on one line.
+const APP_VERSION = "0.4.0";
 const CHANNEL = "Beta"; // "Beta" while 0.x. Clear this string at 1.0.0.
 const EDITION = "Ghana Edition";
 const CONTACT_EMAIL = "ogstudios14@gmail.com"; // baked into every build; keep this address alive

@@ -155,6 +155,10 @@ export function startPositionWatch(
     return {
       stop: () => {
         stopped = true;
+        if (pumpTimer !== null) {
+          clearInterval(pumpTimer);
+          pumpTimer = null;
+        }
         release?.();
         release = null;
       },

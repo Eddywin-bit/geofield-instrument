@@ -259,7 +259,9 @@ function LocateScreen() {
         setError("Location is switched off on this phone. Turn it on, then tap LOCATE ME again.");
         setErrorAction("location-settings");
       } else {
-        setError("GeoField does not have permission to use this phone's location.");
+        setError(
+          "GeoField is not allowed to use this phone's location. Tap OPEN APP SETTINGS below, choose Permissions, then Location, then Allow. Come back and tap LOCATE ME.",
+        );
         setErrorAction("app-settings");
       }
       setState("error");

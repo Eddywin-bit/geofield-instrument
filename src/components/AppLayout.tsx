@@ -63,7 +63,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
 function StatusBar() {
   return (
-    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
+    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
       <div className="flex items-center justify-center gap-2 px-4 h-11">
         <img src={GEOFIELD_MARK} alt="" className="h-[22px] w-auto" />
         <span className="text-lg font-bold tracking-tight text-foreground">GeoField</span>

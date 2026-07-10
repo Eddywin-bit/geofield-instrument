@@ -14,18 +14,16 @@ const config: CapacitorConfig = {
   // to dist/client/index.html before `cap add android` runs.
   webDir: "dist/client",
   android: {
-    // Keep the WebView background matched to the app shell so there is no
-    // white flash between splash and first paint.
-    backgroundColor: "#121417",
-    // Inset the WebView clear of the status bar, camera cutout and navigation
-    // bar on EVERY Android version, not just 15+. The strips left behind the
-    // system bars are painted #121417 by the styles.xml patch in
-    // .github/workflows/build-apk.yml, so the obsidian shell still reads as
-    // edge-to-edge while the header never collides with the system clock.
-    // Chose this over @capacitor-community/safe-area because Chromium < 140
-    // reports env(safe-area-inset-top) as 0px, and stale WebViews are common
-    // on the target devices.
-    adjustMarginsForEdgeToEdge: "force",
+      // The WebView draws the full height of the screen, under both system bars.
+      // Android 15 makes those bars transparent and ignores statusBarColor and
+      // navigationBarColor, so the only way to colour them is to put our own
+      // background behind them. "force" did the opposite: it inset the WebView
+      // and left the bars showing the empty window, which looked like black bars.
+      // AppLayout keeps the header and nav content clear with env(safe-area-inset-*).
+      adjustMarginsForEdgeToEdge: "disable",
+      // Painted behind the WebView, so overscroll and any first-paint gap show
+      // obsidian rather than black or white.
+      backgroundColor: "#121417",
   },
 };
 

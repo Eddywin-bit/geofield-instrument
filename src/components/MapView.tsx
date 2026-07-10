@@ -23,6 +23,31 @@ const BASEMAP_KEY = "/basemap/ghana.pmtiles";
 const BASEMAP_SIZE = 92038624;
 const BASEMAP_FILE_NAME = "ghana.pmtiles";
 const BASEMAP_STYLE_URL = `pmtiles://${BASEMAP_FILE_NAME}`;
+// Downloaded as ranged chunks so a dropped connection resumes instead of
+// restarting. Each completed chunk is written straight to Cache Storage, so
+// peak memory is one chunk, not the whole 92 MB.
+const BASEMAP_CHUNK = 8 * 1024 * 1024;
+const BASEMAP_PART_PREFIX = "/basemap/ghana.pmtiles.part.";
+
+/** One ranged chunk, with a short backoff. Rejects if the server ignores Range. */
+async function fetchBasemapRange(start: number, end: number): Promise<Blob> {
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(BASEMAP_ASSET_URL, {
+        headers: { Range: `bytes=${start}-${end}` },
+        cache: "no-store",
+      });
+      if (res.status === 206) return await res.blob();
+      if (res.status === 200) throw new Error("server ignored Range header");
+      throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("range fetch failed");
+}
 
 const REGIONAL_CAPITALS: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
@@ -757,48 +782,67 @@ export function MapView() {
 
   const downloadBasemap = async () => {
     setDownloadState("downloading");
-    setDownloadPct(0);
     try {
-      const res = await fetch(BASEMAP_ASSET_URL);
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-      const total = Number(res.headers.get("Content-Length")) || BASEMAP_SIZE;
-      const [progressBranch, cacheBranch] = res.body.tee();
-
+      if (typeof caches === "undefined") throw new Error("Cache Storage unavailable");
       const cache = await caches.open(BASEMAP_CACHE);
-      const cachePut = cache.put(
+      const partCount = Math.ceil(BASEMAP_SIZE / BASEMAP_CHUNK);
+
+      // Resume: count chunks already on disk from a previous attempt.
+      let done = 0;
+      for (let i = 0; i < partCount; i++) {
+        if (await cache.match(BASEMAP_PART_PREFIX + i)) done++;
+      }
+      setDownloadPct(Math.min(99, Math.floor((done / partCount) * 100)));
+
+      for (let i = 0; i < partCount; i++) {
+        const key = BASEMAP_PART_PREFIX + i;
+        if (await cache.match(key)) continue;
+        const start = i * BASEMAP_CHUNK;
+        const end = Math.min(start + BASEMAP_CHUNK, BASEMAP_SIZE) - 1;
+        const chunk = await fetchBasemapRange(start, end);
+        await cache.put(
+          key,
+          new Response(chunk, { headers: { "Content-Type": "application/octet-stream" } }),
+        );
+        done++;
+        setDownloadPct(Math.min(99, Math.floor((done / partCount) * 100)));
+      }
+
+      // Assemble. Blob parts stay disk-backed, so this does not load 92 MB into RAM.
+      const parts: Blob[] = [];
+      for (let i = 0; i < partCount; i++) {
+        const hit = await cache.match(BASEMAP_PART_PREFIX + i);
+        if (!hit) throw new Error(`missing chunk ${i}`);
+        parts.push(await hit.blob());
+      }
+      const full = new Blob(parts, { type: "application/octet-stream" });
+      if (full.size !== BASEMAP_SIZE) {
+        throw new Error(`size mismatch: got ${full.size}, expected ${BASEMAP_SIZE}`);
+      }
+
+      await cache.put(
         BASEMAP_KEY,
-        new Response(cacheBranch, { headers: { "Content-Type": "application/octet-stream" } }),
+        new Response(full, { headers: { "Content-Type": "application/octet-stream" } }),
       );
+      for (let i = 0; i < partCount; i++) {
+        await cache.delete(BASEMAP_PART_PREFIX + i);
+      }
 
-      const reader = progressBranch.getReader();
-      let received = 0;
-      const readAll = (async () => {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            received += value.byteLength;
-            const pct = Math.min(99, Math.floor((received / total) * 100));
-            setDownloadPct(pct);
-          }
-        }
-      })();
-
-      await Promise.all([cachePut, readAll]);
-
-      const hit = await cache.match(BASEMAP_KEY);
-      if (!hit) throw new Error("cache miss after put");
-      const blob = await hit.blob();
-      const file = new File([blob], BASEMAP_FILE_NAME);
-      pmProtocol.add(new PMTiles(new FileSource(file)));
+      pmProtocol.add(new PMTiles(new FileSource(new File([full], BASEMAP_FILE_NAME))));
       setDownloadPct(100);
       setBasemapReady(true);
       setDownloadState("idle");
     } catch (err) {
       console.warn("[MapView] basemap download failed", err);
+      // Completed chunks are deliberately kept. They are the resume point.
+      // Only a corrupt assembled file is discarded.
       try {
         const cache = await caches.open(BASEMAP_CACHE);
-        await cache.delete(BASEMAP_KEY);
+        const hit = await cache.match(BASEMAP_KEY);
+        if (hit) {
+          const size = (await hit.blob()).size;
+          if (size !== BASEMAP_SIZE) await cache.delete(BASEMAP_KEY);
+        }
       } catch {
         /* ignore */
       }
@@ -1044,7 +1088,7 @@ export function MapView() {
           onClick={downloadBasemap}
           className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-destructive bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-destructive"
         >
-          Download failed — tap to retry
+          Download failed. Tap to resume.
         </button>
       )}
 

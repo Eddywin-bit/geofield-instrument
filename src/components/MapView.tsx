@@ -1088,7 +1088,7 @@ export function MapView() {
           onClick={downloadBasemap}
           className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-destructive bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-destructive"
         >
-          Download failed — tap to retry
+          Download failed. Tap to resume.
         </button>
       )}
 

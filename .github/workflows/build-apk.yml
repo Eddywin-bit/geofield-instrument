@@ -74,7 +74,11 @@ jobs:
       # source of truth and no PNG has to be committed.
       - name: Render icon sources from the GeoField mark
         run: |
-          python3 -m pip install --quiet --disable-pip-version-check pillow
+          # Ubuntu 24.04 runners mark system Python externally-managed (PEP 668).
+          python3 -m pip install --quiet --disable-pip-version-check --break-system-packages pillow \
+            || python3 -m pip install --quiet --disable-pip-version-check pillow \
+            || { sudo apt-get update -qq && sudo apt-get install -y -qq python3-pil; }
+          python3 -c "import PIL; print('pillow', PIL.__version__)"
           mkdir -p assets
           python3 - <<'PY'
           import base64, io, pathlib, re

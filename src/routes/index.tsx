@@ -4,6 +4,7 @@ import { AppLayout } from "../components/AppLayout";
 import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard, NotebookPen, X } from "lucide-react";
 import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
 import { loadGeology, findUnitAt, unitByName, nearbyUnits, type GeoUnit } from "../lib/geology";
+import { requestLocationEnable } from "../lib/enable-location";
 import {
   acquireFix,
   accuracyToneClass,

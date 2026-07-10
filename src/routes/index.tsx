@@ -218,16 +218,26 @@ function LocateScreen() {
         }
       },
       onError: (err) => {
-        setErrorAction(null);
-        const msg =
-          "code" in err && (err as GeolocationPositionError).code === 1
-            ? "Location permission denied. Turn on location and allow access for this site in your browser settings, then try again."
-            : "code" in err && (err as GeolocationPositionError).code === 2
-            ? "GPS position unavailable. Move to open sky and retry."
-            : "code" in err && (err as GeolocationPositionError).code === 3
-            ? "GPS timed out. Retry with a clearer view of the sky."
-            : (err as Error).message || "Could not acquire GPS fix.";
-        setError(msg);
+        const code = "code" in err ? (err as GeolocationPositionError).code : undefined;
+        if (code === 1) {
+          // Never assume the person knows where Android hides this. Name the
+          // exact path AND give them a button that lands on it.
+          setError(
+            "GeoField is not allowed to use this phone's location. Tap OPEN APP SETTINGS below, choose Permissions, then Location, then Allow. Come back and tap LOCATE ME.",
+          );
+          setErrorAction("app-settings");
+        } else if (code === 2) {
+          setError("GPS position unavailable. Move to open sky and retry.");
+          setErrorAction(null);
+        } else if (code === 3) {
+          setError(
+            "GPS timed out. Retry under open sky, or use ENTER COORDINATES MANUALLY below.",
+          );
+          setErrorAction(null);
+        } else {
+          setError((err as Error).message || "Could not acquire GPS fix.");
+          setErrorAction(null);
+        }
         setState("error");
       },
     });
@@ -249,7 +259,9 @@ function LocateScreen() {
         setError("Location is switched off on this phone. Turn it on, then tap LOCATE ME again.");
         setErrorAction("location-settings");
       } else {
-        setError("GeoField does not have permission to use this phone's location.");
+        setError(
+          "GeoField is not allowed to use this phone's location. Tap OPEN APP SETTINGS below, choose Permissions, then Location, then Allow. Come back and tap LOCATE ME.",
+        );
         setErrorAction("app-settings");
       }
       setState("error");

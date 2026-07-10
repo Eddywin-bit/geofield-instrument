@@ -63,6 +63,29 @@ export function startPositionWatch(
           return;
         }
 
+        // Instant seed: the phone's cached last-known position, which the
+        // fused provider returns in well under a second. Field requirement:
+        // LOCATE must show something immediately, and if the fresh watch
+        // yields nothing before the ceiling, settling on this seed beats
+        // erroring. A coarse seed cannot false-settle convergence: settle
+        // needs <=10m accuracy or a 5-reading plateau.
+        void Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          maximumAge: 5 * 60_000,
+          timeout: 8_000,
+        })
+          .then((pos) => {
+            if (stopped || !pos) return;
+            onReading({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+            });
+          })
+          .catch(() => {
+            /* no cached fix; the watch carries it */
+          });
+
         const id = await Geolocation.watchPosition(
           { enableHighAccuracy: true, timeout: 60_000, maximumAge: 0 },
           (pos, err) => {

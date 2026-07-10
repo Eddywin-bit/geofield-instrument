@@ -7,7 +7,7 @@ import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix, isFixStale } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
 import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
-import { ensureMicPermission } from "../lib/mic";
+import { ensureMicPermission, openAppSettings } from "../lib/mic";
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
@@ -82,6 +82,7 @@ function LogScreen() {
   const [recording, setRecording] = useState(false);
   const [recordSec, setRecordSec] = useState(0);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [micDenied, setMicDenied] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -230,12 +231,20 @@ function LogScreen() {
       return;
     }
     // Native: the app must hold RECORD_AUDIO before the WebView will approve
-    // getUserMedia. On web this returns true immediately.
+    // getUserMedia. On web this returns ok immediately.
+    setMicDenied(false);
     const permitted = await ensureMicPermission();
-    if (!permitted) {
-      setVoiceError(
-        "Microphone permission denied. Allow it in Settings, Apps, GeoField, Permissions, then try again.",
-      );
+    if (!permitted.ok) {
+      if (permitted.reason === "plugin") {
+        setVoiceError(
+          `Microphone bridge failed: ${permitted.detail ?? "unknown error"}. This build may be stale; install the latest APK.`,
+        );
+      } else {
+        setVoiceError(
+          "Microphone permission is off for GeoField. Tap OPEN SETTINGS, choose Permissions, and allow Microphone.",
+        );
+        setMicDenied(true);
+      }
       return;
     }
     try {
@@ -416,8 +425,17 @@ function LogScreen() {
       {(voice || voiceError) && (
         <div className="px-4 mt-3 space-y-2">
           {voiceError && (
-            <div className="rounded-md border border-destructive/60 bg-destructive/5 p-2 text-xs text-destructive">
-              {voiceError}
+            <div className="rounded-md border border-destructive/60 bg-destructive/5 p-2 text-xs text-destructive space-y-2">
+              <div>{voiceError}</div>
+              {micDenied && (
+                <button
+                  type="button"
+                  onClick={() => void openAppSettings()}
+                  className="inline-flex items-center rounded-md border border-destructive/60 px-3 py-1.5 text-[11px] font-bold tracking-wider uppercase text-destructive"
+                >
+                  Open settings
+                </button>
+              )}
             </div>
           )}
           {voice && (

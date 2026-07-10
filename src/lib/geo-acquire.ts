@@ -26,20 +26,18 @@ export type PositionWatch = { stop: () => void };
 /**
  * The only place in the app that decides where position readings come from.
  *
- * Native: @capacitor/geolocation, which on Android is Google Play Services'
- * FusedLocationProviderClient at PRIORITY_HIGH_ACCURACY. It fuses GNSS, wifi,
- * cell and motion sensors, so a reading arrives within seconds, indoors or out.
+ * Native: @capacitor/geolocation (Play Services fused provider). The location
+ * permission is resolved HERE, before the watch starts, and `onStarted` fires
+ * only once the watch is live. Field-tested failure this prevents: on first
+ * run the permission dialog used to appear while acquireFix's 60s ceiling was
+ * already counting, so LOCATE ME timed out during the dialog.
  *
- * Web: navigator.geolocation, unchanged. In a real browser this is backed by
- * the network location service, so the PWA keeps behaving exactly as before.
- *
- * Do NOT use navigator.geolocation on native. The Android WebView exposes no
- * network-location fallback, so enableHighAccuracy binds to the raw satellite
- * provider alone and times out indoors. That was the bug this replaces.
+ * Web: navigator.geolocation, unchanged.
  */
 export function startPositionWatch(
   onReading: (coords: AcquireCoords) => void,
   onError: (err: GeolocationPositionError | Error) => void,
+  onStarted?: () => void,
 ): PositionWatch {
   if (Capacitor.isNativePlatform()) {
     let stopped = false;
@@ -48,6 +46,23 @@ export function startPositionWatch(
     void (async () => {
       try {
         const { Geolocation } = await import("@capacitor/geolocation");
+
+        let perm = await Geolocation.checkPermissions();
+        const granted = () =>
+          perm.location === "granted" || perm.coarseLocation === "granted";
+        if (!granted()) {
+          perm = await Geolocation.requestPermissions();
+        }
+        if (stopped) return;
+        if (!granted()) {
+          const err = new Error(
+            "Location permission denied. Allow location for GeoField and try again.",
+          );
+          (err as unknown as { code: number }).code = 1;
+          onError(err);
+          return;
+        }
+
         const id = await Geolocation.watchPosition(
           { enableHighAccuracy: true, timeout: 60_000, maximumAge: 0 },
           (pos, err) => {
@@ -68,6 +83,7 @@ export function startPositionWatch(
           return;
         }
         release = () => void Geolocation.clearWatch({ id });
+        onStarted?.();
       } catch (err) {
         onError(err as Error);
       }
@@ -97,6 +113,7 @@ export function startPositionWatch(
     (err) => onError(err),
     { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 },
   );
+  onStarted?.();
 
   return {
     stop: () => navigator.geolocation.clearWatch(id),
@@ -106,9 +123,17 @@ export function startPositionWatch(
 export function acquireFix(h: AcquireHandlers): Acquisition {
   let best: AcquireCoords | null = null;
   const recent: number[] = []; // last 5 accuracies
-  const started = Date.now();
+  let started = Date.now();
   let settled = false;
   let watch: PositionWatch | null = null;
+  let ceiling: ReturnType<typeof setTimeout> | null = null;
+
+  const clearCeiling = () => {
+    if (ceiling !== null) {
+      clearTimeout(ceiling);
+      ceiling = null;
+    }
+  };
 
   const stop = () => {
     watch?.stop();
@@ -118,19 +143,26 @@ export function acquireFix(h: AcquireHandlers): Acquisition {
   const settle = () => {
     if (settled || !best) return;
     settled = true;
+    clearCeiling();
     stop();
     h.onSettle(best);
   };
 
-  // Hard 60s ceiling. On native this is the only timeout: the fused provider
-  // streams readings and does not time out on its own.
-  const ceiling = setTimeout(() => {
-    if (best) settle();
-    else {
-      stop();
-      h.onError(new Error("GPS timed out"));
-    }
-  }, 60_000);
+  // Armed only once the watch is live (permission resolved, provider
+  // subscribed), so time spent on Android's permission dialog does not
+  // count against the fix.
+  const armCeiling = () => {
+    if (settled || ceiling !== null) return;
+    started = Date.now();
+    ceiling = setTimeout(() => {
+      ceiling = null;
+      if (best) settle();
+      else {
+        stop();
+        h.onError(new Error("GPS timed out"));
+      }
+    }, 60_000);
+  };
 
   watch = startPositionWatch(
     (c) => {
@@ -141,7 +173,6 @@ export function acquireFix(h: AcquireHandlers): Acquisition {
 
       // Good fix
       if (c.accuracy <= 10) {
-        clearTimeout(ceiling);
         settle();
         return;
       }
@@ -153,7 +184,6 @@ export function acquireFix(h: AcquireHandlers): Acquisition {
         const max = Math.max(...recent);
         const min = Math.min(...recent);
         if (max - min <= 2) {
-          clearTimeout(ceiling);
           settle();
           return;
         }
@@ -161,13 +191,12 @@ export function acquireFix(h: AcquireHandlers): Acquisition {
 
       // Safety: also honor 60s elapsed inline
       if (Date.now() - started >= 60_000) {
-        clearTimeout(ceiling);
         settle();
       }
     },
     (err) => {
       if (settled) return;
-      clearTimeout(ceiling);
+      clearCeiling();
       stop();
       if (best) {
         settled = true;
@@ -176,11 +205,12 @@ export function acquireFix(h: AcquireHandlers): Acquisition {
         h.onError(err);
       }
     },
+    armCeiling,
   );
 
   return {
     stop: () => {
-      clearTimeout(ceiling);
+      clearCeiling();
       stop();
     },
   };

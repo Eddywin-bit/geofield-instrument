@@ -4,7 +4,7 @@ import { useBackHandler } from "../lib/back-button";
 
 export type ManualCoords = { latitude: number; longitude: number };
 
-type Format = "DD" | "DDM" | "UTM";
+type Format = "DD" | "DDM" | "DMS" | "UTM";
 
 export function ManualCoordsSheet({
   open,
@@ -29,6 +29,16 @@ export function ManualCoordsSheet({
   const [lngDeg, setLngDeg] = useState("");
   const [lngMin, setLngMin] = useState("");
   const [lngHem, setLngHem] = useState<"E" | "W">("W");
+
+  // DMS
+  const [latDegD, setLatDegD] = useState("");
+  const [latMinD, setLatMinD] = useState("");
+  const [latSecD, setLatSecD] = useState("");
+  const [latHemD, setLatHemD] = useState<"N" | "S">("N");
+  const [lngDegD, setLngDegD] = useState("");
+  const [lngMinD, setLngMinD] = useState("");
+  const [lngSecD, setLngSecD] = useState("");
+  const [lngHemD, setLngHemD] = useState<"E" | "W">("W");
 
   // UTM
   const [utmZone, setUtmZone] = useState<"30" | "31">("30");

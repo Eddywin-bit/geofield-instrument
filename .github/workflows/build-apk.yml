@@ -68,6 +68,48 @@ jobs:
       - name: Sync web assets into Android project
         run: ./node_modules/.bin/cap sync android
 
+      # @capacitor/assets insets the foreground 16.7% on every side. Source art
+      # must therefore be tight to the glyph, or the padding compounds and the
+      # pin shrinks. Generated here from logo.ts so the mark has exactly one
+      # source of truth and no PNG has to be committed.
+      - name: Render icon sources from the GeoField mark
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pillow
+          mkdir -p assets
+          python3 - <<'PY'
+          import base64, io, pathlib, re
+          from PIL import Image
+
+          src = pathlib.Path("src/lib/logo.ts").read_text()
+          m = re.search(r"data:image/png;base64,([A-Za-z0-9+/=]+)", src)
+          if not m:
+              raise SystemExit("GEOFIELD_MARK base64 not found in src/lib/logo.ts")
+          mark = Image.open(io.BytesIO(base64.b64decode(m.group(1)))).convert("RGBA")
+
+          CANVAS = 1024
+          OBSIDIAN = (0x12, 0x14, 0x17, 255)
+
+          def canvas_with_mark(height_fraction, background):
+              h = round(CANVAS * height_fraction)
+              w = round(h * mark.width / mark.height)
+              glyph = mark.resize((w, h), Image.LANCZOS)
+              out = Image.new("RGBA", (CANVAS, CANVAS), background)
+              out.alpha_composite(glyph, ((CANVAS - w) // 2, (CANVAS - h) // 2))
+              return out
+
+          # Adaptive foreground. 84% survives the 16.7% inset and the circular mask.
+          canvas_with_mark(0.84, (0, 0, 0, 0)).save("assets/icon-foreground.png")
+          # Adaptive background. Flat obsidian.
+          Image.new("RGBA", (CANVAS, CANVAS), OBSIDIAN).save("assets/icon-background.png")
+          # Legacy square icon. No inset is applied to this one, so it needs its
+          # own margin for launchers that mask it into a circle.
+          canvas_with_mark(0.62, OBSIDIAN).save("assets/icon.png")
+
+          for name in ("icon-foreground.png", "icon-background.png", "icon.png"):
+              im = Image.open("assets/" + name)
+              print(f"{name:24} {im.size[0]}x{im.size[1]} {im.mode}")
+          PY
+
       - name: Generate app icons and splash from the GeoField mark
         run: |
           ./node_modules/.bin/capacitor-assets generate --android \

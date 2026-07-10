@@ -123,6 +123,15 @@ function LocateScreen() {
     // Native only: ask Android for the location permission up front, otherwise
     // navigator.geolocation silently times out with no dialog.
     void ensureLocationPermission();
+    // Coming back from another screen must land on the fix the user already
+    // acquired, not a blank screen. Restore unless the 30-minute staleness
+    // guard says a new observation should not silently reuse it.
+    const saved = readCurrentFix();
+    if (saved && !isFixStale(saved)) {
+      setFix(saved);
+      setLiveAccuracy(saved.manual ? null : saved.accuracy);
+      setState("found");
+    }
 
     return () => {
       acqRef.current?.stop();

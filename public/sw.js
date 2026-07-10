@@ -43,7 +43,13 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => k.startsWith("geofield-") && k !== SHELL_CACHE && k !== DATA_CACHE)
+          .filter(
+            (k) =>
+              k.startsWith("geofield-") &&
+              k !== SHELL_CACHE &&
+              k !== DATA_CACHE &&
+              k !== BASEMAP_CACHE,
+          )
           .map((k) => caches.delete(k)),
       );
       await self.clients.claim();

@@ -85,6 +85,25 @@ export function ManualCoordsSheet({
           throw new Error("Minutes must be between 0 and 60.");
         lat = (Math.abs(ld) + lm / 60) * (latHem === "S" ? -1 : 1);
         lng = (Math.abs(gd) + gm / 60) * (lngHem === "W" ? -1 : 1);
+      } else if (format === "DMS") {
+        // Hemisphere selector encodes sign; degrees/minutes/seconds are magnitudes.
+        const ld = parseNum(latDegD);
+        const lm = parseNum(latMinD);
+        const ls = parseNum(latSecD);
+        const gd = parseNum(lngDegD);
+        const gm = parseNum(lngMinD);
+        const gs = parseNum(lngSecD);
+        if (ld === null || lm === null || ls === null || gd === null || gm === null || gs === null)
+          throw new Error("Enter all degree, minute and second values.");
+        const HEMI_HINT =
+          "Enter degrees as a positive number and use the N/S (or E/W) selector to set direction.";
+        if (ld < 0 || ld > 90 || gd < 0 || gd > 180) throw new Error(HEMI_HINT);
+        if (lm < 0 || lm >= 60 || gm < 0 || gm >= 60)
+          throw new Error("Minutes must be between 0 and 60.");
+        if (ls < 0 || ls >= 60 || gs < 0 || gs >= 60)
+          throw new Error("Seconds must be between 0 and 60.");
+        lat = (Math.abs(ld) + lm / 60 + ls / 3600) * (latHemD === "S" ? -1 : 1);
+        lng = (Math.abs(gd) + gm / 60 + gs / 3600) * (lngHemD === "W" ? -1 : 1);
       } else {
         const e = parseNum(easting);
         const n = parseNum(northing);
@@ -113,8 +132,8 @@ export function ManualCoordsSheet({
         <div className="label-instrument mb-3">Enter Coordinates Manually</div>
 
         {/* Format toggle */}
-        <div className="grid grid-cols-3 gap-1 rounded-md border border-border bg-panel-2 p-1 mb-4">
-          {(["DD", "DDM", "UTM"] as Format[]).map((f) => (
+        <div className="grid grid-cols-4 gap-1 rounded-md border border-border bg-panel-2 p-1 mb-4">
+          {(["DD", "DDM", "DMS", "UTM"] as Format[]).map((f) => (
             <button
               key={f}
               onClick={() => {

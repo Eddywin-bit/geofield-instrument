@@ -444,6 +444,7 @@ export function MapView() {
   const basemapReadyRef = useRef(basemapReady);
   basemapReadyRef.current = basemapReady;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gpsGateRef = useRef<{ accuracy: number; at: number } | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);

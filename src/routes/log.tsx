@@ -210,7 +210,12 @@ function LogScreen() {
   };
 
   const stopRecording = () => {
-    if (Capacitor.isNativePlatform()) {
+    if (nativeRecRef.current) {
+      nativeRecRef.current = false;
+      if (recordTimerRef.current) {
+        clearInterval(recordTimerRef.current);
+        recordTimerRef.current = null;
+      }
       void (async () => {
         try {
           const { VoiceRecorder } = await import("capacitor-voice-recorder");
@@ -220,13 +225,9 @@ function LogScreen() {
             setVoice(`data:${d.mimeType || "audio/aac"};base64,${d.recordDataBase64}`);
           }
         } catch (err) {
-          setVoiceError("Recording could not be saved. Try again.");
           console.warn("[voice] native stop failed", err);
+          setVoiceError("Recording could not be saved. Try again.");
         } finally {
-          if (recordTimerRef.current) {
-            clearInterval(recordTimerRef.current);
-            recordTimerRef.current = null;
-          }
           setRecording(false);
         }
       })();

@@ -3,15 +3,32 @@ on:
   workflow_dispatch:
     inputs:
       versionName:
-        description: 'Version name, e.g. 0.3.0'
-        required: true
-        default: '0.3.0'
+        description: 'Optional override. Leave blank to use APP_VERSION from src/routes/about.tsx.'
+        required: false
+        default: ''
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Single source of truth. The version a user reads in the About tab is the
+      # version stamped on the APK. src/routes/about.tsx owns it, nothing else.
+      - name: Resolve version from the app
+        env:
+          OVERRIDE: ${{ inputs.versionName }}
+        run: |
+          APP_VERSION="$OVERRIDE"
+          if [ -z "$APP_VERSION" ]; then
+            APP_VERSION=$(sed -n 's/^const APP_VERSION = "\(.*\)";$/\1/p' src/routes/about.tsx)
+          fi
+          if ! printf '%s' "$APP_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Could not resolve a valid version. Got '$APP_VERSION'. Check APP_VERSION in src/routes/about.tsx."
+            exit 1
+          fi
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          echo "Building GeoField $APP_VERSION (versionCode ${{ github.run_number }})"
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -106,7 +123,7 @@ jobs:
 
       - name: Set versionCode and versionName
         env:
-          VN: ${{ inputs.versionName }}
+          VN: ${{ env.APP_VERSION }}
           VC: ${{ github.run_number }}
         run: |
           f=android/app/build.gradle
@@ -142,7 +159,7 @@ jobs:
           ls -lh "$APK"
           SIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner | sort | tail -1)
           "$SIGNER" verify --print-certs "$APK"
-          cp "$APK" "GeoField-${{ inputs.versionName }}.apk"
+          cp "$APK" "GeoField-${{ env.APP_VERSION }}.apk"
 
       - name: Clean up keystore
         if: always()

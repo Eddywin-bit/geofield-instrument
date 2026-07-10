@@ -209,6 +209,28 @@ function LogScreen() {
   };
 
   const stopRecording = () => {
+    if (Capacitor.isNativePlatform()) {
+      void (async () => {
+        try {
+          const { VoiceRecorder } = await import("capacitor-voice-recorder");
+          const res = await VoiceRecorder.stopRecording();
+          const d = res.value;
+          if (d?.recordDataBase64) {
+            setVoice(`data:${d.mimeType || "audio/aac"};base64,${d.recordDataBase64}`);
+          }
+        } catch (err) {
+          setVoiceError("Recording could not be saved. Try again.");
+          console.warn("[voice] native stop failed", err);
+        } finally {
+          if (recordTimerRef.current) {
+            clearInterval(recordTimerRef.current);
+            recordTimerRef.current = null;
+          }
+          setRecording(false);
+        }
+      })();
+      return;
+    }
     const rec = recorderRef.current;
     if (rec && rec.state !== "inactive") {
       try { rec.stop(); } catch { /* ignore */ }
@@ -216,21 +238,6 @@ function LogScreen() {
     if (recordTimerRef.current) {
       clearInterval(recordTimerRef.current);
       recordTimerRef.current = null;
-    }
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const { VoiceRecorder } = await import("capacitor-voice-recorder");
-        const res = await VoiceRecorder.startRecording();
-        if (!res.value) throw new Error("recorder refused to start");
-        setRecording(true);
-        setRecordSec(0);
-        recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
-      } catch (err) {
-        setVoiceError(
-          `Could not start the native recorder: ${err instanceof Error ? err.message : String(err)}. Close any other app using the microphone and try again.`,
-        );
-      }
-      return;
     }
   };
 

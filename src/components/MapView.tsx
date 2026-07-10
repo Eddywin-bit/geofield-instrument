@@ -942,6 +942,14 @@ export function MapView() {
   useEffect(() => {
     const watch = startPositionWatch(
       (c) => {
+        // The fused provider interleaves coarse network fixes with fine GNSS
+        // fixes; rendering every raw reading makes the dot teleport. Accept a
+        // reading only if it is not much worse than the one shown, or if the
+        // shown one is older than 15s (never let the dot freeze).
+        const now = Date.now();
+        const prev = gpsGateRef.current;
+        if (prev && c.accuracy > prev.accuracy * 1.5 && now - prev.at < 15_000) return;
+        gpsGateRef.current = { accuracy: c.accuracy, at: now };
         setGps({ lat: c.latitude, lng: c.longitude, accuracy: c.accuracy });
       },
       (err) => {

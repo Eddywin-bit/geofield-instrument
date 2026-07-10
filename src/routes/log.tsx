@@ -8,6 +8,7 @@ import { readCurrentFix, isFixStale } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
 import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
 import { ensureMicPermission, openAppSettings } from "../lib/mic";
+import { Capacitor } from "@capacitor/core";
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
@@ -208,6 +209,28 @@ function LogScreen() {
   };
 
   const stopRecording = () => {
+    if (Capacitor.isNativePlatform()) {
+      void (async () => {
+        try {
+          const { VoiceRecorder } = await import("capacitor-voice-recorder");
+          const res = await VoiceRecorder.stopRecording();
+          const d = res.value;
+          if (d?.recordDataBase64) {
+            setVoice(`data:${d.mimeType || "audio/aac"};base64,${d.recordDataBase64}`);
+          }
+        } catch (err) {
+          setVoiceError("Recording could not be saved. Try again.");
+          console.warn("[voice] native stop failed", err);
+        } finally {
+          if (recordTimerRef.current) {
+            clearInterval(recordTimerRef.current);
+            recordTimerRef.current = null;
+          }
+          setRecording(false);
+        }
+      })();
+      return;
+    }
     const rec = recorderRef.current;
     if (rec && rec.state !== "inactive") {
       try { rec.stop(); } catch { /* ignore */ }
@@ -244,6 +267,21 @@ function LogScreen() {
           "Microphone permission is off for GeoField. Tap OPEN SETTINGS, choose Permissions, and allow Microphone.",
         );
         setMicDenied(true);
+      }
+      return;
+    }
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { VoiceRecorder } = await import("capacitor-voice-recorder");
+        const res = await VoiceRecorder.startRecording();
+        if (!res.value) throw new Error("recorder refused to start");
+        setRecording(true);
+        setRecordSec(0);
+        recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
+      } catch (err) {
+        setVoiceError(
+          `Could not start the native recorder: ${err instanceof Error ? err.message : String(err)}. Close any other app using the microphone and try again.`,
+        );
       }
       return;
     }
@@ -514,7 +552,7 @@ function LogScreen() {
           className="w-full h-16 rounded-lg bg-primary text-primary-foreground font-bold tracking-[0.2em] text-base flex items-center justify-center gap-3 active:scale-[0.99] transition-transform disabled:opacity-70"
         >
           <Check className="h-6 w-6" strokeWidth={3} />
-          {saving ? "SAVED" : "Save observation"}
+          {saving ? "SAVED" : "SAVE OBSERVATION"}
         </button>
       </div>
     </AppLayout>

@@ -4,7 +4,7 @@ import { useBackHandler } from "../lib/back-button";
 
 export type ManualCoords = { latitude: number; longitude: number };
 
-type Format = "DD" | "DDM" | "UTM";
+type Format = "DD" | "DDM" | "DMS" | "UTM";
 
 export function ManualCoordsSheet({
   open,
@@ -29,6 +29,16 @@ export function ManualCoordsSheet({
   const [lngDeg, setLngDeg] = useState("");
   const [lngMin, setLngMin] = useState("");
   const [lngHem, setLngHem] = useState<"E" | "W">("W");
+
+  // DMS
+  const [latDegD, setLatDegD] = useState("");
+  const [latMinD, setLatMinD] = useState("");
+  const [latSecD, setLatSecD] = useState("");
+  const [latHemD, setLatHemD] = useState<"N" | "S">("N");
+  const [lngDegD, setLngDegD] = useState("");
+  const [lngMinD, setLngMinD] = useState("");
+  const [lngSecD, setLngSecD] = useState("");
+  const [lngHemD, setLngHemD] = useState<"E" | "W">("W");
 
   // UTM
   const [utmZone, setUtmZone] = useState<"30" | "31">("30");
@@ -75,6 +85,25 @@ export function ManualCoordsSheet({
           throw new Error("Minutes must be between 0 and 60.");
         lat = (Math.abs(ld) + lm / 60) * (latHem === "S" ? -1 : 1);
         lng = (Math.abs(gd) + gm / 60) * (lngHem === "W" ? -1 : 1);
+      } else if (format === "DMS") {
+        // Hemisphere selector encodes sign; degrees/minutes/seconds are magnitudes.
+        const ld = parseNum(latDegD);
+        const lm = parseNum(latMinD);
+        const ls = parseNum(latSecD);
+        const gd = parseNum(lngDegD);
+        const gm = parseNum(lngMinD);
+        const gs = parseNum(lngSecD);
+        if (ld === null || lm === null || ls === null || gd === null || gm === null || gs === null)
+          throw new Error("Enter all degree, minute and second values.");
+        const HEMI_HINT =
+          "Enter degrees as a positive number and use the N/S (or E/W) selector to set direction.";
+        if (ld < 0 || ld > 90 || gd < 0 || gd > 180) throw new Error(HEMI_HINT);
+        if (lm < 0 || lm >= 60 || gm < 0 || gm >= 60)
+          throw new Error("Minutes must be between 0 and 60.");
+        if (ls < 0 || ls >= 60 || gs < 0 || gs >= 60)
+          throw new Error("Seconds must be between 0 and 60.");
+        lat = (Math.abs(ld) + lm / 60 + ls / 3600) * (latHemD === "S" ? -1 : 1);
+        lng = (Math.abs(gd) + gm / 60 + gs / 3600) * (lngHemD === "W" ? -1 : 1);
       } else {
         const e = parseNum(easting);
         const n = parseNum(northing);
@@ -103,8 +132,8 @@ export function ManualCoordsSheet({
         <div className="label-instrument mb-3">Enter Coordinates Manually</div>
 
         {/* Format toggle */}
-        <div className="grid grid-cols-3 gap-1 rounded-md border border-border bg-panel-2 p-1 mb-4">
-          {(["DD", "DDM", "UTM"] as Format[]).map((f) => (
+        <div className="grid grid-cols-4 gap-1 rounded-md border border-border bg-panel-2 p-1 mb-4">
+          {(["DD", "DDM", "DMS", "UTM"] as Format[]).map((f) => (
             <button
               key={f}
               onClick={() => {
@@ -153,6 +182,35 @@ export function ManualCoordsSheet({
                 <HemiToggle
                   value={lngHem}
                   onChange={(v) => setLngHem(v as "E" | "W")}
+                  options={["E", "W"]}
+                />
+              </div>
+            </Field>
+          </div>
+        )}
+
+        {format === "DMS" && (
+          <div className="space-y-3">
+            <Field label="Latitude (deg / min / sec / hemi)">
+              <div className="grid grid-cols-[1fr_1fr_1.3fr_4.5rem] gap-2">
+                <NumInput value={latDegD} onChange={(v) => setLatDegD(v.replace(/^-+/, ""))} placeholder="6" />
+                <NumInput value={latMinD} onChange={setLatMinD} placeholder="40" />
+                <NumInput value={latSecD} onChange={setLatSecD} placeholder="42.8" />
+                <HemiToggle
+                  value={latHemD}
+                  onChange={(v) => setLatHemD(v as "N" | "S")}
+                  options={["N", "S"]}
+                />
+              </div>
+            </Field>
+            <Field label="Longitude (deg / min / sec / hemi)">
+              <div className="grid grid-cols-[1fr_1fr_1.3fr_4.5rem] gap-2">
+                <NumInput value={lngDegD} onChange={(v) => setLngDegD(v.replace(/^-+/, ""))} placeholder="1" />
+                <NumInput value={lngMinD} onChange={setLngMinD} placeholder="33" />
+                <NumInput value={lngSecD} onChange={setLngSecD} placeholder="53.7" />
+                <HemiToggle
+                  value={lngHemD}
+                  onChange={(v) => setLngHemD(v as "E" | "W")}
                   options={["E", "W"]}
                 />
               </div>

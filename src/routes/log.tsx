@@ -88,6 +88,7 @@ function LogScreen() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const nativeRecRef = useRef(false);
 
   const staleRef = useRef(false);
   const [ctx, setCtx] = useState<Ctx>(() => {

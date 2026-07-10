@@ -6,6 +6,7 @@ import { Navigation2, Crosshair, ChevronDown, Layers, Minus, Plus, X } from "luc
 import { Protocol, PMTiles, FileSource } from "pmtiles";
 import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
+import { startPositionWatch } from "../lib/geo-acquire";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
@@ -805,26 +806,19 @@ export function MapView() {
     }
   };
 
-  // Watch GPS
+  // Watch GPS. Uses the fused provider on native; navigator.geolocation on web.
   useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setGps({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        });
+    const watch = startPositionWatch(
+      (c) => {
+        setGps({ lat: c.latitude, lng: c.longitude, accuracy: c.accuracy });
       },
       (err) => {
-        const msg = geoErrMsg(err.code);
+        const code = (err as GeolocationPositionError).code;
+        const msg = typeof code === "number" ? geoErrMsg(code) : err.message;
         if (msg) showToast(msg);
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
     );
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-    };
+    return () => watch.stop();
   }, []);
 
   // Render GPS marker + accuracy circle

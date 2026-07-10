@@ -257,6 +257,22 @@ function LocateScreen() {
     const readiness = await checkLocationReadiness();
     if (!readiness.ok) {
       if (readiness.reason === "services-off") {
+        // Preferred path: Play Services' one-tap enable dialog over the app.
+        const outcome = await requestLocationEnable();
+        if (outcome !== "unavailable") {
+          // Dialog shown (or services already back on). Poll readiness while
+          // the person answers it; proceed the moment location comes alive.
+          for (let i = 0; i < 15; i++) {
+            await new Promise((r) => setTimeout(r, 1000));
+            const again = await checkLocationReadiness();
+            if (again.ok) {
+              setState("locating");
+              startCycle();
+              return;
+            }
+          }
+        }
+        // Dialog unavailable, dismissed, or timed out: the settings button.
         setError("Location is switched off on this phone. Turn it on, then tap LOCATE ME again.");
         setErrorAction("location-settings");
       } else {

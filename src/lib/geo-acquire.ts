@@ -273,6 +273,7 @@ export function acquireFix(h: AcquireHandlers): Acquisition {
       }
     },
     armCeiling,
+    { pump: true },
   );
 
   return {

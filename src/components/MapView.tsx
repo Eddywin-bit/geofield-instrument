@@ -1112,24 +1112,34 @@ export function MapView() {
       </div>
 
       {/* Basemap download */}
-      {!online && !basemapReady && downloadState === "idle" && (
+      {!online && !basemapReady && dl.status === "idle" && (
         <button
           type="button"
-          onClick={downloadBasemap}
+          onClick={() => void basemapDl.start()}
           className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-foreground"
         >
           Download Ghana Base Map · 92 MB
         </button>
       )}
-      {!online && downloadState === "downloading" && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground">
-          Downloading… {downloadPct}%
+      {!online && dl.status === "downloading" && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground"
+        >
+          Downloading… {dl.pct}%
         </div>
       )}
-      {!online && downloadState === "error" && (
+      {!online && dl.status === "done" && (
         <button
           type="button"
-          onClick={downloadBasemap}
+          onClick={() => basemapDl.dismissDone()}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full border border-success bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-success"
+        >
+          Base map downloaded ✓
+        </button>
+      )}
+      {!online && dl.status === "error" && (
+        <button
+          type="button"
+          onClick={() => void basemapDl.start()}
           className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-destructive bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-destructive"
         >
           Download failed. Tap to resume.

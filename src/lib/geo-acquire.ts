@@ -43,6 +43,7 @@ export function startPositionWatch(
   if (Capacitor.isNativePlatform()) {
     let stopped = false;
     let release: (() => void) | null = null;
+    let pumpTimer: ReturnType<typeof setInterval> | null = null;
 
     void (async () => {
       try {

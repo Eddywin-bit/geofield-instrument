@@ -270,6 +270,21 @@ function LogScreen() {
       }
       return;
     }
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { VoiceRecorder } = await import("capacitor-voice-recorder");
+        const res = await VoiceRecorder.startRecording();
+        if (!res.value) throw new Error("recorder refused to start");
+        setRecording(true);
+        setRecordSec(0);
+        recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
+      } catch (err) {
+        setVoiceError(
+          `Could not start the native recorder: ${err instanceof Error ? err.message : String(err)}. Close any other app using the microphone and try again.`,
+        );
+      }
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;

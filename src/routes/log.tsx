@@ -7,6 +7,7 @@ import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix, isFixStale } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
 import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
+import { ensureMicPermission } from "../lib/mic";
 
 export const Route = createFileRoute("/log")({
   head: () => ({ meta: [{ title: "GeoField — Log Observation" }] }),
@@ -228,6 +229,15 @@ function LogScreen() {
       setVoiceError("Microphone not available on this device.");
       return;
     }
+    // Native: the app must hold RECORD_AUDIO before the WebView will approve
+    // getUserMedia. On web this returns true immediately.
+    const permitted = await ensureMicPermission();
+    if (!permitted) {
+      setVoiceError(
+        "Microphone permission denied. Allow it in Settings, Apps, GeoField, Permissions, then try again.",
+      );
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -253,8 +263,13 @@ function LogScreen() {
       setRecording(true);
       setRecordSec(0);
       recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
-    } catch {
-      setVoiceError("Microphone permission denied.");
+    } catch (err) {
+      const name = (err as { name?: string })?.name;
+      setVoiceError(
+        name === "NotAllowedError"
+          ? "Microphone permission denied. Allow it in Settings, Apps, GeoField, Permissions, then try again."
+          : "Could not start the microphone. Close any other app that may be using it and try again.",
+      );
       releaseMic();
     }
   };

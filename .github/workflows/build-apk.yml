@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -324,3 +326,11 @@ jobs:
           name: GeoField-apk
           path: GeoField-*.apk
           retention-days: 7
+
+      - name: Publish APK to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: GeoField v${{ env.APP_VERSION }}
+          files: GeoField-${{ env.APP_VERSION }}.apk
+          fail_on_unmatched_files: true

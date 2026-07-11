@@ -187,10 +187,9 @@ const basemapDl = (() => {
         throw new Error(`size mismatch: got ${full.size}, expected ${BASEMAP_SIZE}`);
       }
 
-      await cache.put(
-        BASEMAP_KEY,
-        new Response(full, { headers: { "Content-Type": "application/octet-stream" } }),
-      );
+      // Assembled file goes to the durable store (Filesystem sandbox on native).
+      await writeAssembledBasemap(full);
+      // Temporary chunks are only ever in Cache Storage; clear them now.
       for (let i = 0; i < partCount; i++) {
         await cache.delete(BASEMAP_PART_PREFIX + i);
       }

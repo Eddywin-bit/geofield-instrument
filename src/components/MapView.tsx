@@ -199,13 +199,11 @@ const basemapDl = (() => {
     } catch (err) {
       console.warn("[MapView] basemap download failed", err);
       // Completed chunks are deliberately kept. They are the resume point.
+      // A wrong-sized assembled file is discarded; completed chunks are kept as
+      // the resume point. readAssembledBasemap already deletes a wrong-sized
+      // sandbox file as a side effect, so a simple probe is enough here.
       try {
-        const cache = await caches.open(BASEMAP_CACHE);
-        const hit = await cache.match(BASEMAP_KEY);
-        if (hit) {
-          const size = (await hit.blob()).size;
-          if (size !== BASEMAP_SIZE) await cache.delete(BASEMAP_KEY);
-        }
+        await readAssembledBasemap();
       } catch {
         /* ignore */
       }

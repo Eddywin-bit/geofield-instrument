@@ -49,6 +49,85 @@ async function fetchBasemapRange(start: number, end: number): Promise<Blob> {
   throw lastErr instanceof Error ? lastErr : new Error("range fetch failed");
 }
 
+// The assembled basemap lives in the app's private Filesystem sandbox
+// (Directory.Data) on native, so Android "Clear Cache" and storage-pressure
+// eviction cannot delete it — only uninstalling removes it. On web (the PWA)
+// there is no Filesystem plugin, so we keep using Cache Storage there.
+// The temporary ranged chunks always stay in Cache Storage regardless.
+const BASEMAP_FS_PATH = "ghana.pmtiles";
+
+async function isNativeRuntime(): Promise<boolean> {
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+// Returns the assembled basemap as a Blob from whichever durable store holds it,
+// or null if not present. Native: Filesystem sandbox. Web: Cache Storage.
+async function readAssembledBasemap(): Promise<Blob | null> {
+  if (await isNativeRuntime()) {
+    try {
+      const { Filesystem, Directory } = await import("@capacitor/filesystem");
+      const stat = await Filesystem.stat({ path: BASEMAP_FS_PATH, directory: Directory.Data });
+      if (!stat || (typeof stat.size === "number" && stat.size !== BASEMAP_SIZE)) {
+        // Missing or wrong size — treat as not present.
+        if (stat && stat.size !== BASEMAP_SIZE) {
+          try { await Filesystem.deleteFile({ path: BASEMAP_FS_PATH, directory: Directory.Data }); } catch { /* ignore */ }
+        }
+        return null;
+      }
+      const read = await Filesystem.readFile({ path: BASEMAP_FS_PATH, directory: Directory.Data });
+      const b64 = typeof read.data === "string" ? read.data : "";
+      if (!b64) return null;
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/octet-stream" });
+      return blob.size === BASEMAP_SIZE ? blob : null;
+    } catch {
+      return null;
+    }
+  }
+  // Web fallback: Cache Storage.
+  try {
+    if (typeof caches === "undefined") return null;
+    const cache = await caches.open(BASEMAP_CACHE);
+    const hit = await cache.match(BASEMAP_KEY);
+    if (!hit) return null;
+    const blob = await hit.blob();
+    return blob.size === BASEMAP_SIZE ? blob : null;
+  } catch {
+    return null;
+  }
+}
+
+// Persists the assembled Blob to the durable store. Native: Filesystem sandbox
+// (written base64 in one call). Web: Cache Storage under BASEMAP_KEY.
+async function writeAssembledBasemap(full: Blob): Promise<void> {
+  if (await isNativeRuntime()) {
+    const { Filesystem, Directory } = await import("@capacitor/filesystem");
+    const b64: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("read failed"));
+      reader.onload = () => {
+        const res = typeof reader.result === "string" ? reader.result : "";
+        const comma = res.indexOf(",");
+        resolve(comma >= 0 ? res.slice(comma + 1) : res);
+      };
+      reader.readAsDataURL(full);
+    });
+    await Filesystem.writeFile({ path: BASEMAP_FS_PATH, data: b64, directory: Directory.Data });
+    return;
+  }
+  if (typeof caches === "undefined") throw new Error("Cache Storage unavailable");
+  const cache = await caches.open(BASEMAP_CACHE);
+  await cache.put(
+    BASEMAP_KEY,
+    new Response(full, { headers: { "Content-Type": "application/octet-stream" } }),
+  );
+}
+
 type BasemapDl = { status: "idle" | "downloading" | "error" | "done"; pct: number };
 
 /**
@@ -108,10 +187,9 @@ const basemapDl = (() => {
         throw new Error(`size mismatch: got ${full.size}, expected ${BASEMAP_SIZE}`);
       }
 
-      await cache.put(
-        BASEMAP_KEY,
-        new Response(full, { headers: { "Content-Type": "application/octet-stream" } }),
-      );
+      // Assembled file goes to the durable store (Filesystem sandbox on native).
+      await writeAssembledBasemap(full);
+      // Temporary chunks are only ever in Cache Storage; clear them now.
       for (let i = 0; i < partCount; i++) {
         await cache.delete(BASEMAP_PART_PREFIX + i);
       }
@@ -121,13 +199,11 @@ const basemapDl = (() => {
     } catch (err) {
       console.warn("[MapView] basemap download failed", err);
       // Completed chunks are deliberately kept. They are the resume point.
+      // A wrong-sized assembled file is discarded; completed chunks are kept as
+      // the resume point. readAssembledBasemap already deletes a wrong-sized
+      // sandbox file as a side effect, so a simple probe is enough here.
       try {
-        const cache = await caches.open(BASEMAP_CACHE);
-        const hit = await cache.match(BASEMAP_KEY);
-        if (hit) {
-          const size = (await hit.blob()).size;
-          if (size !== BASEMAP_SIZE) await cache.delete(BASEMAP_KEY);
-        }
+        await readAssembledBasemap();
       } catch {
         /* ignore */
       }
@@ -960,17 +1036,34 @@ export function MapView() {
     let cancelled = false;
     (async () => {
       try {
-        if (typeof caches === "undefined") return;
-        const cache = await caches.open(BASEMAP_CACHE);
-        const hit = await cache.match(BASEMAP_KEY);
-        if (!hit || cancelled) return;
-        const blob = await hit.blob();
-        if (cancelled) return;
+        // One-time migration: users who already downloaded to Cache Storage on a
+        // previous version get their file copied into the durable sandbox, so
+        // they never re-download the 92 MB. Harmless/no-op on web and on fresh
+        // installs.
+        if (await isNativeRuntime() && typeof caches !== "undefined") {
+          try {
+            const already = await readAssembledBasemap();
+            if (!already) {
+              const cache = await caches.open(BASEMAP_CACHE);
+              const legacy = await cache.match(BASEMAP_KEY);
+              if (legacy) {
+                const legacyBlob = await legacy.blob();
+                if (legacyBlob.size === BASEMAP_SIZE) {
+                  await writeAssembledBasemap(legacyBlob);
+                  try { await cache.delete(BASEMAP_KEY); } catch { /* ignore */ }
+                }
+              }
+            }
+          } catch { /* migration is best-effort */ }
+        }
+
+        const blob = await readAssembledBasemap();
+        if (!blob || cancelled) return;
         const file = new File([blob], BASEMAP_FILE_NAME);
         pmProtocol.add(new PMTiles(new FileSource(file)));
         setBasemapReady(true);
       } catch (err) {
-        console.warn("[MapView] basemap cache load failed", err);
+        console.warn("[MapView] basemap durable load failed", err);
       }
     })();
     return () => {

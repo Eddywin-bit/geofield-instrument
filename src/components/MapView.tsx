@@ -1036,17 +1036,34 @@ export function MapView() {
     let cancelled = false;
     (async () => {
       try {
-        if (typeof caches === "undefined") return;
-        const cache = await caches.open(BASEMAP_CACHE);
-        const hit = await cache.match(BASEMAP_KEY);
-        if (!hit || cancelled) return;
-        const blob = await hit.blob();
-        if (cancelled) return;
+        // One-time migration: users who already downloaded to Cache Storage on a
+        // previous version get their file copied into the durable sandbox, so
+        // they never re-download the 92 MB. Harmless/no-op on web and on fresh
+        // installs.
+        if (await isNativeRuntime() && typeof caches !== "undefined") {
+          try {
+            const already = await readAssembledBasemap();
+            if (!already) {
+              const cache = await caches.open(BASEMAP_CACHE);
+              const legacy = await cache.match(BASEMAP_KEY);
+              if (legacy) {
+                const legacyBlob = await legacy.blob();
+                if (legacyBlob.size === BASEMAP_SIZE) {
+                  await writeAssembledBasemap(legacyBlob);
+                  try { await cache.delete(BASEMAP_KEY); } catch { /* ignore */ }
+                }
+              }
+            }
+          } catch { /* migration is best-effort */ }
+        }
+
+        const blob = await readAssembledBasemap();
+        if (!blob || cancelled) return;
         const file = new File([blob], BASEMAP_FILE_NAME);
         pmProtocol.add(new PMTiles(new FileSource(file)));
         setBasemapReady(true);
       } catch (err) {
-        console.warn("[MapView] basemap cache load failed", err);
+        console.warn("[MapView] basemap durable load failed", err);
       }
     })();
     return () => {

@@ -273,7 +273,13 @@ function LogScreen() {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
       streamRef.current = stream;
       const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", ""];
       const mime = candidates.find((m) => m === "" || MediaRecorder.isTypeSupported(m)) ?? "";

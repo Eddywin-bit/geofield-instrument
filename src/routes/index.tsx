@@ -82,7 +82,7 @@ const FIX_KEY = "geofield.currentFix.v1";
 export function readCurrentFix(): Fix | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(FIX_KEY);
+    const raw = window.sessionStorage.getItem(FIX_KEY);
     return raw ? (JSON.parse(raw) as Fix) : null;
   } catch {
     return null;
@@ -90,7 +90,7 @@ export function readCurrentFix(): Fix | null {
 }
 function writeCurrentFix(f: Fix) {
   try {
-    window.localStorage.setItem(FIX_KEY, JSON.stringify({ ...f, acquiredAt: Date.now() }));
+    window.sessionStorage.setItem(FIX_KEY, JSON.stringify({ ...f, acquiredAt: Date.now() }));
   } catch {
     /* ignore */
   }

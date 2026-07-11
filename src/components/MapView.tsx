@@ -365,6 +365,25 @@ function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
       type: "raster",
       source: "osm",
     });
+    // Voyager base carries few POI labels. CARTO's labels-only companion
+    // raster restores shop/hostel/street names on top, same CDN, no key.
+    sources["osm-labels"] = {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      minzoom: 0,
+      maxzoom: 20,
+    };
+    layers.push({
+      id: "osm-labels",
+      type: "raster",
+      source: "osm-labels",
+    });
   } else if (basemap) {
     sources.basemap = { type: "vector", url: BASEMAP_STYLE_URL };
     sources["capital-fix"] = {

@@ -35,7 +35,7 @@ const BASEMAP_PART_PREFIX = "/basemap/ghana.pmtiles.part.";
 // Keyless, no usage limits, ships its own labels, sprite, glyphs and OSM
 // attribution. The raster branch inside buildStyle is superseded by this and
 // kept only as unused fallback code.
-const ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+const ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
 
 /** One ranged chunk, with a short backoff. Rejects if the server ignores Range. */
 async function fetchBasemapRange(start: number, end: number): Promise<Blob> {

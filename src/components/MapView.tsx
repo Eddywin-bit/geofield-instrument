@@ -29,6 +29,14 @@ const BASEMAP_STYLE_URL = `pmtiles://${BASEMAP_FILE_NAME}`;
 const BASEMAP_CHUNK = 8 * 1024 * 1024;
 const BASEMAP_PART_PREFIX = "/basemap/ghana.pmtiles.part.";
 
+// Online map: OpenFreeMap's Liberty vector style. Vector renders crisp at any
+// zoom and screen density, where the previous CARTO raster tiles (256px PNGs)
+// went blurry past their native zoom on high-DPI phones and loaded slowly.
+// Keyless, no usage limits, ships its own labels, sprite, glyphs and OSM
+// attribution. The raster branch inside buildStyle is superseded by this and
+// kept only as unused fallback code.
+const ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+
 /** One ranged chunk, with a short backoff. Rejects if the server ignores Range. */
 async function fetchBasemapRange(start: number, end: number): Promise<Blob> {
   let lastErr: unknown = null;

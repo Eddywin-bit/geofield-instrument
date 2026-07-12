@@ -12,7 +12,7 @@ import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const BG = "#1B2027";
 const OCEAN = "#14304A";
-const LAND = "#141414";
+const LAND = "#1B2027";
 
 // Hosted on GitHub Pages (public repo Eddywin-bit/geofield-assets) so the offline
 // basemap does not depend on the Lovable CDN. md5 ab08c5fba7f2992419b690cd2ec34663.

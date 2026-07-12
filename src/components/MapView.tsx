@@ -875,7 +875,7 @@ export function MapView() {
             id: "world-land",
             type: "fill",
             source: "world-land",
-            paint: { "fill-color": OCEAN, "fill-opacity": 1 },
+            paint: { "fill-color": LAND, "fill-opacity": 1 },
           });
         }
       } catch (err) {

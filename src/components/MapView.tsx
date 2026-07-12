@@ -464,7 +464,7 @@ function buildBasemapLayers(): LayerSpecification[] {
 function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
   const layers: StyleSpecification["layers"] = [
-    { id: "bg", type: "background", paint: { "background-color": OCEAN } },
+    { id: "bg", type: "background", paint: { "background-color": BG } },
   ];
   if (online) {
     // openstreetmap.org's own tile servers throttle third-party apps hard,

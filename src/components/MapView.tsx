@@ -32,7 +32,7 @@ const BASEMAP_PART_PREFIX = "/basemap/ghana.pmtiles.part.";
 /** One ranged chunk, with a short backoff. Rejects if the server ignores Range. */
 async function fetchBasemapRange(start: number, end: number): Promise<Blob> {
   let lastErr: unknown = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const res = await fetch(BASEMAP_ASSET_URL, {
         headers: { Range: `bytes=${start}-${end}` },
@@ -43,7 +43,7 @@ async function fetchBasemapRange(start: number, end: number): Promise<Blob> {
       throw new Error(`HTTP ${res.status}`);
     } catch (err) {
       lastErr = err;
-      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error("range fetch failed");
@@ -66,19 +66,31 @@ async function isNativeRuntime(): Promise<boolean> {
 }
 
 // Returns the assembled basemap as a Blob from whichever durable store holds it,
-// or null if not present. Native: Filesystem sandbox. Web: Cache Storage.
+// or null if not present. Native: served by Capacitor's local file server via
+// fetch(convertFileSrc), which streams from disk — no 123 MB base64 string, no
+// atob of the whole file. A base64 read remains only as a last-resort fallback.
 async function readAssembledBasemap(): Promise<Blob | null> {
   if (await isNativeRuntime()) {
     try {
       const { Filesystem, Directory } = await import("@capacitor/filesystem");
-      const stat = await Filesystem.stat({ path: BASEMAP_FS_PATH, directory: Directory.Data });
-      if (!stat || (typeof stat.size === "number" && stat.size !== BASEMAP_SIZE)) {
-        // Missing or wrong size — treat as not present.
-        if (stat && stat.size !== BASEMAP_SIZE) {
-          try { await Filesystem.deleteFile({ path: BASEMAP_FS_PATH, directory: Directory.Data }); } catch { /* ignore */ }
-        }
+      const stat = await Filesystem.stat({ path: BASEMAP_FS_PATH, directory: Directory.Data }).catch(() => null);
+      if (!stat) return null;
+      if (typeof stat.size === "number" && stat.size !== BASEMAP_SIZE) {
+        // Wrong size (e.g. an interrupted previous assembly) — discard.
+        try { await Filesystem.deleteFile({ path: BASEMAP_FS_PATH, directory: Directory.Data }); } catch { /* ignore */ }
         return null;
       }
+      const { Capacitor } = await import("@capacitor/core");
+      const uri = await Filesystem.getUri({ path: BASEMAP_FS_PATH, directory: Directory.Data });
+      try {
+        const res = await fetch(Capacitor.convertFileSrc(uri.uri));
+        if (res.ok) {
+          const blob = await res.blob();
+          if (blob.size === BASEMAP_SIZE) return blob;
+        }
+      } catch { /* fall through to base64 fallback */ }
+      // Fallback: whole-file base64 read. Memory-heavy; only if the local
+      // file server route failed.
       const read = await Filesystem.readFile({ path: BASEMAP_FS_PATH, directory: Directory.Data });
       const b64 = typeof read.data === "string" ? read.data : "";
       if (!b64) return null;
@@ -102,22 +114,50 @@ async function readAssembledBasemap(): Promise<Blob | null> {
   }
 }
 
-// Persists the assembled Blob to the durable store. Native: Filesystem sandbox
-// (written base64 in one call). Web: Cache Storage under BASEMAP_KEY.
+/** One chunk-sized Blob to clean base64 (no data: prefix). */
+function blobToBase64(chunk: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("chunk read failed"));
+    reader.onload = () => {
+      const res = typeof reader.result === "string" ? reader.result : "";
+      const comma = res.indexOf(",");
+      resolve(comma >= 0 ? res.slice(comma + 1) : res);
+    };
+    reader.readAsDataURL(chunk);
+  });
+}
+
+// Persists the assembled Blob to the durable store.
+//
+// Native: written to the Filesystem sandbox in BASEMAP_CHUNK-sized appends.
+// Each appendFile call decodes its own base64 payload to raw bytes before
+// appending, so per-call padding is harmless and peak memory stays around one
+// chunk (~11 MB as base64) instead of the ~215 MB that encoding the whole
+// 92 MB at once cost — which froze the UI and killed the assembly on
+// mid-range phones. Blob.slice on a disk-backed blob is cheap; only the
+// slice being encoded is ever materialised.
+//
+// Web: Cache Storage under BASEMAP_KEY, unchanged.
 async function writeAssembledBasemap(full: Blob): Promise<void> {
   if (await isNativeRuntime()) {
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
-    const b64: string = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("read failed"));
-      reader.onload = () => {
-        const res = typeof reader.result === "string" ? reader.result : "";
-        const comma = res.indexOf(",");
-        resolve(comma >= 0 ? res.slice(comma + 1) : res);
-      };
-      reader.readAsDataURL(full);
-    });
-    await Filesystem.writeFile({ path: BASEMAP_FS_PATH, data: b64, directory: Directory.Data });
+    for (let offset = 0, i = 0; offset < full.size; offset += BASEMAP_CHUNK, i++) {
+      const slice = full.slice(offset, Math.min(offset + BASEMAP_CHUNK, full.size));
+      const b64 = await blobToBase64(slice);
+      if (i === 0) {
+        // writeFile overwrites, so a partial file from a previously
+        // interrupted assembly self-heals here.
+        await Filesystem.writeFile({ path: BASEMAP_FS_PATH, data: b64, directory: Directory.Data });
+      } else {
+        await Filesystem.appendFile({ path: BASEMAP_FS_PATH, data: b64, directory: Directory.Data });
+      }
+    }
+    const stat = await Filesystem.stat({ path: BASEMAP_FS_PATH, directory: Directory.Data });
+    if (typeof stat.size === "number" && stat.size !== BASEMAP_SIZE) {
+      try { await Filesystem.deleteFile({ path: BASEMAP_FS_PATH, directory: Directory.Data }); } catch { /* ignore */ }
+      throw new Error(`sandbox write size mismatch: got ${stat.size}, expected ${BASEMAP_SIZE}`);
+    }
     return;
   }
   if (typeof caches === "undefined") throw new Error("Cache Storage unavailable");

@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 import { formatCoord, formatTime, type LogEntry } from "./logs-store";
 
 // Keep in sync with APP_VERSION / CHANNEL in src/routes/about.tsx.
-const APP_VERSION = "0.5.0 Beta";
+const APP_VERSION = "0.6.3 Beta";
 
 const PAGE_W = 210;
 const PAGE_H = 297;

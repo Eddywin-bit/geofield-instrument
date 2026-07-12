@@ -1064,7 +1064,16 @@ export function MapView() {
       }
       attributionRef.current = null;
     }
-    map.setStyle(buildStyle(online, basemapReady), { diff: false });
+    if (online) {
+      // OpenFreeMap Liberty: vector tiles, keyless, no usage limits. Crisp at
+      // any zoom (GPU-drawn, no stretched 256px rasters) and lighter per pan
+      // than PNG tiles. MapLibre injects the required OSM attribution from the
+      // style itself. Liberty keeps POI labels (shops, hostels), which the
+      // raster Voyager base lacked.
+      map.setStyle("https://tiles.openfreemap.org/styles/liberty", { diff: false });
+    } else {
+      map.setStyle(buildStyle(false, basemapReady), { diff: false });
+    }
     map.once("style.load", () => {
       attributionRef.current = new maplibregl.AttributionControl({ compact: true });
       map.addControl(attributionRef.current, "top-left");

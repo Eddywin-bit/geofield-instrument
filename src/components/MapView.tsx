@@ -276,6 +276,14 @@ const basemapDl = (() => {
   };
 })();
 
+// Survives tab switches. MapView unmounts when you leave the Map tab; without
+// this, basemapReady reset to false on every return and the async disk read
+// re-flashed the download bar for a couple of seconds before flipping true.
+// pmProtocol also already holds the registered PMTiles source across mounts,
+// so once ready, always ready for this app session.
+const basemapSession = { ready: false };
+
+
 const REGIONAL_CAPITALS: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: (
@@ -610,7 +618,7 @@ export function MapView() {
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [bearing, setBearing] = useState(0);
-  const [basemapReady, setBasemapReady] = useState(false);
+  const [basemapReady, setBasemapReady] = useState(basemapSession.ready);
   const [dl, setDl] = useState<BasemapDl>(basemapDl.get());
   const [toast, setToast] = useState<string | null>(null);
   const gpsRef = useRef(gps);
@@ -1085,6 +1093,13 @@ export function MapView() {
   }, [online, basemapReady]);
 
   useEffect(() => {
+    // Already loaded earlier this session: pmProtocol still holds the source and
+    // basemapSession.ready is true, so skip the disk read entirely — this is what
+    // removes the flash on tab re-entry.
+    if (basemapSession.ready) {
+      setBasemapReady(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -1113,6 +1128,7 @@ export function MapView() {
         if (!blob || cancelled) return;
         const file = new File([blob], BASEMAP_FILE_NAME);
         pmProtocol.add(new PMTiles(new FileSource(file)));
+        basemapSession.ready = true;
         setBasemapReady(true);
       } catch (err) {
         console.warn("[MapView] basemap durable load failed", err);
@@ -1132,7 +1148,10 @@ export function MapView() {
   }, []);
 
   useEffect(() => {
-    if (dl.status === "done") setBasemapReady(true);
+    if (dl.status === "done") {
+      basemapSession.ready = true;
+      setBasemapReady(true);
+    }
   }, [dl.status]);
 
   // Watch GPS. Uses the fused provider on native; navigator.geolocation on web.

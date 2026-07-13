@@ -276,6 +276,14 @@ const basemapDl = (() => {
   };
 })();
 
+// Survives tab switches. MapView unmounts when you leave the Map tab; without
+// this, basemapReady reset to false on every return and the async disk read
+// re-flashed the download bar for a couple of seconds before flipping true.
+// pmProtocol also already holds the registered PMTiles source across mounts,
+// so once ready, always ready for this app session.
+const basemapSession = { ready: false };
+
+
 const REGIONAL_CAPITALS: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: (

@@ -618,7 +618,7 @@ export function MapView() {
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [bearing, setBearing] = useState(0);
-  const [basemapReady, setBasemapReady] = useState(false);
+  const [basemapReady, setBasemapReady] = useState(basemapSession.ready);
   const [dl, setDl] = useState<BasemapDl>(basemapDl.get());
   const [toast, setToast] = useState<string | null>(null);
   const gpsRef = useRef(gps);

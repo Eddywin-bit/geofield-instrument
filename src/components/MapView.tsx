@@ -1148,7 +1148,10 @@ export function MapView() {
   }, []);
 
   useEffect(() => {
-    if (dl.status === "done") setBasemapReady(true);
+    if (dl.status === "done") {
+      basemapSession.ready = true;
+      setBasemapReady(true);
+    }
   }, [dl.status]);
 
   // Watch GPS. Uses the fused provider on native; navigator.geolocation on web.

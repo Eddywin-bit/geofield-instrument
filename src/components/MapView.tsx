@@ -1093,6 +1093,13 @@ export function MapView() {
   }, [online, basemapReady]);
 
   useEffect(() => {
+    // Already loaded earlier this session: pmProtocol still holds the source and
+    // basemapSession.ready is true, so skip the disk read entirely — this is what
+    // removes the flash on tab re-entry.
+    if (basemapSession.ready) {
+      setBasemapReady(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -1121,6 +1128,7 @@ export function MapView() {
         if (!blob || cancelled) return;
         const file = new File([blob], BASEMAP_FILE_NAME);
         pmProtocol.add(new PMTiles(new FileSource(file)));
+        basemapSession.ready = true;
         setBasemapReady(true);
       } catch (err) {
         console.warn("[MapView] basemap durable load failed", err);

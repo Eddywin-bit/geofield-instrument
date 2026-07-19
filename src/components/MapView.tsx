@@ -687,7 +687,10 @@ export function MapView() {
   const geoRef = useRef<GeoData | null>(null);
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
   const accuracyMarkerRef = useRef<maplibregl.Marker | null>(null);
-  const headingMarkerRef = useRef<maplibregl.Marker | null>(null);
+  // Child node of gpsMarkerRef's own element (see the marker-creation effect),
+  // not a separate Marker: a second Marker only coincidentally shared the
+  // dot's lng/lat and could render detached from it on screen.
+  const headingArrowRef = useRef<HTMLDivElement | null>(null);
   const reapplyGeologyRef = useRef<(() => void) | null>(null);
   const attributionRef = useRef<maplibregl.AttributionControl | null>(null);
   const firstRunRef = useRef(true);
@@ -1368,40 +1371,36 @@ export function MapView() {
         { duration: 1500, iterations: Infinity, easing: "ease-out" },
       );
 
+      // Direction arrow, fused to the dot as a child of the same marker
+      // element rather than a second Marker: two independently-anchored
+      // Markers only coincidentally shared the dot's lng/lat, and could
+      // render detached from it on screen (different element sizes and
+      // MapLibre's rotationAlignment:"map" transform path vs. the dot's
+      // plain viewport alignment). A pivot positioned at the container's own
+      // center (20,20) holds the triangle offset upward from it, so rotating
+      // the pivot sweeps the arrowhead's tip around the dot at a fixed
+      // radius, base flush against the dot's top edge. Rotation and
+      // visibility are driven by the [heading, bearing] effect below, not
+      // this one, since heading/bearing change independently of gps.
+      const arrowPivot = document.createElement("div");
+      arrowPivot.style.cssText = "position:absolute;top:20px;left:20px;width:0;height:0;pointer-events:none;display:none;";
+      const arrowShape = document.createElement("div");
+      arrowShape.style.cssText =
+        "position:absolute;top:-19px;left:-6px;width:0;height:0;" +
+        "border-left:6px solid transparent;border-right:6px solid transparent;" +
+        "border-bottom:11px solid #F59E0B;" +
+        "filter:drop-shadow(0 1px 1px rgba(15,20,24,0.8));";
+      arrowPivot.appendChild(arrowShape);
+
       el.appendChild(halo);
       el.appendChild(dot);
+      el.appendChild(arrowPivot);
+      headingArrowRef.current = arrowPivot;
       gpsMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([gps.lng, gps.lat])
         .addTo(map);
     } else {
       gpsMarkerRef.current.setLngLat([gps.lng, gps.lat]);
-    }
-
-    // Direction arrow. rotationAlignment:"map" keeps it pointing at the true
-    // heading regardless of how the user has rotated the map (dragRotate is
-    // on), matching the existing reset-north control's own bearing handling.
-    // Its own Marker, separate from the dot, so rotating it never touches the
-    // dot/halo. Visibility and rotation are driven by the [heading] effect
-    // below, not this one, since heading changes independently of gps.
-    if (!headingMarkerRef.current) {
-      const arrowEl = document.createElement("div");
-      arrowEl.style.cssText = "width:28px;height:28px;position:relative;pointer-events:none;display:none;";
-      const arrowShape = document.createElement("div");
-      arrowShape.style.cssText =
-        "position:absolute;top:0;left:50%;width:0;height:0;transform:translateX(-50%);" +
-        "border-left:6px solid transparent;border-right:6px solid transparent;" +
-        "border-bottom:11px solid #F59E0B;" +
-        "filter:drop-shadow(0 1px 1px rgba(15,20,24,0.8));";
-      arrowEl.appendChild(arrowShape);
-      headingMarkerRef.current = new maplibregl.Marker({
-        element: arrowEl,
-        rotationAlignment: "map",
-        pitchAlignment: "map",
-      })
-        .setLngLat([gps.lng, gps.lat])
-        .addTo(map);
-    } else {
-      headingMarkerRef.current.setLngLat([gps.lng, gps.lat]);
     }
 
     const metersPerPixel =
@@ -1425,19 +1424,25 @@ export function MapView() {
   }, [gps]);
 
   // Show/rotate the heading arrow. Separate from the marker-position effect
-  // above: heading changes on its own schedule (GPS course or compass), not
-  // in lockstep with gps updates.
+  // above: heading and bearing change on their own schedules (GPS course or
+  // compass; the user dragging the map), not in lockstep with gps updates.
+  // The arrow is a plain child element (see the marker-creation effect
+  // above), so this is manual CSS rotation rather than Marker.setRotation.
+  // heading - bearing matches the existing reset-north control's own
+  // -bearing compensation: rotating by heading first (the target compass
+  // direction if the map were unrotated), then countering however far the
+  // user has since rotated the map, keeps the arrow pointing at the true
+  // heading regardless of map rotation.
   useEffect(() => {
-    const marker = headingMarkerRef.current;
-    if (!marker) return;
-    const el = marker.getElement();
+    const el = headingArrowRef.current;
+    if (!el) return;
     if (heading === null) {
       el.style.display = "none";
       return;
     }
     el.style.display = "block";
-    marker.setRotation(heading);
-  }, [heading]);
+    el.style.transform = `rotate(${heading - bearing}deg)`;
+  }, [heading, bearing]);
 
   useEffect(() => {
     const map = mapRef.current;

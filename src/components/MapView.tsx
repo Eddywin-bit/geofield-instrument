@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { type StyleSpecification, type LayerSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Link } from "@tanstack/react-router";
-import { Navigation2, Crosshair, ChevronDown, Layers, Minus, Plus, X } from "lucide-react";
+import { Navigation2, Crosshair, ChevronDown, Layers, Loader2, Minus, Plus, X } from "lucide-react";
 import { Protocol, PMTiles, FileSource } from "pmtiles";
 import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
@@ -282,6 +282,34 @@ const basemapDl = (() => {
 // pmProtocol also already holds the registered PMTiles source across mounts,
 // so once ready, always ready for this app session.
 const basemapSession = { ready: false };
+
+// Cross-launch, synchronously readable hint for whether the basemap file is
+// already on disk. basemapSession only survives tab switches within one JS
+// runtime; on a cold launch it resets to false, so the async disk read
+// (Filesystem stat + blob) is the only source of truth and it resolves after
+// first paint. That async gap is what flashed the download button and then
+// rebuilt the style once readiness flipped. This hint lets the first render
+// assume the offline basemap and skip the download CTA. It is only a hint: the
+// disk read still runs and rewrites it to match what is actually present.
+const BASEMAP_READY_HINT_KEY = "geofield-basemap-ready-v1";
+
+function readBasemapReadyHint(): boolean {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(BASEMAP_READY_HINT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeBasemapReadyHint(ready: boolean): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (ready) localStorage.setItem(BASEMAP_READY_HINT_KEY, "1");
+    else localStorage.removeItem(BASEMAP_READY_HINT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 
 const REGIONAL_CAPITALS: GeoJSON.FeatureCollection = {
@@ -618,7 +646,12 @@ export function MapView() {
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [bearing, setBearing] = useState(0);
-  const [basemapReady, setBasemapReady] = useState(basemapSession.ready);
+  const [basemapReady, setBasemapReady] = useState(basemapSession.ready || readBasemapReadyHint());
+  // False until the disk read has resolved (or the session already knows).
+  // Gates map construction so the offline vector basemap is built once, after
+  // its PMTiles source is registered, instead of building the GeoJSON fallback
+  // first and rebuilding into the vector basemap when the async read lands.
+  const [basemapProbed, setBasemapProbed] = useState(basemapSession.ready);
   const [dl, setDl] = useState<BasemapDl>(basemapDl.get());
   const [toast, setToast] = useState<string | null>(null);
   const gpsRef = useRef(gps);
@@ -636,9 +669,13 @@ export function MapView() {
     toastTimerRef.current = setTimeout(() => setToast(null), 6000);
   };
 
-  // Init map once
+  // Init the map once basemap readiness is resolved. Gating on basemapProbed
+  // guarantees the offline vector basemap is only built after its PMTiles source
+  // is registered, so the map is constructed a single time with the correct
+  // style rather than painting the GeoJSON fallback and then rebuilding into the
+  // vector basemap when the async disk read resolves.
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !basemapProbed) return;
 
     let map: maplibregl.Map;
     try {
@@ -1062,7 +1099,7 @@ export function MapView() {
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [basemapProbed]);
 
   useEffect(() => {
     if (firstRunRef.current) {
@@ -1095,13 +1132,15 @@ export function MapView() {
   useEffect(() => {
     // Already loaded earlier this session: pmProtocol still holds the source and
     // basemapSession.ready is true, so skip the disk read entirely — this is what
-    // removes the flash on tab re-entry.
+    // removes the flash on tab re-entry within a session.
     if (basemapSession.ready) {
       setBasemapReady(true);
+      setBasemapProbed(true);
       return;
     }
     let cancelled = false;
     (async () => {
+      let present = false;
       try {
         // One-time migration: users who already downloaded to Cache Storage on a
         // previous version get their file copied into the durable sandbox, so
@@ -1125,13 +1164,24 @@ export function MapView() {
         }
 
         const blob = await readAssembledBasemap();
-        if (!blob || cancelled) return;
-        const file = new File([blob], BASEMAP_FILE_NAME);
-        pmProtocol.add(new PMTiles(new FileSource(file)));
-        basemapSession.ready = true;
-        setBasemapReady(true);
+        if (cancelled) return;
+        if (blob) {
+          const file = new File([blob], BASEMAP_FILE_NAME);
+          pmProtocol.add(new PMTiles(new FileSource(file)));
+          basemapSession.ready = true;
+          present = true;
+        }
       } catch (err) {
         console.warn("[MapView] basemap durable load failed", err);
+      } finally {
+        if (!cancelled) {
+          // Reconcile the optimistic hint with what is actually on disk, then
+          // open the gate so the map builds once with the correct style and a
+          // registered PMTiles source.
+          setBasemapReady(present);
+          writeBasemapReadyHint(present);
+          setBasemapProbed(true);
+        }
       }
     })();
     return () => {
@@ -1150,7 +1200,9 @@ export function MapView() {
   useEffect(() => {
     if (dl.status === "done") {
       basemapSession.ready = true;
+      writeBasemapReadyHint(true);
       setBasemapReady(true);
+      setBasemapProbed(true);
     }
   }, [dl.status]);
 
@@ -1313,6 +1365,16 @@ export function MapView() {
       `}</style>
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
 
+      {/* Neutral state while basemap readiness is still resolving, so the
+          download CTA never flashes before we know the file is present. */}
+      {!basemapProbed && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Loading base map
+          </div>
+        </div>
+      )}
 
       {initError && (
         <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">
@@ -1380,7 +1442,7 @@ export function MapView() {
       </div>
 
       {/* Basemap download */}
-      {!online && !basemapReady && dl.status === "idle" && (
+      {!online && basemapProbed && !basemapReady && dl.status === "idle" && (
         <button
           type="button"
           onClick={() => void basemapDl.start()}

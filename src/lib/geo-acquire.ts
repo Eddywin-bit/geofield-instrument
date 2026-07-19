@@ -11,6 +11,10 @@ export type AcquireCoords = {
   latitude: number;
   longitude: number;
   accuracy: number;
+  // Instantaneous ground speed in m/s, when the platform reports one (GNSS
+  // Doppler-derived on native/most browsers). Null when unavailable, never
+  // estimated here so callers can tell "known stationary" from "unknown".
+  speed: number | null;
 };
 
 export type AcquireHandlers = {
@@ -82,6 +86,7 @@ export function startPositionWatch(
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
               accuracy: pos.coords.accuracy,
+              speed: pos.coords.speed,
             });
           })
           .catch(() => {
@@ -100,6 +105,7 @@ export function startPositionWatch(
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
               accuracy: pos.coords.accuracy,
+              speed: pos.coords.speed,
             });
           },
         );
@@ -137,6 +143,7 @@ export function startPositionWatch(
                   latitude: pos.coords.latitude,
                   longitude: pos.coords.longitude,
                   accuracy: pos.coords.accuracy,
+                  speed: pos.coords.speed,
                 });
               })
               .catch(() => {
@@ -176,6 +183,7 @@ export function startPositionWatch(
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
         accuracy: pos.coords.accuracy,
+        speed: pos.coords.speed,
       }),
     (err) => onError(err),
     { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 },
@@ -184,6 +192,72 @@ export function startPositionWatch(
 
   return {
     stop: () => navigator.geolocation.clearWatch(id),
+  };
+}
+
+export type CompassWatch = { stop: () => void };
+
+/**
+ * Device magnetometer heading (0-360, clockwise from true/magnetic north),
+ * for when GPS course is unreliable at walking pace or below. Best-effort:
+ * many WebViews and devices have no compass, so a silent no-op watch (never
+ * calling onHeading) is a valid outcome, not an error.
+ *
+ * iOS Safari/WKWebView exposes `webkitCompassHeading` directly on the
+ * `deviceorientation` event. Everything else is asked for
+ * `deviceorientationabsolute` and derives heading from `alpha`, which is only
+ * meaningful when the event reports `absolute: true` (device-frame rotation
+ * with no fixed relationship to true/magnetic north otherwise).
+ */
+export function startCompassWatch(onHeading: (headingDeg: number) => void): CompassWatch {
+  if (typeof window === "undefined" || typeof window.DeviceOrientationEvent === "undefined") {
+    return { stop: () => {} };
+  }
+
+  let stopped = false;
+  const handleOrientation = (e: Event) => {
+    if (stopped) return;
+    const ev = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
+    if (typeof ev.webkitCompassHeading === "number" && Number.isFinite(ev.webkitCompassHeading)) {
+      onHeading(ev.webkitCompassHeading);
+      return;
+    }
+    if (ev.absolute && typeof ev.alpha === "number") {
+      onHeading((360 - ev.alpha) % 360);
+    }
+  };
+
+  const attach = () => {
+    if (stopped) return;
+    window.addEventListener("deviceorientationabsolute", handleOrientation);
+    window.addEventListener("deviceorientation", handleOrientation);
+  };
+
+  // iOS 13+ requires an explicit, user-gesture-gated permission prompt before
+  // any orientation event fires. The request function only exists there.
+  const requestPermission = (
+    window.DeviceOrientationEvent as unknown as {
+      requestPermission?: () => Promise<"granted" | "denied">;
+    }
+  ).requestPermission;
+  if (typeof requestPermission === "function") {
+    requestPermission()
+      .then((state) => {
+        if (state === "granted") attach();
+      })
+      .catch(() => {
+        /* permission denied or prompt unavailable; no compass this session */
+      });
+  } else {
+    attach();
+  }
+
+  return {
+    stop: () => {
+      stopped = true;
+      window.removeEventListener("deviceorientationabsolute", handleOrientation);
+      window.removeEventListener("deviceorientation", handleOrientation);
+    },
   };
 }
 

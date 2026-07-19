@@ -6,12 +6,55 @@ import { Navigation2, Crosshair, ChevronDown, Layers, Loader2, Minus, Plus, X } 
 import { Protocol, PMTiles, FileSource } from "pmtiles";
 import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
-import { startPositionWatch } from "../lib/geo-acquire";
+import { startPositionWatch, startCompassWatch } from "../lib/geo-acquire";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const OCEAN = "#14304A";
 const LAND = "#1B2027";
+
+// Above this ground speed, GPS course between fixes is a reliable heading;
+// at or below it (walking pace or slower), consecutive fixes are too close
+// together relative to their own error to trust a bearing between them, so
+// the compass is used instead. ~6.5 km/h: brisk walk/jog, comfortably below
+// any vehicle speed.
+const HEADING_GPS_SPEED_MPS = 1.8;
+// A GPS-course bearing needs the two fixes to actually be far enough apart
+// that GPS error isn't the dominant component of the vector between them.
+const HEADING_MIN_FIX_DISTANCE_M = 8;
+// Discard a prior fix this old rather than derive a bearing across a gap
+// that may no longer reflect the current direction of travel.
+const HEADING_MAX_FIX_AGE_MS = 20_000;
+// Ignore a compass reading once it's this stale; if there's been no orientation
+// event in a while, the user hasn't necessarily moved but the sensor may be gone.
+const HEADING_MAX_COMPASS_AGE_MS = 5_000;
+// Compass fires far faster than we want to re-render at.
+const HEADING_COMPASS_THROTTLE_MS = 300;
+
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const sa =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(sa));
+}
+
+// Initial great-circle bearing from a to b, in degrees clockwise from north.
+// This is the "GPS course between consecutive fixes" used as heading while
+// moving above walking pace.
+function bearingDegrees(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  const theta = (Math.atan2(y, x) * 180) / Math.PI;
+  return (theta + 360) % 360;
+}
 
 // Hosted on GitHub Pages (public repo Eddywin-bit/geofield-assets) so the offline
 // basemap does not depend on the Lovable CDN. md5 ab08c5fba7f2992419b690cd2ec34663.
@@ -644,12 +687,17 @@ export function MapView() {
   const geoRef = useRef<GeoData | null>(null);
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
   const accuracyMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const headingMarkerRef = useRef<maplibregl.Marker | null>(null);
   const reapplyGeologyRef = useRef<(() => void) | null>(null);
   const attributionRef = useRef<maplibregl.AttributionControl | null>(null);
   const firstRunRef = useRef(true);
   const [online, setOnline] = useState(false);
   const [popup, setPopup] = useState<Popup | null>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  // Direction arrow on the GPS marker. Null means "don't show a direction":
+  // no reliable signal, not a guess. See the GPS watch effect for the
+  // GPS-course-vs-compass selection rule.
+  const [heading, setHeading] = useState<number | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [bearing, setBearing] = useState(0);
@@ -669,6 +717,13 @@ export function MapView() {
   basemapReadyRef.current = basemapReady;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsGateRef = useRef<{ accuracy: number; at: number } | null>(null);
+  // Last *accepted* GPS-watch fix, kept for GPS-course bearing between
+  // consecutive fixes. Independent of gpsGateRef, which only gates accept/reject.
+  const prevFixRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
+  // Latest raw compass reading plus when it arrived, for staleness checks.
+  const compassRef = useRef<{ heading: number; at: number } | null>(null);
+  const movingFastRef = useRef(false);
+  const lastCompassUpdateRef = useRef(0);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -1217,15 +1272,55 @@ export function MapView() {
   useEffect(() => {
     const watch = startPositionWatch(
       (c) => {
+        const now = Date.now();
+        const prev = gpsGateRef.current;
+        const speedMps = typeof c.speed === "number" && Number.isFinite(c.speed) ? c.speed : null;
+        // The fused provider's coarser (network) readings often omit speed.
+        // Rather than treat an unreported speed as "stopped", keep the last
+        // known moving-fast state for this one tick: a vehicle doesn't
+        // instantly stop just because one interleaved reading lacked speed.
+        const movingFast = speedMps !== null ? speedMps > HEADING_GPS_SPEED_MPS : movingFastRef.current;
+        movingFastRef.current = movingFast;
+
         // The fused provider interleaves coarse network fixes with fine GNSS
         // fixes; rendering every raw reading makes the dot teleport. Accept a
         // reading only if it is not much worse than the one shown, or if the
-        // shown one is older than 15s (never let the dot freeze).
-        const now = Date.now();
-        const prev = gpsGateRef.current;
-        if (prev && c.accuracy > prev.accuracy * 1.5 && now - prev.at < 15_000) return;
+        // shown one is older than the reject window (never let the dot freeze).
+        //
+        // While moving above walking pace, recency matters far more than
+        // accuracy: holding onto a stale high-accuracy fix on the road while
+        // the vehicle keeps moving is what produced the lag-then-snap-forward
+        // reported in the field. Shrinking the window sharply lets a newer,
+        // slightly-worse fix replace it almost immediately instead of waiting
+        // for one that beats the old fix on accuracy, which could be many
+        // seconds and many metres away.
+        const rejectWindowMs = movingFast ? 2_000 : 15_000;
+        if (prev && c.accuracy > prev.accuracy * 1.5 && now - prev.at < rejectWindowMs) return;
         gpsGateRef.current = { accuracy: c.accuracy, at: now };
         setGps({ lat: c.latitude, lng: c.longitude, accuracy: c.accuracy });
+
+        // Heading: GPS course between consecutive accepted fixes while moving
+        // fast enough for that bearing to be reliable; device compass
+        // otherwise. Never a guess: no reliable signal means no heading, and
+        // the marker effect hides the arrow rather than showing one.
+        const cur = { lat: c.latitude, lng: c.longitude };
+        const prevFix = prevFixRef.current;
+        let nextHeading: number | null = null;
+        if (
+          movingFast &&
+          prevFix &&
+          now - prevFix.at <= HEADING_MAX_FIX_AGE_MS &&
+          haversineMeters(prevFix, cur) >= HEADING_MIN_FIX_DISTANCE_M
+        ) {
+          nextHeading = bearingDegrees(prevFix, cur);
+        } else {
+          const compass = compassRef.current;
+          if (compass && now - compass.at <= HEADING_MAX_COMPASS_AGE_MS) {
+            nextHeading = compass.heading;
+          }
+        }
+        setHeading(nextHeading);
+        prevFixRef.current = { lat: cur.lat, lng: cur.lng, at: now };
       },
       (err) => {
         const code = (err as GeolocationPositionError).code;
@@ -1234,6 +1329,22 @@ export function MapView() {
       },
     );
     return () => watch.stop();
+  }, []);
+
+  // Compass fallback for heading at or below walking pace, where GPS course
+  // between fixes is unreliable. Independent of the GPS cadence: orientation
+  // events fire far faster, so updates here are throttled and skipped
+  // entirely while moving fast (the GPS watch above owns heading then).
+  useEffect(() => {
+    const compass = startCompassWatch((headingDeg) => {
+      const now = Date.now();
+      compassRef.current = { heading: headingDeg, at: now };
+      if (movingFastRef.current) return;
+      if (now - lastCompassUpdateRef.current < HEADING_COMPASS_THROTTLE_MS) return;
+      lastCompassUpdateRef.current = now;
+      setHeading(headingDeg);
+    });
+    return () => compass.stop();
   }, []);
 
   // Render GPS marker + accuracy circle
@@ -1266,6 +1377,33 @@ export function MapView() {
       gpsMarkerRef.current.setLngLat([gps.lng, gps.lat]);
     }
 
+    // Direction arrow. rotationAlignment:"map" keeps it pointing at the true
+    // heading regardless of how the user has rotated the map (dragRotate is
+    // on), matching the existing reset-north control's own bearing handling.
+    // Its own Marker, separate from the dot, so rotating it never touches the
+    // dot/halo. Visibility and rotation are driven by the [heading] effect
+    // below, not this one, since heading changes independently of gps.
+    if (!headingMarkerRef.current) {
+      const arrowEl = document.createElement("div");
+      arrowEl.style.cssText = "width:28px;height:28px;position:relative;pointer-events:none;display:none;";
+      const arrowShape = document.createElement("div");
+      arrowShape.style.cssText =
+        "position:absolute;top:0;left:50%;width:0;height:0;transform:translateX(-50%);" +
+        "border-left:6px solid transparent;border-right:6px solid transparent;" +
+        "border-bottom:11px solid #F59E0B;" +
+        "filter:drop-shadow(0 1px 1px rgba(15,20,24,0.8));";
+      arrowEl.appendChild(arrowShape);
+      headingMarkerRef.current = new maplibregl.Marker({
+        element: arrowEl,
+        rotationAlignment: "map",
+        pitchAlignment: "map",
+      })
+        .setLngLat([gps.lng, gps.lat])
+        .addTo(map);
+    } else {
+      headingMarkerRef.current.setLngLat([gps.lng, gps.lat]);
+    }
+
     const metersPerPixel =
       (156543.03392 * Math.cos((gps.lat * Math.PI) / 180)) / Math.pow(2, map.getZoom());
     const diameterPx = Math.max(20, (gps.accuracy * 2) / metersPerPixel);
@@ -1285,6 +1423,21 @@ export function MapView() {
       accuracyMarkerRef.current.setLngLat([gps.lng, gps.lat]);
     }
   }, [gps]);
+
+  // Show/rotate the heading arrow. Separate from the marker-position effect
+  // above: heading changes on its own schedule (GPS course or compass), not
+  // in lockstep with gps updates.
+  useEffect(() => {
+    const marker = headingMarkerRef.current;
+    if (!marker) return;
+    const el = marker.getElement();
+    if (heading === null) {
+      el.style.display = "none";
+      return;
+    }
+    el.style.display = "block";
+    marker.setRotation(heading);
+  }, [heading]);
 
   useEffect(() => {
     const map = mapRef.current;

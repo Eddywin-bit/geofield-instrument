@@ -10,7 +10,6 @@ import { startPositionWatch } from "../lib/geo-acquire";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
-const BG = "#1B2027";
 const OCEAN = "#14304A";
 const LAND = "#1B2027";
 
@@ -499,8 +498,16 @@ function buildBasemapLayers(): LayerSpecification[] {
 
 function buildStyle(online: boolean, basemap: boolean): StyleSpecification {
   const sources: StyleSpecification["sources"] = {};
+  // Full-coverage ocean base. Background layers paint the entire viewport
+  // (and, in the globe projection, the whole sphere) regardless of any
+  // source's extent, so this is what shows through everywhere world-land
+  // has no polygon — including the far hemisphere at global zoom before the
+  // offline PMTiles basemap is loaded. world-land (fill, LAND) sits on top of
+  // this for the continents, and the Ghana geology polygons sit on top of
+  // that. Do not repoint this at LAND: the two are the ocean/land halves of
+  // the same two-layer stack, not interchangeable background colours.
   const layers: StyleSpecification["layers"] = [
-    { id: "bg", type: "background", paint: { "background-color": BG } },
+    { id: "bg", type: "background", paint: { "background-color": OCEAN } },
   ];
   if (online) {
     // openstreetmap.org's own tile servers throttle third-party apps hard,

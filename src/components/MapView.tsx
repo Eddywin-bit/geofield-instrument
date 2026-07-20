@@ -13,6 +13,40 @@ const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18
 const OCEAN = "#C7DCEA";
 const LAND = "#F3EFE4";
 
+// Deterministic PRNG (mulberry32) so the starfield's dot positions are fixed
+// at module load, not re-rolled on every render/rotation. Only a single CSS
+// transform on the whole layer changes per frame - see the "rotate" handler
+// below - the dots themselves are baked into one static background-image.
+function mulberry32(seed: number) {
+  let state = seed;
+  return () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const STAR_COUNT = 140;
+// Composited once at import time: one background-image with STAR_COUNT hard-
+// stop radial-gradient dots (crisp circles, not soft blurred glows). Sized in
+// percentages so it scales with whatever container it's placed in.
+const STARFIELD_BACKGROUND = (() => {
+  const random = mulberry32(20260720);
+  const dots: string[] = [];
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const x = (random() * 100).toFixed(2);
+    const y = (random() * 100).toFixed(2);
+    const radius = (0.5 + random() * 1.3).toFixed(2);
+    const opacity = (0.25 + random() * 0.55).toFixed(2);
+    dots.push(
+      `radial-gradient(circle at ${x}% ${y}%, rgba(255,255,255,${opacity}) 0, rgba(255,255,255,${opacity}) ${radius}px, transparent ${radius}px)`,
+    );
+  }
+  return dots.join(", ");
+})();
+
 // Location-marker colors, matched to Rockd/Google-Maps-style live-location
 // pucks. Measured directly from reference screenshots (pixel sampling, cross
 // checked against two independent heading angles): the dot and the heading
@@ -691,6 +725,7 @@ type Popup = {
 
 export function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const starLayerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const geoRef = useRef<GeoData | null>(null);
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
@@ -1510,7 +1545,18 @@ export function MapView() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const onRotate = () => setBearing(map.getBearing());
+    // Same screen-space rotation the map's own content (and the reset-north
+    // control's compass icon) uses: content visually spins by -bearing as
+    // the user rotates the camera. Applied directly to the DOM node here,
+    // not through React state, so a drag-rotate gesture (many events per
+    // second) never triggers a component re-render - only this one transform
+    // updates per frame, the starfield's dot layout itself never changes.
+    const onRotate = () => {
+      setBearing(map.getBearing());
+      if (starLayerRef.current) {
+        starLayerRef.current.style.transform = `rotate(${-map.getBearing()}deg)`;
+      }
+    };
     map.on("rotate", onRotate);
     return () => {
       map.off("rotate", onRotate);
@@ -1568,6 +1614,17 @@ export function MapView() {
           margin-bottom: 46px !important;
         }
       `}</style>
+      {/* Starfield: sits behind the map canvas in DOM/paint order (no
+          z-index needed), so it only shows through the same gaps the
+          gradient does - outside the globe's silhouette at wide zoom, never
+          overlapping OCEAN/LAND. Sized to 200% and centered (inset: -50%) so
+          rotating it by any angle never reveals an uncovered corner. */}
+      <div
+        ref={starLayerRef}
+        aria-hidden="true"
+        className="absolute pointer-events-none"
+        style={{ inset: "-50%", backgroundImage: STARFIELD_BACKGROUND }}
+      />
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
 
       {/* Neutral state while basemap readiness is still resolving, so the

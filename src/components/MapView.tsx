@@ -1535,7 +1535,7 @@ export function MapView() {
   };
 
   return (
-    <div className="fixed left-0 right-0 top-[calc(2.75rem+env(safe-area-inset-top))] bottom-[calc(4rem+env(safe-area-inset-bottom))] overflow-hidden bg-[#C7DCEA]">
+    <div className="fixed left-0 right-0 top-[calc(2.75rem+env(safe-area-inset-top))] bottom-[calc(4rem+env(safe-area-inset-bottom))] overflow-hidden bg-[#F9FAFB]">
       <style>{`
         .maplibregl-ctrl-scale {
           box-sizing: border-box;

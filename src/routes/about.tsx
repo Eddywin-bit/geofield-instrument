@@ -1,31 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout } from "../components/AppLayout";
-import {
-  BookOpen,
-  Building2,
-  ChevronDown,
-  Crosshair,
-  Database,
-  FileText,
-  FlaskConical,
-  Library,
-  Mail,
-  MapPin,
-  Scale,
-  ScrollText,
-  ShieldCheck,
-  Sparkles,
-  WifiOff,
-} from "lucide-react";
+import { Building2, ChevronRight, FlaskConical, Mail } from "lucide-react";
 import { GEOFIELD_MARK } from "../lib/logo";
+import { ABOUT_SECTIONS } from "../lib/about-sections";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
-    meta: [
-      { title: "GeoField — About" },
-      { name: "description", content: "About GeoField." },
-    ],
+    meta: [{ title: "GeoField — About" }, { name: "description", content: "About GeoField." }],
   }),
   component: AboutPage,
 });
@@ -36,73 +17,6 @@ const APP_VERSION = "0.6.4";
 const CHANNEL = "Beta"; // "Beta" while 0.x. Clear this string at 1.0.0.
 const EDITION = "Ghana Edition";
 const CONTACT_EMAIL = "ogstudios14@gmail.com"; // baked into every build; keep this address alive
-
-type SectionProps = {
-  icon: React.ElementType;
-  title: string;
-  subtitle?: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-};
-
-function Section({ icon: Icon, title, subtitle, defaultOpen = false, children }: SectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="bg-panel border border-border rounded-lg overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-panel-2 transition-colors"
-        aria-expanded={open}
-      >
-        <Icon className="h-4 w-4 text-primary shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-foreground leading-tight">{title}</div>
-          {subtitle && (
-            <div className="text-[11px] text-muted-foreground leading-tight mt-0.5">{subtitle}</div>
-          )}
-        </div>
-        <ChevronDown
-          className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && (
-        <div className="px-4 pb-4 pt-1 border-t border-border/60 space-y-3">{children}</div>
-      )}
-    </div>
-  );
-}
-
-function Body({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm leading-relaxed text-foreground/85">{children}</p>;
-}
-
-function Ref({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[11px] leading-relaxed text-muted-foreground pl-3 -indent-3">{children}</p>
-  );
-}
-
-function Credit({ name, detail }: { name: string; detail: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 py-1.5 border-b border-border/40 last:border-0">
-      <span className="text-sm text-foreground/90 shrink-0">{name}</span>
-      <span className="mono text-[10px] text-muted-foreground text-right">{detail}</span>
-    </div>
-  );
-}
-
-function Row({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <Icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-      <div className="min-w-0">
-        <div className="text-sm font-semibold text-foreground">{title}</div>
-        <p className="text-sm text-muted-foreground leading-relaxed">{text}</p>
-      </div>
-    </div>
-  );
-}
 
 function AboutPage() {
   return (
@@ -168,149 +82,25 @@ function AboutPage() {
         <div className="px-4 mt-6 space-y-2.5">
           <h2 className="label-instrument px-1 pb-1">The App</h2>
 
-          <Section icon={Sparkles} title="Using GeoField" subtitle="Locate, Know, Log" defaultOpen>
-            <Row
-              icon={Crosshair}
-              title="Locate"
-              text="A GPS fix run against Ghana's geology names the unit where you stand."
-            />
-            <Row
-              icon={BookOpen}
-              title="Know"
-              text="Expected rocks, structures, mineral and engineering notes for every mapped unit."
-            />
-            <Row
-              icon={FileText}
-              title="Log"
-              text="Fast field notes with coordinates, photos and voice, saved on your phone."
-            />
-            <Row
-              icon={MapPin}
-              title="Map"
-              text="The full geological map with an offline base map of Ghana's roads, rivers and towns."
-            />
-          </Section>
-
-          <Section icon={WifiOff} title="Offline behaviour" subtitle="What works without a signal">
-            <Body>
-              All geology and unit data ships inside the app. Once installed it needs no connection,
-              and every log you take stays on your device.
-            </Body>
-            <Body>
-              The Map tab offers two views. Offline draws Ghana from a base map stored on your phone,
-              alongside the geology. Online fetches live street tiles and needs data. Offline is the
-              field mode.
-            </Body>
-          </Section>
-
-          <Section icon={MapPin} title="Positioning accuracy" subtitle="What the GPS can and cannot do">
-            <Body>
-              Accuracy depends on your phone's GPS and the sky above you. It is good enough to
-              identify your unit almost everywhere. When a fix is weak GeoField tells you, and you
-              can type coordinates in by hand.
-            </Body>
-            <Body>
-              GeoField is not survey-grade. Do not use it to set boundaries, claims or engineering
-              control points.
-            </Body>
-          </Section>
-
-          <Section icon={ShieldCheck} title="On rock identification" subtitle="What this app will not guess">
-            <Body>
-              GeoField points you to what is likely underfoot. It does not identify rocks from
-              photos. Hardness, reaction to acid and texture cannot be seen by a camera, and an
-              overconfident answer is worse than none.
-            </Body>
-            <Body>
-              Confirm what you see with your hands, a lens and acid. The call is yours.
-            </Body>
-          </Section>
-
-          <Section icon={Database} title="Data sources" subtitle="Where the geology comes from">
-            <Body>
-              Geology is drawn from Ghana's national geological mapping, dissolved to seventeen units
-              and simplified for the field. Unit descriptions are compiled from published research on
-              the Birimian, Tarkwaian and associated units.
-            </Body>
-            <Body>
-              The offline base map is built from OpenStreetMap data, clipped to Ghana. Map rendering
-              by MapLibre. Base map tiles by Protomaps.
-            </Body>
-          </Section>
-
-          <Section icon={ScrollText} title="Privacy" subtitle="Your logs stay on your phone">
-            <Body>
-              GeoField has no account, no tracking and no analytics. Your notes, photos, voice memos
-              and coordinates are stored on your device only. Nothing is uploaded, and nothing is
-              deleted unless you delete it.
-            </Body>
-            <Body>
-              Location is read only while you are using the app, and only to identify your unit and
-              stamp your logs.
-            </Body>
-          </Section>
-
-          <Section icon={Scale} title="Attribution and licences" subtitle="Data, software and typefaces">
-            <div>
-              <div className="label-instrument pb-1.5">Geological data</div>
-              <Credit name="Geological map of Ghana" detail="Ghana Geological Survey Authority" />
-              <Credit name="Coordinate transformation" detail="Leigon → WGS 84 (EPSG)" />
-            </div>
-            <div className="pt-1">
-              <div className="label-instrument pb-1.5">Base map data</div>
-              <Credit name="Roads, rivers, towns" detail="© OpenStreetMap contributors · ODbL" />
-              <Credit name="Vector tile build" detail="Protomaps" />
-              <Credit name="World coastlines" detail="Natural Earth · public domain" />
-            </div>
-            <div className="pt-1">
-              <div className="label-instrument pb-1.5">Software</div>
-              <Credit name="MapLibre GL JS" detail="BSD-3-Clause" />
-              <Credit name="PMTiles" detail="BSD-3-Clause" />
-              <Credit name="Turf.js" detail="MIT" />
-              <Credit name="proj4js" detail="MIT" />
-              <Credit name="React · TanStack Router" detail="MIT" />
-              <Credit name="Lucide icons" detail="ISC" />
-              <Credit name="Noto Sans" detail="SIL Open Font License 1.1" />
-            </div>
-            <Body>
-              Unit descriptions were compiled with the assistance of Google Gemini Pro Deep Research,
-              drawing on the literature listed below. Where the research found nothing to support a
-              claim, the field was left empty rather than filled. Five units carry no mineral note for
-              exactly that reason.
-            </Body>
-          </Section>
-
-          <Section icon={Library} title="References" subtitle="Sources cited for the unit descriptions">
-            <Ref>Abanyie et al. (2018). Petrography and geochemistry of granitoids.</Ref>
-            <Ref>Abu et al. (2022). Voltaian Basin studies.</Ref>
-            <Ref>Affaton et al. (1980). The Buem Structural Unit.</Ref>
-            <Ref>Affaton et al. (1991). The Volta Basin.</Ref>
-            <Ref>Amponsah (2016). High-pressure granulites and eclogites of the Dahomeyide suture zone.</Ref>
-            <Ref>Anani (1999). Stratigraphy of the Volta Basin.</Ref>
-            <Ref>Anani et al. (2017). Petrography of detrital zircons from sandstones of the Lower Devonian Accraian Formation.</Ref>
-            <Ref>Asamoah. Geology of Ghana.</Ref>
-            <Ref>Asiedu et al. (2005). Provenance of late Ordovician to early Cretaceous sedimentary rocks.</Ref>
-            <Ref>Atta-Peters &amp; Garrey (2014). Source rock evaluation and hydrocarbon potential in the Tano Basin.</Ref>
-            <Ref>Attoh et al. (1991). The Dahomeyide Orogen.</Ref>
-            <Ref>Attoh &amp; Nude (2008). Tectonic significance of carbonatite.</Ref>
-            <Ref>Carney et al. (2010). Lithostratigraphy of the Voltaian Supergroup.</Ref>
-            <Ref>Chardon (2023). The Continental Terminal in West Africa.</Ref>
-            <Ref>Crow (1952). The rocks of the Sekondi Series.</Ref>
-            <Ref>Dampare et al. (2008). Geochemistry of Paleoproterozoic metavolcanic rocks.</Ref>
-            <Ref>Hirdes &amp; Leube (1989). Orogenic gold mineralisation in the Kumasi Basin.</Ref>
-            <Ref>Hirdes et al. (1996). Geology of the Birimian Supergroup in Ghana.</Ref>
-            <Ref>Jones (1990). The Buem volcanic and associated sedimentary rocks.</Ref>
-            <Ref>Junner (1940). Geology of the Gold Coast and Western Togoland.</Ref>
-            <Ref>Junner &amp; Hirst (1946). The geology and hydrogeology of the Volta Basin.</Ref>
-            <Ref>Kalsbeek et al. (2008). The Togo structural unit.</Ref>
-            <Ref>Kesse (1985). Geology and mineral resources of Ghana.</Ref>
-            <Ref>Kwayisi et al. (2020). Lithotectonic evolution of the Buem structural unit.</Ref>
-            <Ref>Kwayisi et al. (2022). Petrogenesis of the Buem mafic suite.</Ref>
-            <Ref>Mani (1978). The geology of the Dahomeyan of Ghana.</Ref>
-            <Ref>McCallien (1962). Geology of the Accraian Series.</Ref>
-            <Ref>Nelson (2024). Changing beach dynamics.</Ref>
-            <Ref>Pigois et al. (2003). Tarkwaian palaeoplacer and lode-gold formation.</Ref>
-          </Section>
+          {ABOUT_SECTIONS.map(({ slug, icon: Icon, title, subtitle }) => (
+            <Link
+              key={slug}
+              to="/about/$section"
+              params={{ section: slug }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left bg-panel border border-border rounded-lg active:bg-panel-2 transition-colors"
+            >
+              <Icon className="h-4 w-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-foreground leading-tight">{title}</div>
+                {subtitle && (
+                  <div className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                    {subtitle}
+                  </div>
+                )}
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </Link>
+          ))}
         </div>
 
         {/* Contact */}

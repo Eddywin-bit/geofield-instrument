@@ -1,5 +1,13 @@
 /* GeoField Companion Service Worker */
-const VERSION = "v5";
+// Bump this whenever a bundled /data/ file changes. The fetch handler below
+// serves /data/ requests stale-while-revalidate: an existing cache entry
+// under the current SHELL_CACHE/DATA_CACHE names is served immediately and
+// only refreshed in the background, so editing a data file without bumping
+// VERSION can leave a stale cached copy in place across app updates
+// indefinitely (Android app updates preserve app storage, only an uninstall
+// clears it). Bumping VERSION renames both caches, so activate() deletes the
+// old ones and the next /data/ fetch has no stale entry to serve.
+const VERSION = "v6";
 const SHELL_CACHE = `geofield-shell-${VERSION}`;
 const DATA_CACHE = `geofield-data-${VERSION}`;
 // Owned by MapView, not by this worker. Holds the 92 MB offline basemap and its

@@ -78,6 +78,11 @@ const BASEMAP_STYLE_URL = `pmtiles://${BASEMAP_FILE_NAME}`;
 // peak memory is one chunk, not the whole 92 MB.
 const BASEMAP_CHUNK = 8 * 1024 * 1024;
 const BASEMAP_PART_PREFIX = "/basemap/ghana.pmtiles.part.";
+// A single sequential connection rarely saturates real WiFi/data bandwidth
+// (TLS handshake + slow-start repeated per chunk), so a handful of ranges
+// in flight at once downloads far faster on a fast link without meaningfully
+// raising peak memory (still a few chunks, not the whole 92 MB).
+const BASEMAP_FETCH_CONCURRENCY = 4;
 
 // Online map: OpenFreeMap's Liberty vector style. Vector renders crisp at any
 // zoom and screen density, where the previous CARTO raster tiles (256px PNGs)
@@ -197,9 +202,13 @@ function blobToBase64(chunk: Blob): Promise<string> {
 // slice being encoded is ever materialised.
 //
 // Web: Cache Storage under BASEMAP_KEY, unchanged.
-async function writeAssembledBasemap(full: Blob): Promise<void> {
+async function writeAssembledBasemap(
+  full: Blob,
+  onProgress?: (done: number, total: number) => void,
+): Promise<void> {
   if (await isNativeRuntime()) {
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
+    const total = Math.ceil(full.size / BASEMAP_CHUNK);
     for (let offset = 0, i = 0; offset < full.size; offset += BASEMAP_CHUNK, i++) {
       const slice = full.slice(offset, Math.min(offset + BASEMAP_CHUNK, full.size));
       const b64 = await blobToBase64(slice);
@@ -210,6 +219,7 @@ async function writeAssembledBasemap(full: Blob): Promise<void> {
       } else {
         await Filesystem.appendFile({ path: BASEMAP_FS_PATH, data: b64, directory: Directory.Data });
       }
+      onProgress?.(i + 1, total);
     }
     const stat = await Filesystem.stat({ path: BASEMAP_FS_PATH, directory: Directory.Data });
     if (typeof stat.size === "number" && stat.size !== BASEMAP_SIZE) {
@@ -226,7 +236,7 @@ async function writeAssembledBasemap(full: Blob): Promise<void> {
   );
 }
 
-type BasemapDl = { status: "idle" | "downloading" | "error" | "done"; pct: number };
+type BasemapDl = { status: "idle" | "downloading" | "saving" | "error" | "done"; pct: number };
 
 /**
  * Module-level so the download outlives the component. Switching tabs unmounts
@@ -252,26 +262,37 @@ const basemapDl = (() => {
       const cache = await caches.open(BASEMAP_CACHE);
       const partCount = Math.ceil(BASEMAP_SIZE / BASEMAP_CHUNK);
 
-      // Resume: count chunks already on disk from a previous attempt.
+      // Resume: skip chunks already on disk from a previous attempt.
+      const pendingIndices: number[] = [];
       let done = 0;
       for (let i = 0; i < partCount; i++) {
         if (await cache.match(BASEMAP_PART_PREFIX + i)) done++;
+        else pendingIndices.push(i);
       }
       emit({ status: "downloading", pct: Math.min(99, Math.floor((done / partCount) * 100)) });
 
-      for (let i = 0; i < partCount; i++) {
-        const key = BASEMAP_PART_PREFIX + i;
-        if (await cache.match(key)) continue;
-        const start_ = i * BASEMAP_CHUNK;
-        const end = Math.min(start_ + BASEMAP_CHUNK, BASEMAP_SIZE) - 1;
-        const chunk = await fetchBasemapRange(start_, end);
-        await cache.put(
-          key,
-          new Response(chunk, { headers: { "Content-Type": "application/octet-stream" } }),
-        );
-        done++;
-        emit({ status: "downloading", pct: Math.min(99, Math.floor((done / partCount) * 100)) });
-      }
+      // Fetch the remaining chunks with limited concurrency instead of one at
+      // a time (see BASEMAP_FETCH_CONCURRENCY). Fetch order does not need to
+      // match assembly order: the assembly step below reads parts back by
+      // index regardless of which order they finished downloading in.
+      let cursor = 0;
+      const fetchWorker = async () => {
+        while (cursor < pendingIndices.length) {
+          const i = pendingIndices[cursor++];
+          const start_ = i * BASEMAP_CHUNK;
+          const end = Math.min(start_ + BASEMAP_CHUNK, BASEMAP_SIZE) - 1;
+          const chunk = await fetchBasemapRange(start_, end);
+          await cache.put(
+            BASEMAP_PART_PREFIX + i,
+            new Response(chunk, { headers: { "Content-Type": "application/octet-stream" } }),
+          );
+          done++;
+          emit({ status: "downloading", pct: Math.min(99, Math.floor((done / partCount) * 100)) });
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(BASEMAP_FETCH_CONCURRENCY, pendingIndices.length) }, fetchWorker),
+      );
 
       // Assemble. Blob parts stay disk-backed, so this does not load 92 MB into RAM.
       const parts: Blob[] = [];
@@ -285,8 +306,15 @@ const basemapDl = (() => {
         throw new Error(`size mismatch: got ${full.size}, expected ${BASEMAP_SIZE}`);
       }
 
-      // Assembled file goes to the durable store (Filesystem sandbox on native).
-      await writeAssembledBasemap(full);
+      // Assembled file goes to the durable store (Filesystem sandbox on
+      // native). This is a separate, CPU-bound phase (base64 encode + bridge
+      // write per chunk) that previously ran after progress had already
+      // capped at 99% with no feedback, which read as the download being
+      // stuck. Report it as its own "saving" phase instead.
+      emit({ status: "saving", pct: 0 });
+      await writeAssembledBasemap(full, (doneChunks, totalChunks) => {
+        emit({ status: "saving", pct: Math.min(99, Math.floor((doneChunks / totalChunks) * 100)) });
+      });
       // Temporary chunks are only ever in Cache Storage; clear them now.
       for (let i = 0; i < partCount; i++) {
         await cache.delete(BASEMAP_PART_PREFIX + i);
@@ -1660,6 +1688,12 @@ export function MapView() {
         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground"
         >
           Downloading… {dl.pct}%
+        </div>
+      )}
+      {!online && dl.status === "saving" && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center rounded-full border border-border bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-muted-foreground"
+        >
+          Saving to device… {dl.pct}%
         </div>
       )}
       {!online && dl.status === "done" && (

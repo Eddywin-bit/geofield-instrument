@@ -226,7 +226,7 @@ export function ManualCoordsSheet({
                   onClick={() => setUtmZone("30")}
                   className={`h-11 rounded-md border text-sm font-bold mono ${
                     utmZone === "30"
-                      ? "border-primary bg-primary/10 text-primary"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-panel-2 text-foreground"
                   }`}
                 >
@@ -236,7 +236,7 @@ export function ManualCoordsSheet({
                   onClick={() => setUtmZone("31")}
                   className={`h-11 rounded-md border text-sm font-bold mono ${
                     utmZone === "31"
-                      ? "border-primary bg-primary/10 text-primary"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-panel-2 text-foreground"
                   }`}
                 >

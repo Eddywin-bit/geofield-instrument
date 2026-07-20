@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" },
       { title: "GeoField Companion" },
       { name: "description", content: "Offline-first geological field companion for exploration teams in Ghana." },
-      { name: "theme-color", content: "#121417" },
+      { name: "theme-color", content: "#F9FAFB" },
       { property: "og:title", content: "GeoField Companion" },
       { property: "og:description", content: "Offline-first geological field companion." },
       { property: "og:type", content: "website" },

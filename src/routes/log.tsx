@@ -412,7 +412,7 @@ function LogScreen() {
       )}
 
       {staleRef.current && locating && (
-        <div className="mx-4 mb-3 rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
+        <div className="mx-4 mb-3 rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs leading-relaxed text-foreground">
           Your last fix is over 30 minutes old. Acquiring a fresh position for this observation.
         </div>
       )}
@@ -627,11 +627,14 @@ function CaptureTile({
         disabled
           ? "bg-panel border-border text-muted-foreground opacity-60 cursor-not-allowed"
           : active
-          ? "bg-primary/10 border-primary text-primary"
+          ? "bg-primary/10 border-primary text-foreground"
           : "bg-panel border-border text-foreground hover:bg-panel-2"
       }`}
     >
-      {icon}
+      {/* Icon carries the accent color when active; the label stays on
+          foreground, since primary doesn't clear text contrast against the
+          light panel/tint background here. */}
+      <span className={active ? "text-primary" : undefined}>{icon}</span>
       <span className="text-xs font-bold tracking-[0.18em] mt-1">{label}</span>
       <span className="text-[10px] text-muted-foreground">{status}</span>
     </button>

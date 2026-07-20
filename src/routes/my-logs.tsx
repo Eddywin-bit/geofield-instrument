@@ -238,7 +238,7 @@ function MyLogsScreen() {
                       return next;
                     });
                   }}
-                  className="mono text-[10px] font-bold tracking-[0.14em] text-primary hover:underline"
+                  className="mono text-[10px] font-bold tracking-[0.14em] text-foreground underline underline-offset-2"
                 >
                   {items.every((l) => selectedIds.has(l.id)) ? "NONE" : "ALL"}
                 </button>
@@ -395,8 +395,8 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
                   </span>
                 )}
                 {log.hasVoice && (
-                  <span className="flex items-center gap-1 text-[10px] text-primary">
-                    <Mic className="h-3 w-3" /> Voice
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <Mic className="h-3 w-3 text-primary" /> Voice
                   </span>
                 )}
                 {hasPosition && (

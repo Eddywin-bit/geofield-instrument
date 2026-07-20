@@ -2,11 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
-import { Camera, Mic, Check, MapPin, Square, X } from "lucide-react";
+import { Camera, Mic, Check, MapPin, Square, X, Hexagon, Crosshair, Clock } from "lucide-react";
 import { addLog, formatCoord, formatTime } from "../lib/logs-store";
 import { readCurrentFix, isFixStale } from "./index";
 import { loadGeology, findUnitAt, unitByName } from "../lib/geology";
-import { acquireFix, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
+import { acquireFix, accuracyTone, accuracyToneClass, type Acquisition } from "../lib/geo-acquire";
 import { ensureMicPermission, openAppSettings } from "../lib/mic";
 
 
@@ -389,6 +389,38 @@ function LogScreen() {
   const accuracyMuted = ctx.accuracy === null;
   const accuracyClass = ctx.accuracy !== null ? accuracyToneClass(ctx.accuracy) : "";
 
+  // GPS status pill: reuses the same good/ok/bad/muted tiers accuracyToneClass
+  // already applies to the accuracy figure, so the pill and the number never
+  // disagree about how good the fix is.
+  const gpsStatus = locating
+    ? { label: "Locating…", tone: "primary", pulse: true }
+    : (() => {
+        switch (accuracyTone(ctx.accuracy)) {
+          case "good":
+            return { label: "GPS Locked", tone: "success", pulse: false };
+          case "ok":
+            return { label: "GPS Fix", tone: "primary", pulse: false };
+          case "bad":
+            return { label: "Weak Fix", tone: "destructive", pulse: false };
+          default:
+            return ctx.manual
+              ? { label: "Manual Entry", tone: "muted", pulse: false }
+              : { label: "No Fix", tone: "muted", pulse: false };
+        }
+      })();
+  const gpsStatusClasses: Record<string, string> = {
+    success: "bg-success/15 text-success",
+    primary: "bg-primary/15 text-primary",
+    destructive: "bg-destructive/15 text-destructive",
+    muted: "bg-panel-2 text-muted-foreground",
+  };
+  const gpsStatusDotClasses: Record<string, string> = {
+    success: "bg-success",
+    primary: "bg-primary",
+    destructive: "bg-destructive",
+    muted: "bg-muted-foreground",
+  };
+
   return (
     <AppLayout>
       <div className="px-4 pt-4 pb-3">
@@ -417,18 +449,40 @@ function LogScreen() {
         </div>
       )}
 
+      {/* GPS status */}
+      <div className="mx-4 mb-3 flex items-center justify-between">
+        <span
+          className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${gpsStatusClasses[gpsStatus.tone]}`}
+        >
+          <span
+            className={`h-2 w-2 rounded-full ${gpsStatusDotClasses[gpsStatus.tone]} ${gpsStatus.pulse ? "animate-pulse" : ""}`}
+          />
+          {gpsStatus.label}
+        </span>
+        <span className="text-sm text-muted-foreground">
+          Accuracy <span className={`font-bold ${accuracyClass || "text-foreground"}`}>{accuracyDisplay}</span>
+        </span>
+      </div>
+
       {/* Auto-attached context */}
-      <div className="mx-4 rounded-lg border border-border bg-panel">
-        <div className="px-4 py-2 border-b border-border flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" />
-          <span className="label-instrument">Auto-attached</span>
-        </div>
-        <div className="p-4 space-y-2">
-          <Row icon={<MapPin className="h-4 w-4 text-primary" />} label="Unit" value={ctx.unit} />
-          <Row label="Position" value={positionDisplay} mono muted={positionMuted} />
-          <Row label="Accuracy" value={accuracyDisplay} mono muted={accuracyMuted} valueClass={accuracyClass} />
-          <Row label="Time" value={formatTime(ctx.timestamp)} mono />
-        </div>
+      <div className="mx-4 rounded-2xl bg-panel shadow-md shadow-black/5 divide-y divide-border">
+        <Row icon={<Hexagon className="h-4 w-4 text-primary" />} label="Unit" value={ctx.unit} />
+        <Row
+          icon={<MapPin className="h-4 w-4 text-primary" />}
+          label="Position"
+          value={positionDisplay}
+          mono
+          muted={positionMuted}
+        />
+        <Row
+          icon={<Crosshair className="h-4 w-4 text-primary" />}
+          label="Accuracy"
+          value={accuracyDisplay}
+          mono
+          muted={accuracyMuted}
+          valueClass={accuracyClass}
+        />
+        <Row icon={<Clock className="h-4 w-4 text-primary" />} label="Time" value={formatTime(ctx.timestamp)} mono />
       </div>
 
       {/* Capture actions */}
@@ -451,13 +505,11 @@ function LogScreen() {
         />
         <CaptureTile
           active={!!voice || recording}
+          urgent={recording}
           onClick={toggleVoice}
           icon={
             recording ? (
-              <span className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full bg-destructive animate-pulse" />
-                <Square className="h-6 w-6" strokeWidth={2.2} fill="currentColor" />
-              </span>
+              <Square className="h-6 w-6" strokeWidth={2.2} fill="currentColor" />
             ) : (
               <Mic className="h-7 w-7" strokeWidth={2.2} />
             )
@@ -490,7 +542,7 @@ function LogScreen() {
             </div>
           )}
           {voice && (
-            <div className="rounded-lg border border-border bg-panel p-3 flex items-center gap-3">
+            <div className="rounded-2xl bg-panel shadow-sm shadow-black/5 p-3 flex items-center gap-3">
               <audio src={voice} controls className="flex-1 min-w-0" />
               <button
                 type="button"
@@ -553,7 +605,7 @@ function LogScreen() {
           onChange={(e) => setNote(e.target.value)}
           placeholder="e.g. quartz vein, pyrite stringers…"
           rows={3}
-          className="mt-1 w-full rounded-lg bg-panel border border-border p-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
+          className="mt-1 w-full rounded-2xl bg-panel border border-border p-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
         />
       </div>
 
@@ -562,7 +614,7 @@ function LogScreen() {
         <button
           onClick={save}
           disabled={saving}
-          className="w-full h-16 rounded-lg bg-primary text-primary-foreground font-bold tracking-[0.2em] text-base flex items-center justify-center gap-3 active:scale-[0.99] transition-transform disabled:opacity-70"
+          className="w-full h-16 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-black/10 font-bold tracking-[0.2em] text-base flex items-center justify-center gap-3 active:scale-[0.99] transition-transform disabled:opacity-70"
         >
           <Check className="h-6 w-6" strokeWidth={3} />
           {saving ? "SAVED" : "SAVE OBSERVATION"}
@@ -588,8 +640,8 @@ function Row({
   valueClass?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 min-w-0">
+    <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+      <div className="flex items-center gap-2.5 min-w-0">
         {icon}
         <span className="label-instrument">{label}</span>
       </div>
@@ -609,6 +661,7 @@ function CaptureTile({
   label,
   status,
   active,
+  urgent,
   disabled,
   onClick,
 }: {
@@ -616,6 +669,7 @@ function CaptureTile({
   label: string;
   status: string;
   active: boolean;
+  urgent?: boolean;
   disabled?: boolean;
   onClick: () => void;
 }) {
@@ -623,19 +677,25 @@ function CaptureTile({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`h-28 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${
+      className={`h-36 rounded-2xl border-2 bg-panel shadow-md shadow-black/5 flex flex-col items-center justify-center gap-2 transition-colors ${
         disabled
-          ? "bg-panel border-border text-muted-foreground opacity-60 cursor-not-allowed"
+          ? "border-transparent text-muted-foreground opacity-60 cursor-not-allowed"
           : active
-          ? "bg-primary/10 border-primary text-foreground"
-          : "bg-panel border-border text-foreground hover:bg-panel-2"
+          ? "border-primary text-foreground"
+          : "border-transparent text-foreground hover:bg-panel-2"
       }`}
     >
-      {/* Icon carries the accent color when active; the label stays on
-          foreground, since primary doesn't clear text contrast against the
-          light panel/tint background here. */}
-      <span className={active ? "text-primary" : undefined}>{icon}</span>
-      <span className="text-xs font-bold tracking-[0.18em] mt-1">{label}</span>
+      <span
+        className={`relative h-14 w-14 rounded-full flex items-center justify-center text-foreground ${
+          urgent ? "bg-destructive/25" : "bg-primary/35"
+        }`}
+      >
+        {icon}
+        {urgent && (
+          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive animate-pulse border-2 border-panel" />
+        )}
+      </span>
+      <span className="text-xs font-bold tracking-[0.18em]">{label}</span>
       <span className="text-[10px] text-muted-foreground">{status}</span>
     </button>
   );

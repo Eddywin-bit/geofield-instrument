@@ -21,9 +21,9 @@ const config: CapacitorConfig = {
       // and left the bars showing the empty window, which looked like black bars.
       // AppLayout keeps the header and nav content clear with env(safe-area-inset-*).
       adjustMarginsForEdgeToEdge: "disable",
-      // Painted behind the WebView, so overscroll and any first-paint gap show
-      // obsidian rather than black or white.
-      backgroundColor: "#121417",
+      // Painted behind the WebView, so overscroll and any first-paint gap match
+      // the light theme's background instead of showing black or white.
+      backgroundColor: "#F9FAFB",
   },
 };
 

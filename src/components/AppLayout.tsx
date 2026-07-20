@@ -95,13 +95,17 @@ function BottomNav() {
               className="flex flex-col items-center justify-center gap-1 h-16 relative"
             >
               {active && <span className="absolute top-0 inset-x-6 h-[2px] bg-primary" />}
+              {/* Icon carries the accent color; the label stays on foreground.
+                  Primary only has ~1.7:1 contrast against the light panel
+                  background, so the icon (an accent fill, not body text) is
+                  the one place this active state still uses it directly. */}
               <Icon
                 className={`h-[22px] w-[22px] ${active ? "text-primary" : "text-muted-foreground"}`}
                 strokeWidth={active ? 2.5 : 2}
               />
               <span
                 className={`text-[10px] tracking-[0.08em] font-semibold leading-none whitespace-nowrap ${
-                  active ? "text-primary" : "text-muted-foreground"
+                  active ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
                 {it.label}

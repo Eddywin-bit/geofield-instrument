@@ -51,7 +51,7 @@ function KnowScreen() {
               router.navigate({ to: "/" });
             }
           }}
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back

@@ -413,8 +413,8 @@ function LocateScreen() {
             }}
           />
           {state === "found" && fix.nearby && fix.nearby.length > 1 && (
-            <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-primary">
-              <div className="label-instrument text-primary mb-1">Possible contact nearby</div>
+            <div className="rounded-lg border border-primary/50 bg-primary/10 p-3 text-xs leading-relaxed text-foreground">
+              <div className="label-instrument text-foreground mb-1">Possible contact nearby</div>
               <div className="text-foreground/90">
                 Your GPS accuracy circle overlaps: <span className="font-semibold">{fix.nearby.join(", ")}</span>. Move a few metres or select the unit manually to confirm.
               </div>
@@ -481,7 +481,7 @@ function LocateScreen() {
             <div className="pt-1 flex justify-center">
               <button
                 onClick={() => setShowManual(true)}
-                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary underline underline-offset-4 decoration-dotted"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 decoration-dotted"
               >
                 <Keyboard className="h-3.5 w-3.5" />
                 Enter coordinates manually
@@ -544,8 +544,10 @@ function FixCard({
     <div className="rounded-lg border border-border bg-panel overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {/* Dot carries the accent color; the label stays on foreground/success,
+              since primary doesn't clear text contrast against the light panel. */}
           <span className={`h-2 w-2 rounded-full ${acquiring ? "bg-primary animate-pulse" : weak ? "bg-primary" : "bg-success"}`} />
-          <span className={`label-instrument ${acquiring || weak ? "text-primary" : "text-success"}`}>
+          <span className={`label-instrument ${acquiring || weak ? "text-foreground" : "text-success"}`}>
             {acquiring ? "ACQUIRING…" : weak ? "APPROXIMATE FIX" : isManual ? "MANUAL ENTRY" : "FIX ACQUIRED"}
           </span>
         </div>
@@ -574,7 +576,7 @@ function FixCard({
           <Link
             to="/know/$unit"
             params={{ unit: encodeURIComponent(fix.unit) }}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-4"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground underline underline-offset-4"
           >
             Learn about this unit →
           </Link>

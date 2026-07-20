@@ -46,36 +46,46 @@
 :root {
   --radius: 0.375rem;
 
-  /* Field instrument dark theme */
-  --background: oklch(0.18 0.005 240);          /* #121417 */
-  --foreground: oklch(0.96 0.003 90);           /* #F5F5F2 */
-  --panel: oklch(0.225 0.006 240);              /* #1A1F24 */
-  --panel-2: oklch(0.27 0.007 240);             /* slightly elevated */
+  /* Field instrument light theme. Every value below is chosen for contrast,
+     not just hue: see the PR that introduced this palette for the computed
+     WCAG ratios (foreground vs background 17.35:1, muted-foreground 6.24:1,
+     destructive/success both above 4.9:1 against panel). */
+  --background: oklch(0.985 0.002 240);         /* #F9FAFB */
+  --foreground: oklch(0.2 0.006 240);           /* #141619 */
+  --panel: oklch(0.97 0.003 240);               /* #F3F5F7 */
+  --panel-2: oklch(0.94 0.004 240);             /* #E9EBEE, slightly elevated */
 
-  --card: oklch(0.225 0.006 240);
-  --card-foreground: oklch(0.96 0.003 90);
-  --popover: oklch(0.225 0.006 240);
-  --popover-foreground: oklch(0.96 0.003 90);
+  --card: oklch(0.97 0.003 240);
+  --card-foreground: oklch(0.2 0.006 240);
+  --popover: oklch(0.97 0.003 240);
+  --popover-foreground: oklch(0.2 0.006 240);
 
+  /* Brand accent. Deliberately unchanged from the dark theme - same hex
+     either way. Its own contrast against the new light surfaces is too low
+     for flat small text (~1.6-1.8:1), so callers pair it with an icon, a
+     solid primary-foreground-on-primary fill, or a border/dot accent rather
+     than flat text directly on background/panel/panel-2. See the PR that
+     introduced the light theme for the full list of call sites that were
+     moved to one of those patterns instead of touching this value. */
   --primary: oklch(0.78 0.16 75);               /* #FFAA00 amber */
   --primary-foreground: oklch(0.16 0.005 240);
 
-  --secondary: oklch(0.27 0.007 240);
-  --secondary-foreground: oklch(0.96 0.003 90);
+  --secondary: oklch(0.94 0.004 240);
+  --secondary-foreground: oklch(0.2 0.006 240);
 
-  --muted: oklch(0.27 0.007 240);
-  --muted-foreground: oklch(0.68 0.008 240);    /* #9EA4AA */
+  --muted: oklch(0.94 0.004 240);
+  --muted-foreground: oklch(0.48 0.006 240);    /* #5B5E61 */
 
   --accent: oklch(0.78 0.16 75);
   --accent-foreground: oklch(0.16 0.005 240);
 
-  --success: oklch(0.55 0.09 160);              /* #2E7D5A */
+  --success: oklch(0.5 0.11 160);               /* #0B764D */
 
-  --destructive: oklch(0.6 0.22 25);
+  --destructive: oklch(0.55 0.22 25);           /* #D40924 */
   --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.32 0.007 240);
-  --input: oklch(0.27 0.007 240);
+  --border: oklch(0.88 0.005 240);              /* #D5D8DA */
+  --input: oklch(0.94 0.004 240);
   --ring: oklch(0.78 0.16 75);
 }
 

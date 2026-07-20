@@ -121,12 +121,17 @@ function AboutPage() {
             <span className="mono text-[10px] font-semibold tracking-wider uppercase text-foreground border border-border rounded-full px-2.5 py-1">
               v{APP_VERSION}
             </span>
+            {/* Solid fill, not flat text on the tint: primary only has
+                ~1.7:1 contrast against the light background, well under
+                readable-text standards, so both pills use the same
+                bg-primary/text-primary-foreground pairing as the app's
+                buttons rather than colored text on a transparent tint. */}
             {CHANNEL && (
-              <span className="mono text-[10px] font-semibold tracking-wider uppercase text-amber-400 border border-amber-400/40 bg-amber-400/10 rounded-full px-2.5 py-1">
+              <span className="mono text-[10px] font-semibold tracking-wider uppercase bg-primary text-primary-foreground rounded-full px-2.5 py-1">
                 {CHANNEL}
               </span>
             )}
-            <span className="mono text-[10px] font-semibold tracking-wider uppercase text-primary border border-primary/40 rounded-full px-2.5 py-1">
+            <span className="mono text-[10px] font-semibold tracking-wider uppercase bg-primary text-primary-foreground rounded-full px-2.5 py-1">
               {EDITION}
             </span>
           </div>
@@ -134,8 +139,8 @@ function AboutPage() {
 
         {CHANNEL && (
           <div className="px-4 pb-4">
-            <div className="border border-amber-400/30 bg-amber-400/[0.06] rounded-lg p-3.5 flex items-start gap-3">
-              <FlaskConical className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="border border-primary/30 bg-primary/[0.06] rounded-lg p-3.5 flex items-start gap-3">
+              <FlaskConical className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-foreground">Pre-release build</div>
                 <p className="text-[13px] leading-relaxed text-foreground/80 mt-1">

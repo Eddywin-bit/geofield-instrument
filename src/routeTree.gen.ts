@@ -15,6 +15,7 @@ import { Route as LogRouteImport } from './routes/log'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KnowUnitRouteImport } from './routes/know.$unit'
+import { Route as AboutSectionRouteImport } from './routes/about.$section'
 
 const MyLogsRoute = MyLogsRouteImport.update({
   id: '/my-logs',
@@ -46,6 +47,11 @@ const KnowUnitRoute = KnowUnitRouteImport.update({
   path: '/know/$unit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutSectionRoute = AboutSectionRouteImport.update({
+  id: '/about/$section',
+  path: '/about/$section',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
   '/know/$unit': typeof KnowUnitRoute
+  '/about/$section': typeof AboutSectionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
   '/know/$unit': typeof KnowUnitRoute
+  '/about/$section': typeof AboutSectionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,13 +79,14 @@ export interface FileRoutesById {
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
   '/know/$unit': typeof KnowUnitRoute
+  '/about/$section': typeof AboutSectionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit'
+  fullPaths: '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit'
-  id: '__root__' | '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit'
+  to: '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
+  id: '__root__' | '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -87,6 +96,7 @@ export interface RootRouteChildren {
   MapRoute: typeof MapRoute
   MyLogsRoute: typeof MyLogsRoute
   KnowUnitRoute: typeof KnowUnitRoute
+  AboutSectionRoute: typeof AboutSectionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -133,6 +143,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KnowUnitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about/$section': {
+      id: '/about/$section'
+      path: '/about/$section'
+      fullPath: '/about/$section'
+      preLoaderRoute: typeof AboutSectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -143,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   MapRoute: MapRoute,
   MyLogsRoute: MyLogsRoute,
   KnowUnitRoute: KnowUnitRoute,
+  AboutSectionRoute: AboutSectionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

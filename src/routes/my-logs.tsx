@@ -113,7 +113,7 @@ function MyLogsScreen() {
               type="button"
               onClick={() => void exportLogs(filtered)}
               disabled={exporting}
-              className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
+              className="flex-1 h-11 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-black/10 text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
             >
               {exporting ? (
                 <>
@@ -131,7 +131,7 @@ function MyLogsScreen() {
               type="button"
               onClick={() => setSelectMode(true)}
               disabled={exporting}
-              className="h-11 px-3 rounded-lg border border-border bg-panel text-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-panel-2 disabled:opacity-60"
+              className="h-11 px-3 rounded-2xl border border-border bg-panel shadow-sm shadow-black/5 text-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-panel-2 disabled:opacity-60"
             >
               <CheckSquare className="h-4 w-4" />
               SELECT
@@ -140,7 +140,7 @@ function MyLogsScreen() {
         )}
 
         {selectMode && (
-          <div className="mt-3 rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2.5">
+          <div className="mt-3 rounded-2xl border border-primary/40 bg-primary/5 shadow-sm shadow-black/5 p-2.5 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="mono text-[11px] text-foreground">
                 {selectedLogs.length} of {filtered.length} selected
@@ -149,14 +149,14 @@ function MyLogsScreen() {
                 <button
                   type="button"
                   onClick={toggleAll}
-                  className="h-8 px-2.5 rounded-md border border-border bg-panel text-[10px] font-bold tracking-[0.14em] text-foreground hover:bg-panel-2"
+                  className="h-8 px-2.5 rounded-xl border border-border bg-panel text-[10px] font-bold tracking-[0.14em] text-foreground hover:bg-panel-2"
                 >
                   {allFilteredSelected ? "CLEAR" : "ALL"}
                 </button>
                 <button
                   type="button"
                   onClick={exitSelect}
-                  className="h-8 px-2.5 rounded-md border border-border bg-panel text-[10px] font-bold tracking-[0.14em] text-muted-foreground hover:bg-panel-2"
+                  className="h-8 px-2.5 rounded-xl border border-border bg-panel text-[10px] font-bold tracking-[0.14em] text-muted-foreground hover:bg-panel-2"
                 >
                   CANCEL
                 </button>
@@ -169,7 +169,7 @@ function MyLogsScreen() {
                 exitSelect();
               }}
               disabled={exporting || selectedLogs.length === 0}
-              className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-50"
+              className="w-full h-11 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-black/10 text-[11px] font-bold tracking-[0.18em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-50"
             >
               {exporting ? (
                 <>
@@ -188,7 +188,7 @@ function MyLogsScreen() {
           </div>
         )}
         {exportError && (
-          <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+          <div className="mt-2 flex items-start gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
             <span className="flex-1 leading-snug">{exportError}</span>
             <button type="button" onClick={() => setExportError(null)} aria-label="Dismiss" className="shrink-0">
               <X className="h-3.5 w-3.5" />
@@ -198,7 +198,7 @@ function MyLogsScreen() {
       </div>
 
       <div className="px-4">
-        <div className="flex items-center gap-2 h-12 px-3 rounded-lg bg-panel border border-border focus-within:border-primary">
+        <div className="flex items-center gap-2 h-12 px-3 rounded-2xl bg-panel border border-border shadow-sm shadow-black/5 focus-within:border-primary">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={query}
@@ -313,8 +313,8 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
           activate();
         }
       }}
-      className={`w-full text-left rounded-lg border overflow-hidden cursor-pointer transition-colors ${
-        selectMode && selected ? "border-primary bg-primary/10" : "border-border bg-panel"
+      className={`w-full text-left rounded-2xl overflow-hidden cursor-pointer transition-colors border shadow-md shadow-black/5 ${
+        selectMode && selected ? "border-primary bg-primary/10" : "border-transparent bg-panel"
       }`}
     >
       <div className="flex items-stretch">
@@ -331,7 +331,7 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
                 {selected && <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />}
               </div>
             )}
-            <div className="relative h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
+            <div className="relative h-14 w-14 rounded-xl bg-panel-2 flex items-center justify-center shrink-0 overflow-hidden">
               {photoCount > 0 ? (
                 <button
                   type="button"
@@ -427,7 +427,7 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
                           e.stopPropagation();
                           setViewingIndex(i);
                         }}
-                        className="h-20 w-20 rounded-md border border-border bg-black/40 overflow-hidden"
+                        className="h-20 w-20 rounded-xl border border-border bg-black/40 overflow-hidden"
                         aria-label={`Open photo ${i + 1} full screen`}
                       >
                         <img src={p} alt="" className="h-full w-full object-cover" />
@@ -460,7 +460,7 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
                       type="button"
                       onClick={onExport}
                       disabled={exporting}
-                      className="h-8 px-3 rounded-md bg-panel-2 border border-border text-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-panel disabled:opacity-60"
+                      className="h-8 px-3 rounded-xl bg-panel-2 border border-border text-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-panel disabled:opacity-60"
                     >
                       <FileDown className="h-3.5 w-3.5" />
                       PDF
@@ -468,14 +468,14 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
                     <button
                       type="button"
                       onClick={() => setConfirming(true)}
-                      className="h-8 px-3 rounded-md border border-destructive/60 text-destructive text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-destructive/10"
+                      className="h-8 px-3 rounded-xl border border-destructive/60 text-destructive text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5 hover:bg-destructive/10"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       DELETE
                     </button>
                   </div>
                 ) : (
-                  <div className="rounded-md border border-destructive/60 bg-destructive/5 p-3">
+                  <div className="rounded-xl border border-destructive/60 bg-destructive/5 p-3">
                     <p className="text-xs text-foreground/90">
                       Delete this observation? This cannot be undone.
                     </p>
@@ -483,14 +483,14 @@ function LogCard({ log, onDeleted, onExport, exporting, selectMode, selected, on
                       <button
                         type="button"
                         onClick={() => setConfirming(false)}
-                        className="h-8 px-3 rounded-md border border-border text-[11px] font-bold tracking-[0.18em] text-muted-foreground hover:bg-panel-2"
+                        className="h-8 px-3 rounded-xl border border-border text-[11px] font-bold tracking-[0.18em] text-muted-foreground hover:bg-panel-2"
                       >
                         CANCEL
                       </button>
                       <button
                         type="button"
                         onClick={handleDelete}
-                        className="h-8 px-3 rounded-md bg-destructive text-destructive-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5"
+                        className="h-8 px-3 rounded-xl bg-destructive text-destructive-foreground text-[11px] font-bold tracking-[0.18em] flex items-center gap-1.5"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         DELETE

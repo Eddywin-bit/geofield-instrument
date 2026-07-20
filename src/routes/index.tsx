@@ -24,6 +24,7 @@ import {
   acquireFix,
   accuracyToneClass,
   accuracyBarClass,
+  startPositionWatch,
   type Acquisition,
   type AcquireCoords,
 } from "../lib/geo-acquire";
@@ -131,6 +132,25 @@ function LocateScreen() {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  // Ambient reading for the GPS Accuracy stat card: without this, liveAccuracy
+  // only had a value during the few seconds an explicit LOCATE ME cycle was
+  // running, so the card showed "—" almost all the time. This runs a plain
+  // background watch (same helper the map's blue dot uses) whenever the
+  // screen is idle - stopped the moment an explicit acquisition starts, so
+  // there is never more than one GPS watch active at once. Errors here are
+  // silent; the explicit LOCATE ME flow already owns error/permission UI.
+  const hasFix = !!fix;
+  useEffect(() => {
+    if (hasFix || state === "locating") return;
+    const watch = startPositionWatch(
+      (coords) => setLiveAccuracy(coords.accuracy),
+      () => {
+        /* ambient reading only - LOCATE ME surfaces real errors */
+      },
+    );
+    return () => watch.stop();
+  }, [hasFix, state]);
 
   const [, force] = useState(0);
   useEffect(() => {
@@ -375,7 +395,7 @@ function LocateScreen() {
               <Wifi className="h-9 w-9 text-primary shrink-0" strokeWidth={1.75} />
               <div className="min-w-0">
                 <div className="text-xs text-muted-foreground">Offline Ready</div>
-                <div className="text-sm font-bold mt-0.5">No signal needed</div>
+                <div className="text-sm font-bold mt-0.5">Identification works offline</div>
               </div>
             </div>
           </div>

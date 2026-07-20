@@ -762,6 +762,13 @@ export function MapView() {
         pitchWithRotate: false,
         touchPitch: false,
         maxPitch: 0,
+        // In the globe projection, sphere diameter (css px) is worldSize/pi
+        // where worldSize = 512 * 2^zoom - the same tile-pixel scale as
+        // mercator. 1.3 keeps the globe from shrinking past roughly filling
+        // the screen edge to edge on a typical phone width (~380-420px),
+        // matching the reference: a tiny globe adrift in empty space reads
+        // as broken, not as "zoomed out".
+        minZoom: 1.3,
       });
       attributionRef.current = new maplibregl.AttributionControl({ compact: true });
       map.addControl(attributionRef.current, "top-left");
@@ -1535,7 +1542,13 @@ export function MapView() {
   };
 
   return (
-    <div className="fixed left-0 right-0 top-[calc(2.75rem+env(safe-area-inset-top))] bottom-[calc(4rem+env(safe-area-inset-bottom))] overflow-hidden bg-[#F9FAFB]">
+    <div
+      className="fixed left-0 right-0 top-[calc(2.75rem+env(safe-area-inset-top))] bottom-[calc(4rem+env(safe-area-inset-bottom))] overflow-hidden"
+      style={{
+        background:
+          "radial-gradient(circle, #F1F4FB 0%, #F1F4FB 40%, #A1B7E0 60%, #8EA6D6 71%, #7E98C9 100%)",
+      }}
+    >
       <style>{`
         .maplibregl-ctrl-scale {
           box-sizing: border-box;

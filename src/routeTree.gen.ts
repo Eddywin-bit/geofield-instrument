@@ -50,12 +50,22 @@ const KnowUnitRoute = KnowUnitRouteImport.update({
 const AboutSectionRoute = AboutSectionRouteImport.update({
   id: '/about/$section',
   path: '/about/$section',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AboutRoute,
 } as any)
+
+interface AboutRouteChildren {
+  AboutSectionRoute: typeof AboutSectionRoute
+}
+
+const AboutRouteChildren: AboutRouteChildren = {
+  AboutSectionRoute: AboutSectionRoute,
+}
+
+const AboutRouteWithChildren = AboutRoute._addFileChildren(AboutRouteChildren)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
+  '/about': typeof AboutRouteWithChildren
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -64,7 +74,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
+  '/about': typeof AboutRouteWithChildren
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -74,7 +84,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
+  '/about': typeof AboutRouteWithChildren
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -91,12 +101,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
+  AboutRoute: typeof AboutRouteWithChildren
   LogRoute: typeof LogRoute
   MapRoute: typeof MapRoute
   MyLogsRoute: typeof MyLogsRoute
   KnowUnitRoute: typeof KnowUnitRoute
-  AboutSectionRoute: typeof AboutSectionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -148,19 +157,18 @@ declare module '@tanstack/react-router' {
       path: '/about/$section'
       fullPath: '/about/$section'
       preLoaderRoute: typeof AboutSectionRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AboutRoute
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AboutRoute: AboutRoute,
+  AboutRoute: AboutRouteWithChildren,
   LogRoute: LogRoute,
   MapRoute: MapRoute,
   MyLogsRoute: MyLogsRoute,
   KnowUnitRoute: KnowUnitRoute,
-  AboutSectionRoute: AboutSectionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppLayout } from "../components/AppLayout";
 import { Building2, Mail } from "lucide-react";
 import { GEOFIELD_MARK } from "../lib/logo";
@@ -17,6 +17,19 @@ const APP_VERSION = "0.6.4";
 const CONTACT_EMAIL = "ogstudios14@gmail.com"; // baked into every build; keep this address alive
 
 function AboutPage() {
+  // /about/$section registers as a route with /about as its parent (any
+  // route path is automatically the parent of a path it's a literal prefix
+  // of, regardless of file-naming convention), so this component now has a
+  // child. Without this check it always rendered the section list - the
+  // URL changed on tap but nothing else ever appeared, since there was no
+  // <Outlet /> to show the matched child. Rendering just the Outlet for any
+  // deeper path hands the screen fully to the section page instead of
+  // stacking both.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname !== "/about") {
+    return <Outlet />;
+  }
+
   return (
     <AppLayout>
       <div className="pb-28">
@@ -38,7 +51,7 @@ function AboutPage() {
               key={slug}
               to="/about/$section"
               params={{ section: slug }}
-              className="w-full flex items-center justify-center px-4 py-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold text-center active:scale-[0.99] transition-transform"
+              className="w-full flex items-center justify-start px-4 py-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold text-left active:scale-[0.99] transition-transform"
             >
               {title}
             </Link>

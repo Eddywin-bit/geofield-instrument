@@ -160,7 +160,8 @@ function LocateScreen() {
     const t = setTimeout(() => setError(null), 10000);
     return () => clearTimeout(t);
   }, [error, errorAction]);
-  const recent = loadLogs().slice(0, 3);
+  const allLogs = loadLogs();
+  const recent = allLogs.slice(0, 3);
 
   const resolveAndCommit = async (best: AcquireCoords, manual = false) => {
     try {
@@ -567,33 +568,35 @@ function LocateScreen() {
         </div>
       </div>
 
-      <div className="mt-4 px-4 pb-2">
-        <div className="relative rounded-lg border border-border bg-panel shadow-md shadow-black/5 p-4 overflow-hidden">
-          {/* Simplified illustration: the reference's painted mountain scene has no
-              equivalent in this app's icon library, so this is a large, faint
-              Mountain glyph plus a soft circular glow rather than a true
-              illustration - reported as a simplification, not a 1:1 match. */}
-          <Mountain
-            className="absolute -bottom-3 -right-3 h-24 w-24 text-primary/10 pointer-events-none"
-            strokeWidth={1.5}
-            aria-hidden="true"
-          />
-          <div className="absolute top-2 right-6 h-10 w-10 rounded-full bg-primary/10 pointer-events-none" />
-          <div className="relative flex items-start gap-3">
-            <div className="h-11 w-11 rounded-full bg-primary flex items-center justify-center shrink-0">
-              <MapIcon className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-foreground">You're ready to explore!</div>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                All geological maps are available offline.
-                <br />
-                Happy mapping!
-              </p>
+      {allLogs.length === 0 && (
+        <div className="mt-4 px-4 pb-2">
+          <div className="relative rounded-lg border border-border bg-panel shadow-md shadow-black/5 p-4 overflow-hidden">
+            {/* Simplified illustration: the reference's painted mountain scene has no
+                equivalent in this app's icon library, so this is a large, faint
+                Mountain glyph plus a soft circular glow rather than a true
+                illustration - reported as a simplification, not a 1:1 match. */}
+            <Mountain
+              className="absolute -bottom-3 -right-3 h-24 w-24 text-primary/10 pointer-events-none"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+            <div className="absolute top-2 right-6 h-10 w-10 rounded-full bg-primary/10 pointer-events-none" />
+            <div className="relative flex items-start gap-3">
+              <div className="h-11 w-11 rounded-full bg-primary flex items-center justify-center shrink-0">
+                <MapIcon className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-foreground">You're ready to explore!</div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  All geological maps are available offline.
+                  <br />
+                  Happy mapping!
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </AppLayout>
   );
 }

@@ -10,8 +10,8 @@ import { startPositionWatch, startCompassWatch } from "../lib/geo-acquire";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
-const OCEAN = "#14304A";
-const LAND = "#1B2027";
+const OCEAN = "#C7DCEA";
+const LAND = "#F3EFE4";
 
 // Location-marker colors, matched to Rockd/Google-Maps-style live-location
 // pucks. Measured directly from reference screenshots (pixel sampling, cross
@@ -1535,7 +1535,7 @@ export function MapView() {
   };
 
   return (
-    <div className="fixed left-0 right-0 top-[calc(2.75rem+env(safe-area-inset-top))] bottom-[calc(4rem+env(safe-area-inset-bottom))] overflow-hidden bg-[#121417]">
+    <div className="fixed left-0 right-0 top-[calc(2.75rem+env(safe-area-inset-top))] bottom-[calc(4rem+env(safe-area-inset-bottom))] overflow-hidden bg-[#C7DCEA]">
       <style>{`
         .maplibregl-ctrl-scale {
           box-sizing: border-box;

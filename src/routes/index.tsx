@@ -358,32 +358,32 @@ function LocateScreen() {
       {!fix && (
         <div className="px-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-border bg-panel shadow-md shadow-black/5 p-3.5">
-              <div className="flex items-center gap-2">
-                <Crosshair className="h-4 w-4 text-success shrink-0" />
-                <span className="text-xs text-muted-foreground">GPS Accuracy</span>
-              </div>
-              <div
-                className={`mono text-base font-bold mt-1.5 ${
-                  liveAccuracy !== null ? accuracyToneClass(liveAccuracy) : "text-muted-foreground"
-                }`}
-              >
-                {liveAccuracy !== null ? `± ${liveAccuracy.toFixed(1)} m` : "—"}
+            <div className="rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3">
+              <Crosshair className="h-9 w-9 text-success shrink-0" strokeWidth={1.75} />
+              <div className="min-w-0">
+                <div className="text-xs text-muted-foreground">GPS Accuracy</div>
+                <div
+                  className={`mono text-base font-bold mt-0.5 ${
+                    liveAccuracy !== null ? accuracyToneClass(liveAccuracy) : "text-muted-foreground"
+                  }`}
+                >
+                  {liveAccuracy !== null ? `± ${liveAccuracy.toFixed(1)} m` : "—"}
+                </div>
               </div>
             </div>
-            <div className="rounded-lg border border-border bg-panel shadow-md shadow-black/5 p-3.5">
-              <div className="flex items-center gap-2">
-                <Wifi className="h-4 w-4 text-primary shrink-0" />
-                <span className="text-xs text-muted-foreground">Offline Ready</span>
+            <div className="rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3">
+              <Wifi className="h-9 w-9 text-primary shrink-0" strokeWidth={1.75} />
+              <div className="min-w-0">
+                <div className="text-xs text-muted-foreground">Offline Ready</div>
+                <div className="text-sm font-bold mt-0.5">No signal needed</div>
               </div>
-              <div className="text-sm font-bold mt-1.5">No signal needed</div>
             </div>
           </div>
 
           <button
             onClick={() => void locate()}
             disabled={state === "locating"}
-            className="w-full rounded-lg bg-primary text-primary-foreground shadow-lg shadow-black/10 py-8 flex flex-col items-center justify-center gap-1.5 active:scale-[0.99] transition-transform disabled:opacity-80"
+            className="w-full rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-black/10 py-8 flex flex-col items-center justify-center gap-1.5 active:scale-[0.99] transition-transform disabled:opacity-80"
           >
             {state === "locating" ? (
               <>
@@ -394,7 +394,7 @@ function LocateScreen() {
               </>
             ) : (
               <>
-                <div className="h-14 w-14 rounded-full bg-primary-foreground/15 flex items-center justify-center">
+                <div className="h-14 w-14 rounded-full bg-background/20 flex items-center justify-center">
                   <Crosshair className="h-7 w-7" strokeWidth={2.5} />
                 </div>
                 <span className="font-bold tracking-[0.2em] text-lg mt-1">LOCATE ME</span>
@@ -436,9 +436,9 @@ function LocateScreen() {
           )}
           <button
             onClick={() => setShowManual(true)}
-            className="w-full h-14 rounded-lg border border-primary/70 bg-panel shadow-sm text-foreground text-sm font-semibold tracking-wide hover:bg-primary/10 flex items-center justify-center gap-2.5"
+            className="w-full h-14 rounded-2xl border border-primary/70 bg-panel shadow-sm text-foreground text-sm font-semibold tracking-wide hover:bg-primary/10 flex items-center justify-center gap-2.5"
           >
-            <span className="h-7 w-7 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+            <span className="h-7 w-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
               <Keyboard className="h-4 w-4 text-primary" />
             </span>
             ENTER COORDINATES MANUALLY
@@ -570,7 +570,7 @@ function LocateScreen() {
 
       {allLogs.length === 0 && (
         <div className="mt-4 px-4 pb-2">
-          <div className="relative rounded-lg border border-border bg-panel shadow-md shadow-black/5 p-4 overflow-hidden">
+          <div className="relative rounded-2xl bg-panel shadow-md shadow-black/5 p-4 overflow-hidden">
             {/* Simplified illustration: the reference's painted mountain scene has no
                 equivalent in this app's icon library, so this is a large, faint
                 Mountain glyph plus a soft circular glow rather than a true
@@ -625,7 +625,7 @@ function FixCard({
   const toneBar = accuracyBarClass(displayAccuracy);
   
   return (
-    <div className="rounded-lg border border-border bg-panel shadow-md shadow-black/5 overflow-hidden">
+    <div className="rounded-2xl bg-panel shadow-md shadow-black/5 overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           {/* Dot carries the accent color; the label stays on foreground/success,
@@ -708,7 +708,7 @@ function Collapsible({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-lg border border-border bg-panel shadow-sm shadow-black/5">
+    <div className="rounded-2xl bg-panel shadow-sm shadow-black/5">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 h-14 text-left"
@@ -738,7 +738,7 @@ function RecentRow({ log }: { log: LogEntry }) {
     <Link
       to="/my-logs"
       search={{ open: log.id }}
-      className="flex items-stretch rounded-lg border border-border bg-panel shadow-md shadow-black/5 overflow-hidden active:bg-panel-2 hover:bg-panel-2 transition-colors"
+      className="flex items-stretch rounded-2xl bg-panel shadow-md shadow-black/5 overflow-hidden active:bg-panel-2 hover:bg-panel-2 transition-colors"
     >
       <div className="w-1.5 shrink-0" style={{ backgroundColor: stripeColor }} />
       <div className="flex-1 p-3 min-w-0 flex items-start gap-3">

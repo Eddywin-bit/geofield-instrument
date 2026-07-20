@@ -1367,9 +1367,20 @@ export function MapView() {
       const el = document.createElement("div");
       el.style.cssText = "width:40px;height:40px;position:relative;";
 
+      // A still screenshot can't show motion either way, so the reference
+      // images are not evidence the live marker has no pulse - it does, just
+      // small: a subtle scale/opacity breathe close to the dot's own size,
+      // not the old amber version's large 2.6x sonar-style expansion.
+      const pulse = document.createElement("div");
+      pulse.style.cssText =
+        `position:absolute;top:13px;left:13px;width:14px;height:14px;border-radius:9999px;background:${LOCATION_DOT_BLUE};`;
+      pulse.animate(
+        [{ transform: "scale(1)", opacity: 0.45 }, { transform: "scale(1.6)", opacity: 0 }],
+        { duration: 1700, iterations: Infinity, easing: "ease-out" },
+      );
+
       // Solid fill + a plain white ring (box-shadow, so it doesn't affect
-      // layout size). No pulse: the reference has no animated ring, only the
-      // static accuracy circle below.
+      // layout size).
       const dot = document.createElement("div");
       dot.style.cssText =
         `width:14px;height:14px;border-radius:9999px;background:${LOCATION_DOT_BLUE};box-shadow:0 0 0 2.5px #ffffff;position:absolute;top:13px;left:13px;`;
@@ -1406,6 +1417,7 @@ export function MapView() {
       arrowSvg.appendChild(arrowPolygon);
       arrowPivot.appendChild(arrowSvg);
 
+      el.appendChild(pulse);
       el.appendChild(dot);
       el.appendChild(arrowPivot);
       headingArrowRef.current = arrowPivot;

@@ -110,6 +110,13 @@ function writeCurrentFix(f: Fix) {
     /* ignore */
   }
 }
+function clearCurrentFix() {
+  try {
+    window.sessionStorage.removeItem(FIX_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 // A fix older than this must not be silently attached to a new observation.
 export const FIX_MAX_AGE_MS = 30 * 60 * 1000;
@@ -474,6 +481,7 @@ function LocateScreen() {
             liveAccuracy={liveAccuracy}
             onRelocate={() => {
               acqRef.current?.stop();
+              clearCurrentFix();
               setFix(null);
               setLiveAccuracy(null);
               setState("idle");

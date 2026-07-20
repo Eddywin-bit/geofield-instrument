@@ -7,6 +7,7 @@ import {
   Crosshair,
   Database,
   FileText,
+  FlaskConical,
   Library,
   MapPin,
   Scale,
@@ -15,6 +16,11 @@ import {
   Sparkles,
   WifiOff,
 } from "lucide-react";
+
+// Shared with src/routes/about.tsx's footer. CHANNEL "Beta" while 0.x, clear
+// this string at 1.0.0 - it also gates the pre-release warning below.
+export const CHANNEL = "Beta";
+export const EDITION = "Ghana Edition";
 
 export type AboutSection = {
   slug: string;
@@ -71,6 +77,24 @@ export const ABOUT_SECTIONS: AboutSection[] = [
     subtitle: "Locate, Know, Log",
     content: (
       <div className="space-y-3">
+        {CHANNEL && (
+          <div className="border border-primary/30 bg-primary/[0.06] rounded-lg p-3.5 flex items-start gap-3">
+            <FlaskConical className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground">Pre-release build</div>
+              <p className="text-[13px] leading-relaxed text-foreground/80 mt-1">
+                This is a testing release. Features and data may change, and behaviour is not yet
+                final. Do not rely on it as your only record of a traverse. Report anything that
+                looks wrong.
+              </p>
+            </div>
+          </div>
+        )}
+        <p className="text-sm leading-relaxed text-foreground/90">
+          GeoField names the geological unit under your feet, gives you field-ready knowledge about
+          it, and lets you capture notes, photos and voice memos on the spot. It is built to work
+          with no signal, anywhere in Ghana.
+        </p>
         <Row
           icon={Crosshair}
           title="Locate"

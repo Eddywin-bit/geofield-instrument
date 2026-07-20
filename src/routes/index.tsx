@@ -1,8 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
-import { Crosshair, ChevronDown, ChevronRight, MapPin, Loader2, Keyboard, NotebookPen, X } from "lucide-react";
-import { hydrateLogs, loadLogs, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
+import {
+  Crosshair,
+  ChevronDown,
+  ChevronRight,
+  MapPin,
+  Loader2,
+  Keyboard,
+  NotebookPen,
+  X,
+  Wifi,
+  Map as MapIcon,
+  Mountain,
+  Image as ImageIcon,
+  Mic,
+} from "lucide-react";
+import { hydrateLogs, loadLogs, displayRef, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
+import { colorForUnit } from "../lib/unit-colors";
 import { loadGeology, findUnitAt, unitByName, nearbyUnits, type GeoUnit } from "../lib/geology";
 import { requestLocationEnable } from "../lib/enable-location";
 import {
@@ -340,21 +355,51 @@ function LocateScreen() {
       </div>
 
       {!fix && (
-        <div className="px-4 space-y-2">
+        <div className="px-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-border bg-panel shadow-md shadow-black/5 p-3.5">
+              <div className="flex items-center gap-2">
+                <Crosshair className="h-4 w-4 text-success shrink-0" />
+                <span className="text-xs text-muted-foreground">GPS Accuracy</span>
+              </div>
+              <div
+                className={`mono text-base font-bold mt-1.5 ${
+                  liveAccuracy !== null ? accuracyToneClass(liveAccuracy) : "text-muted-foreground"
+                }`}
+              >
+                {liveAccuracy !== null ? `± ${liveAccuracy.toFixed(1)} m` : "—"}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-panel shadow-md shadow-black/5 p-3.5">
+              <div className="flex items-center gap-2">
+                <Wifi className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-xs text-muted-foreground">Offline Ready</span>
+              </div>
+              <div className="text-sm font-bold mt-1.5">No signal needed</div>
+            </div>
+          </div>
+
           <button
             onClick={() => void locate()}
             disabled={state === "locating"}
-            className="w-full h-32 rounded-lg bg-primary text-primary-foreground font-bold tracking-[0.2em] text-lg flex flex-col items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-80"
+            className="w-full rounded-lg bg-primary text-primary-foreground shadow-lg shadow-black/10 py-8 flex flex-col items-center justify-center gap-1.5 active:scale-[0.99] transition-transform disabled:opacity-80"
           >
             {state === "locating" ? (
               <>
-                <Loader2 className="h-7 w-7 animate-spin" />
-                {liveAccuracy === null ? "LOCATING…" : `ACQUIRING · ± ${liveAccuracy.toFixed(1)} M`}
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="font-bold tracking-[0.2em] text-lg mt-1">
+                  {liveAccuracy === null ? "LOCATING…" : `ACQUIRING · ± ${liveAccuracy.toFixed(1)} M`}
+                </span>
               </>
             ) : (
               <>
-                <Crosshair className="h-7 w-7" strokeWidth={2.5} />
-                LOCATE ME
+                <div className="h-14 w-14 rounded-full bg-primary-foreground/15 flex items-center justify-center">
+                  <Crosshair className="h-7 w-7" strokeWidth={2.5} />
+                </div>
+                <span className="font-bold tracking-[0.2em] text-lg mt-1">LOCATE ME</span>
+                <span className="text-xs font-medium text-primary-foreground/80">
+                  Tap to identify unit
+                </span>
               </>
             )}
           </button>
@@ -390,9 +435,11 @@ function LocateScreen() {
           )}
           <button
             onClick={() => setShowManual(true)}
-            className="w-full h-14 rounded-lg border border-primary/70 bg-primary/5 text-foreground text-sm font-semibold tracking-wide hover:bg-primary/10 flex items-center justify-center gap-2"
+            className="w-full h-14 rounded-lg border border-primary/70 bg-panel shadow-sm text-foreground text-sm font-semibold tracking-wide hover:bg-primary/10 flex items-center justify-center gap-2.5"
           >
-            <Keyboard className="h-4 w-4 text-primary" />
+            <span className="h-7 w-7 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+              <Keyboard className="h-4 w-4 text-primary" />
+            </span>
             ENTER COORDINATES MANUALLY
           </button>
         </div>
@@ -501,8 +548,14 @@ function LocateScreen() {
 
       <div className="mt-8 px-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="label-instrument">Recent Logs</span>
-          <span className="mono text-[11px] text-muted-foreground">{recent.length}</span>
+          <span className="label-instrument">Recent Activity</span>
+          {recent.length > 0 ? (
+            <Link to="/my-logs" className="text-xs font-semibold text-primary">
+              View all
+            </Link>
+          ) : (
+            <span className="mono text-[11px] text-muted-foreground">{recent.length}</span>
+          )}
         </div>
         <div className="space-y-2">
           {recent.map((l) => (
@@ -511,6 +564,34 @@ function LocateScreen() {
           {recent.length === 0 && (
             <div className="text-xs text-muted-foreground px-1">No observations yet.</div>
           )}
+        </div>
+      </div>
+
+      <div className="mt-4 px-4 pb-2">
+        <div className="relative rounded-lg border border-border bg-panel shadow-md shadow-black/5 p-4 overflow-hidden">
+          {/* Simplified illustration: the reference's painted mountain scene has no
+              equivalent in this app's icon library, so this is a large, faint
+              Mountain glyph plus a soft circular glow rather than a true
+              illustration - reported as a simplification, not a 1:1 match. */}
+          <Mountain
+            className="absolute -bottom-3 -right-3 h-24 w-24 text-primary/10 pointer-events-none"
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
+          <div className="absolute top-2 right-6 h-10 w-10 rounded-full bg-primary/10 pointer-events-none" />
+          <div className="relative flex items-start gap-3">
+            <div className="h-11 w-11 rounded-full bg-primary flex items-center justify-center shrink-0">
+              <MapIcon className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-foreground">You're ready to explore!</div>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                All geological maps are available offline.
+                <br />
+                Happy mapping!
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>
@@ -541,7 +622,7 @@ function FixCard({
   const toneBar = accuracyBarClass(displayAccuracy);
   
   return (
-    <div className="rounded-lg border border-border bg-panel overflow-hidden">
+    <div className="rounded-lg border border-border bg-panel shadow-md shadow-black/5 overflow-hidden">
       <div className="px-4 py-3 bg-panel-2 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           {/* Dot carries the accent color; the label stays on foreground/success,
@@ -624,7 +705,7 @@ function Collapsible({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-lg border border-border bg-panel">
+    <div className="rounded-lg border border-border bg-panel shadow-sm shadow-black/5">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 h-14 text-left"
@@ -647,18 +728,62 @@ function Collapsible({
 }
 
 function RecentRow({ log }: { log: LogEntry }) {
+  const effectivePhotos: string[] = log.photos ?? (log.photo ? [log.photo] : []);
+  const stripeColor = colorForUnit(log.unit, log.belt);
+  const hasPosition = log.lat !== null && log.lng !== null && log.accuracy !== null;
   return (
     <Link
       to="/my-logs"
       search={{ open: log.id }}
-      className="flex items-center gap-3 px-3 h-14 rounded-md border border-border bg-panel active:bg-panel-2 hover:bg-panel-2 transition-colors"
+      className="flex items-stretch rounded-lg border border-border bg-panel shadow-md shadow-black/5 overflow-hidden active:bg-panel-2 hover:bg-panel-2 transition-colors"
     >
-      <MapPin className="h-4 w-4 text-primary shrink-0" />
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold truncate">{log.unit}</div>
-        <div className="text-[11px] text-muted-foreground truncate">{log.note}</div>
+      <div className="w-1.5 shrink-0" style={{ backgroundColor: stripeColor }} />
+      <div className="flex-1 p-3 min-w-0 flex items-start gap-3">
+        <div className="h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
+          {effectivePhotos.length > 0 ? (
+            <img src={effectivePhotos[0]} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-bold truncate">{log.unit}</div>
+            <MapPin className="h-4 w-4 text-primary shrink-0" />
+          </div>
+          <div className="text-xs text-muted-foreground truncate mt-0.5">{log.belt}</div>
+          <div className="mono text-[10px] text-muted-foreground/80 mt-1 tracking-wide">
+            {displayRef(log)}
+          </div>
+          {log.note ? (
+            <div className="text-xs mt-1 line-clamp-1 text-foreground/90">{log.note}</div>
+          ) : (
+            <div className="text-xs mt-1 italic text-muted-foreground/70">(no note)</div>
+          )}
+          <div className="flex items-center justify-between mt-1.5">
+            <div className="flex items-center gap-3">
+              {effectivePhotos.length > 0 && (
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <ImageIcon className="h-3 w-3" /> Photo
+                </span>
+              )}
+              {log.hasVoice && (
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Mic className="h-3 w-3 text-primary" /> Voice
+                </span>
+              )}
+              {hasPosition && (
+                <span className="mono text-[10px] text-muted-foreground">
+                  ± {log.accuracy!.toFixed(1)} m
+                </span>
+              )}
+            </div>
+            <span className="mono text-[11px] text-muted-foreground shrink-0">
+              {formatTime(log.timestamp)}
+            </span>
+          </div>
+        </div>
       </div>
-      <span className="mono text-[11px] text-muted-foreground shrink-0">{formatTime(log.timestamp)}</span>
     </Link>
   );
 }

@@ -225,11 +225,17 @@ jobs:
 
       - name: Generate app icons and splash from the GeoField mark
         run: |
+          # Icon background stays obsidian deliberately: the launcher icon is
+          # fixed brand identity on the home screen/app drawer, not in-app
+          # chrome, so it doesn't follow the light/dark theme. The splash
+          # background does, since it's what's on screen for the moment
+          # before the WebView paints - the same "avoid a flash of the wrong
+          # theme" reasoning as capacitor.config.ts's backgroundColor.
           ./node_modules/.bin/capacitor-assets generate --android \
             --iconBackgroundColor '#121417' \
             --iconBackgroundColorDark '#121417' \
-            --splashBackgroundColor '#121417' \
-            --splashBackgroundColorDark '#121417'
+            --splashBackgroundColor '#F9FAFB' \
+            --splashBackgroundColorDark '#F9FAFB'
           find android/app/src/main/res -name "ic_launcher*" | head -20
 
       - name: Add required permissions to AndroidManifest
@@ -255,7 +261,7 @@ jobs:
           print(x)
           PY
 
-      - name: Paint the system bars with the obsidian shell colour
+      - name: Paint the system bars with the light shell colour
         run: |
           python3 - <<'PY'
           import pathlib, re, sys
@@ -265,12 +271,16 @@ jobs:
           if not m:
               sys.exit("AppTheme.NoActionBar not found in styles.xml")
           if "android:windowBackground" not in x:
+              # Matches src/styles.css's --background (#F9FAFB). windowLightStatusBar/
+              # windowLightNavigationBar true means the bars are light, so their
+              # icons render dark - the Android convention is backwards-sounding
+              # but this is the correct pairing for a light bar.
               items = (
-                  '\n        <item name="android:windowBackground">#FF121417</item>'
-                  '\n        <item name="android:statusBarColor">#FF121417</item>'
-                  '\n        <item name="android:navigationBarColor">#FF121417</item>'
-                  '\n        <item name="android:windowLightStatusBar">false</item>'
-                  '\n        <item name="android:windowLightNavigationBar">false</item>'
+                  '\n        <item name="android:windowBackground">#FFF9FAFB</item>'
+                  '\n        <item name="android:statusBarColor">#FFF9FAFB</item>'
+                  '\n        <item name="android:navigationBarColor">#FFF9FAFB</item>'
+                  '\n        <item name="android:windowLightStatusBar">true</item>'
+                  '\n        <item name="android:windowLightNavigationBar">true</item>'
               )
               x = x[:m.end()] + items + x[m.end():]
               p.write_text(x)

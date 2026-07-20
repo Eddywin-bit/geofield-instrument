@@ -13,6 +13,14 @@ const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18
 const OCEAN = "#14304A";
 const LAND = "#1B2027";
 
+// Location-marker colors, matched to Rockd/Google-Maps-style live-location
+// pucks. Measured directly from reference screenshots (pixel sampling, cross
+// checked against two independent heading angles): the dot and the heading
+// arrow are two distinct, deliberate blues, not the same color at different
+// opacity.
+const LOCATION_DOT_BLUE = "#1DA1F3";
+const LOCATION_ARROW_BLUE = "#49A1EA";
+
 // Above this ground speed, GPS course between fixes is a reliable heading;
 // at or below it (walking pace or slower), consecutive fixes are too close
 // together relative to their own error to trust a bearing between them, so
@@ -1359,17 +1367,23 @@ export function MapView() {
       const el = document.createElement("div");
       el.style.cssText = "width:40px;height:40px;position:relative;";
 
+      // A still screenshot can't show motion either way, so the reference
+      // images are not evidence the live marker has no pulse - it does, just
+      // small: a subtle scale/opacity breathe close to the dot's own size,
+      // not the old amber version's large 2.6x sonar-style expansion.
+      const pulse = document.createElement("div");
+      pulse.style.cssText =
+        `position:absolute;top:13px;left:13px;width:14px;height:14px;border-radius:9999px;background:${LOCATION_DOT_BLUE};`;
+      pulse.animate(
+        [{ transform: "scale(1)", opacity: 0.45 }, { transform: "scale(1.6)", opacity: 0 }],
+        { duration: 1700, iterations: Infinity, easing: "ease-out" },
+      );
+
+      // Solid fill + a plain white ring (box-shadow, so it doesn't affect
+      // layout size).
       const dot = document.createElement("div");
       dot.style.cssText =
-        "width:14px;height:14px;border-radius:9999px;background:#F59E0B;border:2px solid #0f1418;box-shadow:0 0 0 2px rgba(245,158,11,0.35);position:absolute;top:13px;left:13px;";
-
-      const halo = document.createElement("div");
-      halo.style.cssText =
-        "position:absolute;top:13px;left:13px;width:14px;height:14px;border-radius:9999px;background:#F59E0B;";
-      halo.animate(
-        [{ transform: "scale(1)", opacity: 0.6 }, { transform: "scale(2.6)", opacity: 0 }],
-        { duration: 1500, iterations: Infinity, easing: "ease-out" },
-      );
+        `width:14px;height:14px;border-radius:9999px;background:${LOCATION_DOT_BLUE};box-shadow:0 0 0 2.5px #ffffff;position:absolute;top:13px;left:13px;`;
 
       // Direction arrow, fused to the dot as a child of the same marker
       // element rather than a second Marker: two independently-anchored
@@ -1377,22 +1391,33 @@ export function MapView() {
       // render detached from it on screen (different element sizes and
       // MapLibre's rotationAlignment:"map" transform path vs. the dot's
       // plain viewport alignment). A pivot positioned at the container's own
-      // center (20,20) holds the triangle offset upward from it, so rotating
-      // the pivot sweeps the arrowhead's tip around the dot at a fixed
-      // radius, base flush against the dot's top edge. Rotation and
-      // visibility are driven by the [heading, bearing] effect below, not
-      // this one, since heading/bearing change independently of gps.
+      // center (20,20) holds the arrow offset upward from it, so rotating the
+      // pivot sweeps the arrowhead around the dot at a fixed radius and
+      // gap. Rotation and visibility are driven by the [heading, bearing]
+      // effect below, not this one, since heading/bearing change
+      // independently of gps.
+      //
+      // The reference's arrowhead is a concave kite/chevron (verified by
+      // pixel-scanning both reference screenshots row by row: the back edge
+      // curves inward at the centerline rather than running flat), which a
+      // CSS border-trick triangle cannot produce, hence SVG. It sits with a
+      // small gap short of the ring, never overlapping it, in both reference
+      // screenshots.
       const arrowPivot = document.createElement("div");
       arrowPivot.style.cssText = "position:absolute;top:20px;left:20px;width:0;height:0;pointer-events:none;display:none;";
-      const arrowShape = document.createElement("div");
-      arrowShape.style.cssText =
-        "position:absolute;top:-19px;left:-6px;width:0;height:0;" +
-        "border-left:6px solid transparent;border-right:6px solid transparent;" +
-        "border-bottom:11px solid #F59E0B;" +
-        "filter:drop-shadow(0 1px 1px rgba(15,20,24,0.8));";
-      arrowPivot.appendChild(arrowShape);
+      const svgNs = "http://www.w3.org/2000/svg";
+      const arrowSvg = document.createElementNS(svgNs, "svg");
+      arrowSvg.setAttribute("viewBox", "-7 0 14 9");
+      arrowSvg.setAttribute("width", "14");
+      arrowSvg.setAttribute("height", "9");
+      arrowSvg.style.cssText = "position:absolute;top:-21.5px;left:-7px;display:block;";
+      const arrowPolygon = document.createElementNS(svgNs, "polygon");
+      arrowPolygon.setAttribute("points", "0,0 7,9 0,6.5 -7,9");
+      arrowPolygon.setAttribute("fill", LOCATION_ARROW_BLUE);
+      arrowSvg.appendChild(arrowPolygon);
+      arrowPivot.appendChild(arrowSvg);
 
-      el.appendChild(halo);
+      el.appendChild(pulse);
       el.appendChild(dot);
       el.appendChild(arrowPivot);
       headingArrowRef.current = arrowPivot;
@@ -1408,8 +1433,10 @@ export function MapView() {
     const diameterPx = Math.max(20, (gps.accuracy * 2) / metersPerPixel);
     if (!accuracyMarkerRef.current) {
       const el = document.createElement("div");
+      // Soft, static fill only, no border: the reference's accuracy circle
+      // fades into the basemap with no visible ring at its edge.
       el.style.cssText =
-        "pointer-events:none;border-radius:9999px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);";
+        "pointer-events:none;border-radius:9999px;background:rgba(29,161,243,0.08);";
       el.style.width = `${diameterPx}px`;
       el.style.height = `${diameterPx}px`;
       accuracyMarkerRef.current = new maplibregl.Marker({ element: el })

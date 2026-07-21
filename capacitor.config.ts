@@ -25,6 +25,18 @@ const config: CapacitorConfig = {
       // the light theme's background instead of showing black or white.
       backgroundColor: "#F9FAFB",
   },
+  plugins: {
+    // Cloud backup (Phase 0: sign-in only) uses only the Google provider.
+    // Disabling the others keeps their SDKs out of the APK entirely.
+    SocialLogin: {
+      providers: {
+        google: true,
+        facebook: false,
+        apple: false,
+        twitter: false,
+      },
+    },
+  },
 };
 
 export default config;

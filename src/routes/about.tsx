@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppLayout } from "../components/AppLayout";
-import { Building2, Mail } from "lucide-react";
+import { Building2, Cloud, Mail } from "lucide-react";
 import { GEOFIELD_MARK } from "../lib/logo";
 import { ABOUT_SECTIONS, CHANNEL, EDITION } from "../lib/about-sections";
 
@@ -56,6 +56,25 @@ function AboutPage() {
               {title}
             </Link>
           ))}
+        </div>
+
+        {/* Backup & Restore */}
+        <div className="px-4 mt-6 space-y-2.5">
+          <h2 className="label-instrument px-1 pb-1">Your data</h2>
+          <Link
+            to="/backup"
+            className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl bg-panel shadow-md shadow-black/5 text-left active:scale-[0.99] transition-transform"
+          >
+            <span className="h-9 w-9 rounded-full bg-primary/35 flex items-center justify-center shrink-0">
+              <Cloud className="h-4 w-4 text-foreground" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground">Backup &amp; Restore</div>
+              <div className="text-[11px] text-muted-foreground">
+                Save your observations to your Google Drive
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Contact */}

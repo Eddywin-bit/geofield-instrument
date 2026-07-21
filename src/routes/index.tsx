@@ -143,7 +143,7 @@ const LOCATE_TIPS: { icon: LucideIcon; label: string; text: string }[] = [
   { icon: Wifi, label: "Offline Ready", text: "Identification works offline" },
   { icon: NotebookPen, label: "Tip", text: "Add a photo and voice note" },
   { icon: Cloud, label: "Tip", text: "Back up your field notes" },
-  { icon: ImageIcon, label: "Field note", text: "Fresh surfaces show the most" },
+  { icon: ImageIcon, label: "Field note", text: "Fresh surfaces reveal more" },
   { icon: MapIcon, label: "Tip", text: "Open the map for nearby units" },
   { icon: Crosshair, label: "Tip", text: "Weak GPS? Give it a moment" },
   { icon: Keyboard, label: "Tip", text: "No signal? Type coordinates" },

@@ -11,9 +11,11 @@ import {
   NotebookPen,
   X,
   Wifi,
+  Cloud,
   Map as MapIcon,
   Image as ImageIcon,
   Mic,
+  type LucideIcon,
 } from "lucide-react";
 import { hydrateLogs, loadLogs, displayRef, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
 import { colorForUnit } from "../lib/unit-colors";
@@ -124,6 +126,49 @@ export function isFixStale(f: { acquiredAt?: number } | null): boolean {
   if (!f) return true;
   if (typeof f.acquiredAt !== "number") return true; // legacy entries have no stamp
   return Date.now() - f.acquiredAt > FIX_MAX_AGE_MS;
+}
+
+// Right-hand stat card on the idle Locate screen. Rotates through short
+// prompts so the card speaks to the user instead of showing one fixed line.
+// The first entry keeps the original offline-ready reassurance. Everything
+// here is app guidance or general field-work practice, never a factual claim
+// about a specific mapped unit (that content has a single sourced origin, see
+// CLAUDE.md), so nothing needs sourcing. Tapping advances to the next prompt;
+// it also auto-advances on an interval.
+const LOCATE_TIPS: { icon: LucideIcon; label: string; text: string }[] = [
+  { icon: Wifi, label: "Offline Ready", text: "Identification works offline" },
+  { icon: NotebookPen, label: "Tip", text: "Add a photo and voice note at each stop" },
+  { icon: Cloud, label: "Tip", text: "Back up so your notes survive a lost phone" },
+  { icon: ImageIcon, label: "Field note", text: "A fresh surface tells more than a weathered one" },
+  { icon: MapIcon, label: "Tip", text: "Open the map to see units around you" },
+  { icon: Crosshair, label: "Tip", text: "Weak GPS? Give it a few seconds to settle" },
+  { icon: Keyboard, label: "Tip", text: "No signal indoors? Enter coordinates manually" },
+];
+const LOCATE_TIP_INTERVAL_MS = 7000;
+
+function RotatingTipCard() {
+  const [i, setI] = useState(0);
+  const advance = () => setI((n) => (n + 1) % LOCATE_TIPS.length);
+  useEffect(() => {
+    const id = setInterval(advance, LOCATE_TIP_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+  const tip = LOCATE_TIPS[i];
+  const Icon = tip.icon;
+  return (
+    <button
+      type="button"
+      onClick={advance}
+      aria-label="Field tip. Tap for the next one."
+      className="rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3 text-left w-full active:scale-[0.99] transition-transform"
+    >
+      <Icon className="h-9 w-9 text-primary shrink-0" strokeWidth={1.75} />
+      <div className="min-w-0">
+        <div className="text-xs text-muted-foreground">{tip.label}</div>
+        <div className="text-sm font-bold mt-0.5">{tip.text}</div>
+      </div>
+    </button>
+  );
 }
 
 function LocateScreen() {
@@ -397,13 +442,7 @@ function LocateScreen() {
                 </div>
               </div>
             </div>
-            <div className="rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3">
-              <Wifi className="h-9 w-9 text-primary shrink-0" strokeWidth={1.75} />
-              <div className="min-w-0">
-                <div className="text-xs text-muted-foreground">Offline Ready</div>
-                <div className="text-sm font-bold mt-0.5">Identification works offline</div>
-              </div>
-            </div>
+            <RotatingTipCard />
           </div>
 
           <button

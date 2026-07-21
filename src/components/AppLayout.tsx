@@ -71,17 +71,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
 // Checked once per app session (see checkForUpdate's module-level cache).
 // AppLayout isn't a persistent route wrapper - every screen re-renders it -
 // so this mounts on every navigation, but only ever fetches version.json
-// once. A dismissed version stays dismissed (via Preferences) until a newer
-// one is published.
+// once. Dismissal is session-only too: it survives navigation within the
+// same run but resets on the next app launch, so the banner comes back if
+// the user still hasn't updated.
 function UpdateBanner() {
   const [info, setInfo] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void checkForUpdate().then(async (result) => {
+    void checkForUpdate().then((result) => {
       if (cancelled || !result) return;
-      const dismissed = await getDismissedVersion();
-      if (cancelled || dismissed === result.version) return;
+      if (getDismissedVersion() === result.version) return;
       setInfo(result);
     });
     return () => {
@@ -105,7 +105,7 @@ function UpdateBanner() {
         type="button"
         onClick={() => {
           setInfo(null);
-          void dismissVersion(info.version);
+          dismissVersion(info.version);
         }}
         aria-label="Dismiss"
         className="shrink-0"

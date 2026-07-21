@@ -2,7 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
-import { Search, Image as ImageIcon, Mic, Trash2, FileDown, Loader2, X, Check, CheckSquare } from "lucide-react";
+import {
+  Search,
+  Image as ImageIcon,
+  Mic,
+  Trash2,
+  FileDown,
+  Loader2,
+  X,
+  Check,
+  CheckSquare,
+  Cloud,
+  ChevronRight,
+} from "lucide-react";
 import { buildTraverseReport, reportFilename, shareOrDownload } from "../lib/report";
 import {
   deleteLog,
@@ -114,11 +126,22 @@ function MyLogsScreen() {
         </p>
         <Link
           to="/backup"
-          className="mt-1 inline-block text-xs text-muted-foreground underline decoration-dotted underline-offset-2"
+          className="mt-3 flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-panel border border-border shadow-sm shadow-black/5 active:scale-[0.99] transition-transform"
         >
-          {lastBackup
-            ? `Last backed up ${new Date(lastBackup.timestamp).toLocaleDateString()} · Back up again`
-            : "Not backed up yet · Tap to back up"}
+          <span className="h-8 w-8 rounded-full bg-primary/35 flex items-center justify-center shrink-0">
+            <Cloud className="h-4 w-4 text-foreground" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-semibold text-foreground">
+              {lastBackup ? "Back up again" : "Not backed up yet"}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {lastBackup
+                ? `Last backed up ${new Date(lastBackup.timestamp).toLocaleDateString()}`
+                : "Tap to save your observations to Google Drive"}
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </Link>
         {filtered.length > 0 && !selectMode && (
           <div className="mt-3 flex items-center gap-2">

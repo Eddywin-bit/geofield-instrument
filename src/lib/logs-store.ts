@@ -105,6 +105,20 @@ export function addLog(entry: LogEntry) {
   saveLogs(next);
 }
 
+// Restore write path. Safe to call repeatedly with small batches: each call
+// accumulates onto whatever is already in the store rather than requiring the
+// whole restored dataset at once, so a big restore can commit incrementally
+// instead of holding hundreds of inlined photos/voice notes in memory together.
+// merge: true dedupes by id against logs already present (kept, not
+// overwritten); merge: false appends unconditionally (fresh install, nothing
+// to conflict with).
+export function importLogs(logs: LogEntry[], opts: { merge: boolean }) {
+  const toAdd = opts.merge
+    ? logs.filter((l) => !memoryCache.some((existing) => existing.id === l.id))
+    : logs;
+  if (toAdd.length > 0) saveLogs([...memoryCache, ...toAdd]);
+}
+
 export function deleteLog(id: string) {
   const next = memoryCache.filter((l) => l.id !== id);
   saveLogs(next);

@@ -1,16 +1,20 @@
-// Phase 1 of cloud backup: manifest + content-addressed media upload to the
-// user's own Google Drive. Builds on backup-auth.ts (sign-in, backup folder)
-// and drive-client.ts (Drive REST + native/web HTTP dual path). No restore
-// yet; that is Phase 2.
+// Cloud backup: manifest + content-addressed media upload (Phase 1) and
+// restore (Phase 2) against the user's own Google Drive. Builds on
+// backup-auth.ts (sign-in, backup folder) and drive-client.ts (Drive REST +
+// native/web HTTP dual path).
 import type { LogEntry } from "./logs-store";
-import { hydrateLogs, loadLogs } from "./logs-store";
+import { hydrateLogs, loadLogs, importLogs } from "./logs-store";
 import { signInAndGetToken, findOrCreateBackupFolder } from "./backup-auth";
 import { getBackupState, setBackupState } from "./backup-state";
+import { BACKUP_FOLDER_NAME } from "./backup-config";
 import {
   DRIVE_FILES_URL,
   DRIVE_UPLOAD_URL,
   driveError,
   driveRequest,
+  downloadFileBase64,
+  findFileId,
+  findFolderId,
   findOrCreateFolder,
 } from "./drive-client";
 
@@ -96,25 +100,29 @@ export async function buildManifest(
   };
 }
 
-// Every file's name currently in a Drive folder (one page fetch per 1000
-// entries), so we know which content-addressed media hashes are already
-// backed up and skip re-uploading them.
-async function listFileNames(token: string, folderId: string): Promise<Set<string>> {
-  const names = new Set<string>();
+// Every file (name -> id) currently in a Drive folder (one page fetch per
+// 1000 entries). Backup uses the names to know which content-addressed media
+// hashes are already backed up; restore uses the ids to download by hash
+// without a lookup per file.
+async function listFiles(token: string, folderId: string): Promise<Map<string, string>> {
+  const files = new Map<string, string>();
   let pageToken: string | undefined;
   do {
     const q = `'${folderId}' in parents and trashed=false`;
     const url =
       `${DRIVE_FILES_URL}?q=${encodeURIComponent(q)}` +
-      `&fields=${encodeURIComponent("nextPageToken,files(name)")}&pageSize=1000&spaces=drive` +
+      `&fields=${encodeURIComponent("nextPageToken,files(id,name)")}&pageSize=1000&spaces=drive` +
       (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "");
     const list = await driveRequest("GET", url, token);
     if (list.status < 200 || list.status >= 300) throw driveError("media list", list);
-    const data = list.data as { files?: Array<{ name: string }>; nextPageToken?: string } | null;
-    for (const f of data?.files ?? []) names.add(f.name);
+    const data = list.data as {
+      files?: Array<{ id: string; name: string }>;
+      nextPageToken?: string;
+    } | null;
+    for (const f of data?.files ?? []) files.set(f.name, f.id);
     pageToken = data?.nextPageToken;
   } while (pageToken);
-  return names;
+  return files;
 }
 
 // Uploads one media file via Drive's resumable protocol: a JSON POST to open
@@ -147,14 +155,8 @@ async function ensureManifestFile(token: string, backupFolderId: string): Promis
   const cached = (await getBackupState()).manifestFileId;
   if (cached) return cached;
 
-  const q = `name='${MANIFEST_NAME}' and '${backupFolderId}' in parents and trashed=false`;
-  const listUrl =
-    `${DRIVE_FILES_URL}?q=${encodeURIComponent(q)}` +
-    `&fields=${encodeURIComponent("files(id)")}&spaces=drive`;
-  const list = await driveRequest("GET", listUrl, token);
-  if (list.status < 200 || list.status >= 300) throw driveError("manifest lookup", list);
-  const existing = (list.data as { files?: Array<{ id: string }> } | null)?.files ?? [];
-  if (existing.length > 0 && existing[0]?.id) return existing[0].id;
+  const existing = await findFileId(token, MANIFEST_NAME, backupFolderId);
+  if (existing) return existing;
 
   const create = await driveRequest("POST", DRIVE_FILES_URL, token, {
     json: { name: MANIFEST_NAME, parents: [backupFolderId], mimeType: "application/json" },
@@ -194,8 +196,8 @@ export async function backupNow(onProgress?: (p: BackupProgress) => void): Promi
   const logs = loadLogs();
   const { manifest, media } = await buildManifest(logs);
 
-  const existingNames = await listFileNames(accessToken, mediaFolder.id);
-  const missing = [...media.entries()].filter(([hash]) => !existingNames.has(`${hash}.bin`));
+  const existing = await listFiles(accessToken, mediaFolder.id);
+  const missing = [...media.entries()].filter(([hash]) => !existing.has(`${hash}.bin`));
 
   onProgress?.({ phase: "uploading", uploaded: 0, total: missing.length });
   let uploaded = 0;
@@ -225,4 +227,106 @@ export type LastBackupStatus = { timestamp: number; count: number } | null;
 export async function getLastBackupStatus(): Promise<LastBackupStatus> {
   const state = await getBackupState();
   return state.lastBackup ?? null;
+}
+
+async function downloadManifest(token: string, manifestFileId: string): Promise<Manifest> {
+  const resp = await driveRequest("GET", `${DRIVE_FILES_URL}/${manifestFileId}?alt=media`, token);
+  if (resp.status < 200 || resp.status >= 300) throw driveError("manifest download", resp);
+  return resp.data as Manifest;
+}
+
+export type BackupInfo = { count: number; timestamp: number };
+
+// Read-only: signs in and reports what backup (if any) exists for this Google
+// account, without creating a folder or any file. Used to ask "restore your
+// N observations from <date>?" before touching local data.
+export async function findBackup(): Promise<BackupInfo | null> {
+  const { accessToken } = await signInAndGetToken();
+  const folderId = await findFolderId(accessToken, BACKUP_FOLDER_NAME);
+  if (!folderId) return null;
+  const manifestFileId = await findFileId(accessToken, MANIFEST_NAME, folderId);
+  if (!manifestFileId) return null;
+  const manifest = await downloadManifest(accessToken, manifestFileId);
+  return { count: manifest.logs.length, timestamp: manifest.generatedAt };
+}
+
+async function refToDataUrl(
+  token: string,
+  mediaIndex: Map<string, string>,
+  ref: MediaRef,
+): Promise<string> {
+  const fileId = mediaIndex.get(`${ref.hash}.bin`);
+  if (!fileId) throw new Error(`Backup is missing media file ${ref.hash}.bin`);
+  const base64 = await downloadFileBase64(token, fileId);
+  return `data:${ref.mime};base64,${base64}`;
+}
+
+async function inlineLog(
+  token: string,
+  mediaIndex: Map<string, string>,
+  entry: ManifestLogEntry,
+): Promise<LogEntry> {
+  const { photo, photos, voice, ...rest } = entry;
+  return {
+    ...rest,
+    photo: photo ? await refToDataUrl(token, mediaIndex, photo) : undefined,
+    photos: photos
+      ? await Promise.all(photos.map((r) => refToDataUrl(token, mediaIndex, r)))
+      : undefined,
+    voice: voice ? await refToDataUrl(token, mediaIndex, voice) : undefined,
+  };
+}
+
+// Logs restored per batch: fetched, inlined, and committed to the local store
+// before the next batch starts, so a large backup never holds more than a
+// handful of decoded photos/voice notes in memory at once.
+const RESTORE_BATCH_SIZE = 10;
+
+export type RestoreProgress =
+  | { phase: "signin" | "locating" | "manifest" }
+  | { phase: "restoring"; restored: number; total: number };
+
+export type RestoreResult = { count: number };
+
+export async function restoreNow(
+  onProgress?: (p: RestoreProgress) => void,
+): Promise<RestoreResult> {
+  onProgress?.({ phase: "signin" });
+  const { accessToken } = await signInAndGetToken();
+
+  onProgress?.({ phase: "locating" });
+  const folderId = await findFolderId(accessToken, BACKUP_FOLDER_NAME);
+  if (!folderId) throw new Error("No backup was found for this Google account.");
+  const manifestFileId = await findFileId(accessToken, MANIFEST_NAME, folderId);
+  if (!manifestFileId) throw new Error("No backup was found for this Google account.");
+  const mediaFolderId = await findFolderId(accessToken, MEDIA_FOLDER_NAME, folderId);
+  if (!mediaFolderId) throw new Error("This backup's media folder is missing.");
+
+  onProgress?.({ phase: "manifest" });
+  const manifest = await downloadManifest(accessToken, manifestFileId);
+  const mediaIndex = await listFiles(accessToken, mediaFolderId);
+
+  const total = manifest.logs.length;
+  onProgress?.({ phase: "restoring", restored: 0, total });
+
+  let restored = 0;
+  for (let i = 0; i < total; i += RESTORE_BATCH_SIZE) {
+    const batchEntries = manifest.logs.slice(i, i + RESTORE_BATCH_SIZE);
+    const batch: LogEntry[] = [];
+    for (const entry of batchEntries) {
+      batch.push(await inlineLog(accessToken, mediaIndex, entry));
+    }
+    importLogs(batch, { merge: true });
+    restored += batch.length;
+    onProgress?.({ phase: "restoring", restored, total });
+  }
+
+  await setBackupState({
+    folderId,
+    mediaFolderId,
+    manifestFileId,
+    lastBackup: { timestamp: manifest.generatedAt, count: total },
+  });
+
+  return { count: total };
 }

@@ -41,6 +41,12 @@ function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+function bytesToBase64(bytes: Uint8Array<ArrayBuffer>): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
 export async function driveRequest(
   method: string,
   url: string,
@@ -88,6 +94,42 @@ export function driveError(action: string, resp: DriveResponse): Error {
   return new Error(`Drive ${action} failed (HTTP ${resp.status})${msg}`);
 }
 
+// Finds a folder by name (optionally scoped to a parent), returning its id or
+// null if it does not exist. Read-only: never creates anything, so it is safe
+// to use for "does a backup exist yet" checks.
+export async function findFolderId(
+  token: string,
+  name: string,
+  parentId?: string,
+): Promise<string | null> {
+  const parentClause = parentId ? ` and '${parentId}' in parents` : "";
+  const q = `name='${name}' and mimeType='${FOLDER_MIME}' and trashed=false${parentClause}`;
+  const listUrl =
+    `${DRIVE_FILES_URL}?q=${encodeURIComponent(q)}` +
+    `&fields=${encodeURIComponent("files(id)")}&spaces=drive`;
+  const list = await driveRequest("GET", listUrl, token);
+  if (list.status < 200 || list.status >= 300) throw driveError(`folder lookup (${name})`, list);
+  const files = (list.data as { files?: Array<{ id: string }> } | null)?.files ?? [];
+  return files.length > 0 && files[0]?.id ? files[0].id : null;
+}
+
+// Finds a non-folder file by name within a parent folder, returning its id or
+// null if it does not exist.
+export async function findFileId(
+  token: string,
+  name: string,
+  parentId: string,
+): Promise<string | null> {
+  const q = `name='${name}' and '${parentId}' in parents and trashed=false`;
+  const listUrl =
+    `${DRIVE_FILES_URL}?q=${encodeURIComponent(q)}` +
+    `&fields=${encodeURIComponent("files(id)")}&spaces=drive`;
+  const list = await driveRequest("GET", listUrl, token);
+  if (list.status < 200 || list.status >= 300) throw driveError(`file lookup (${name})`, list);
+  const files = (list.data as { files?: Array<{ id: string }> } | null)?.files ?? [];
+  return files.length > 0 && files[0]?.id ? files[0].id : null;
+}
+
 // Finds a folder by name (optionally scoped to a parent) or creates it,
 // returning its id. Uses the user's own Drive; drive.file only exposes files
 // this app created.
@@ -96,19 +138,8 @@ export async function findOrCreateFolder(
   name: string,
   parentId?: string,
 ): Promise<{ id: string; created: boolean }> {
-  const parentClause = parentId ? ` and '${parentId}' in parents` : "";
-  const q = `name='${name}' and mimeType='${FOLDER_MIME}' and trashed=false${parentClause}`;
-  const listUrl =
-    `${DRIVE_FILES_URL}?q=${encodeURIComponent(q)}` +
-    `&fields=${encodeURIComponent("files(id,name)")}&spaces=drive`;
-
-  const list = await driveRequest("GET", listUrl, token);
-  if (list.status < 200 || list.status >= 300) throw driveError(`folder lookup (${name})`, list);
-
-  const files = (list.data as { files?: Array<{ id: string }> } | null)?.files ?? [];
-  if (files.length > 0 && files[0]?.id) {
-    return { id: files[0].id, created: false };
-  }
+  const existing = await findFolderId(token, name, parentId);
+  if (existing) return { id: existing, created: false };
 
   const create = await driveRequest("POST", DRIVE_FILES_URL, token, {
     json: { name, mimeType: FOLDER_MIME, parents: parentId ? [parentId] : undefined },
@@ -119,4 +150,35 @@ export async function findOrCreateFolder(
   const id = (create.data as { id?: string } | null)?.id;
   if (!id) throw new Error(`Drive folder "${name}" was created but no id was returned.`);
   return { id, created: true };
+}
+
+// Downloads a file's raw bytes as a base64 string. Native returns base64
+// directly when responseType "blob" is requested for a non-JSON response
+// (verified against Capacitor's Android HttpRequestHandler.readData); web
+// reads the raw bytes via fetch and encodes them itself.
+export async function downloadFileBase64(token: string, fileId: string): Promise<string> {
+  const url = `${DRIVE_FILES_URL}/${fileId}?alt=media`;
+  if (await isNative()) {
+    const { CapacitorHttp } = await import("@capacitor/core");
+    const resp = await CapacitorHttp.request({
+      method: "GET",
+      url,
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "blob",
+    });
+    if (resp.status < 200 || resp.status >= 300) {
+      throw driveError("media download", {
+        status: resp.status,
+        data: resp.data,
+        headers: resp.headers ?? {},
+      });
+    }
+    return resp.data as string;
+  }
+
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (resp.status < 200 || resp.status >= 300) {
+    throw new Error(`Drive media download failed (HTTP ${resp.status})`);
+  }
+  return bytesToBase64(new Uint8Array(await resp.arrayBuffer()));
 }

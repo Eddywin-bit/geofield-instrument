@@ -229,6 +229,14 @@ function MyLogsScreen() {
             <p className="text-sm text-muted-foreground mt-2">
               Capture an observation from the Log screen.
             </p>
+            {logs.length === 0 && (
+              <Link
+                to="/backup"
+                className="inline-flex items-center justify-center mt-4 h-11 px-5 rounded-2xl bg-panel border border-border text-sm font-semibold text-foreground active:scale-[0.99] transition-transform"
+              >
+                Restore from backup
+              </Link>
+            )}
           </div>
         )}
         {grouped.map(([date, items]) => (

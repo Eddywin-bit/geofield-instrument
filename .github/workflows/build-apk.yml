@@ -79,9 +79,19 @@ jobs:
       # "consistent resolution" then locks the compile classpath to whatever
       # resolved on the runtime classpath (1.4.0), which conflicts with the
       # compileOnly 1.9.0 requirement and fails the build. Forcing every
-      # configuration to the same version removes the skew; 1.4.0 is only a
-      # floor from androidbrowserhelper, not an exact pin, so 1.9.0 satisfies
-      # both.
+      # configuration to the same version removes the skew.
+      #
+      # That version must be 1.4.0, not 1.9.0: androidx.browser 1.9.0's AAR
+      # metadata requires compileSdk 36 and Android Gradle Plugin 8.9.1+, and
+      # this project builds against compileSdk 35 / AGP 8.7.2. 1.4.0 is proven
+      # compatible here (it's what already resolved successfully on the
+      # runtime classpath before this fix), and the plugin's own Android
+      # source only calls long-stable androidx.browser.customtabs APIs
+      # (CustomTabsClient/Session/ServiceConnection/Callback/Intent.Builder,
+      # TrustedWebActivityIntentBuilder) that have existed since androidx.
+      # browser's early releases, so nothing in this plugin needs 1.9.0
+      # specifically. The unused Apple/Twitter/Facebook providers stay
+      # disabled in capacitor.config.ts; only the forced version changed.
       - name: Force a single androidx.browser version (Gradle consistent-resolution fix)
         run: |
           test -f android/build.gradle || { echo "::error::android/build.gradle not found"; exit 1; }
@@ -90,7 +100,7 @@ jobs:
           allprojects {
               configurations.all {
                   resolutionStrategy {
-                      force 'androidx.browser:browser:1.9.0'
+                      force 'androidx.browser:browser:1.4.0'
                   }
               }
           }

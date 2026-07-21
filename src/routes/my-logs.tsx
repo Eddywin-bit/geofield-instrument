@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "../components/AppLayout";
 import { ImageViewer } from "../components/ImageViewer";
@@ -14,6 +14,7 @@ import {
   type LogEntry,
 } from "../lib/logs-store";
 import { colorForUnit } from "../lib/unit-colors";
+import { getLastBackupStatus, type LastBackupStatus } from "../lib/backup";
 
 export const Route = createFileRoute("/my-logs")({
   head: () => ({ meta: [{ title: "GeoField — My Logs" }] }),
@@ -34,6 +35,10 @@ function MyLogsScreen() {
   const logs = loadLogs();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [lastBackup, setLastBackup] = useState<LastBackupStatus>(null);
+  useEffect(() => {
+    void getLastBackupStatus().then(setLastBackup);
+  }, []);
 
   const exportLogs = async (items: LogEntry[]) => {
     if (items.length === 0 || exporting) return;
@@ -107,6 +112,14 @@ function MyLogsScreen() {
         <p className="text-sm text-muted-foreground mt-1">
           <span className="mono">{logs.length}</span> observations · stored on device
         </p>
+        <Link
+          to="/backup"
+          className="mt-1 inline-block text-xs text-muted-foreground underline decoration-dotted underline-offset-2"
+        >
+          {lastBackup
+            ? `Last backed up ${new Date(lastBackup.timestamp).toLocaleDateString()} · Back up again`
+            : "Not backed up yet · Tap to back up"}
+        </Link>
         {filtered.length > 0 && !selectMode && (
           <div className="mt-3 flex items-center gap-2">
             <button

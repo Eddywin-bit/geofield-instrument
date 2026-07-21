@@ -187,16 +187,42 @@ jobs:
               sys.exit("::error::MainActivity.java does not match the expected Capacitor template; refusing to patch blind.")
           src = src.replace(
               "import com.getcapacitor.BridgeActivity;",
-              "import android.os.Bundle;\nimport com.getcapacitor.BridgeActivity;",
+              "import android.content.Intent;\n"
+              "import android.os.Bundle;\n"
+              "import com.getcapacitor.BridgeActivity;\n"
+              "import com.getcapacitor.PluginHandle;\n"
+              "import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin;\n"
+              "import ee.forgr.capacitor.social.login.SocialLoginPlugin;",
           )
+          # @capgo/capacitor-social-login's Google provider requests Drive
+          # scopes via a raw activity.startIntentSenderForResult call, which
+          # bypasses Capacitor's automatic result-forwarding (the plugin only
+          # auto-forwards Facebook/Twitter results). Without this, login()
+          # rejects with "You CANNOT use scopes without modifying the main
+          # activity" the moment custom scopes are requested. Implementing the
+          # plugin's marker interface and forwarding onActivityResult is the
+          # documented fix (ee.forgr...GoogleProvider.java's own instanceof
+          # check + SocialLoginPlugin.handleGoogleLoginIntent).
           src = src.replace(
               marker,
-              "public class MainActivity extends BridgeActivity {\n"
+              "public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {\n"
               "    @Override\n"
               "    public void onCreate(Bundle savedInstanceState) {\n"
               "        registerPlugin(EnableLocationPlugin.class);\n"
               "        super.onCreate(savedInstanceState);\n"
               "    }\n"
+              "\n"
+              "    @Override\n"
+              "    public void onActivityResult(int requestCode, int resultCode, Intent data) {\n"
+              "        super.onActivityResult(requestCode, resultCode, data);\n"
+              "        PluginHandle handle = getBridge().getPlugin(\"SocialLogin\");\n"
+              "        if (handle != null && handle.getInstance() instanceof SocialLoginPlugin) {\n"
+              "            ((SocialLoginPlugin) handle.getInstance()).handleGoogleLoginIntent(requestCode, data);\n"
+              "        }\n"
+              "    }\n"
+              "\n"
+              "    @Override\n"
+              "    public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {}\n"
               "}",
           )
           main.write_text(src)

@@ -135,14 +135,17 @@ export function isFixStale(f: { acquiredAt?: number } | null): boolean {
 // about a specific mapped unit (that content has a single sourced origin, see
 // CLAUDE.md), so nothing needs sourcing. Tapping advances to the next prompt;
 // it also auto-advances on an interval.
+// Kept short so each fits the fixed-height tile in at most two lines: a longer
+// line wraps to a third line, which would grow the card and shift the layout
+// below it. line-clamp-2 on the card is the backstop if a future tip runs long.
 const LOCATE_TIPS: { icon: LucideIcon; label: string; text: string }[] = [
   { icon: Wifi, label: "Offline Ready", text: "Identification works offline" },
-  { icon: NotebookPen, label: "Tip", text: "Add a photo and voice note at each stop" },
-  { icon: Cloud, label: "Tip", text: "Back up so your notes survive a lost phone" },
-  { icon: ImageIcon, label: "Field note", text: "A fresh surface tells more than a weathered one" },
-  { icon: MapIcon, label: "Tip", text: "Open the map to see units around you" },
-  { icon: Crosshair, label: "Tip", text: "Weak GPS? Give it a few seconds to settle" },
-  { icon: Keyboard, label: "Tip", text: "No signal indoors? Enter coordinates manually" },
+  { icon: NotebookPen, label: "Tip", text: "Add a photo and voice note" },
+  { icon: Cloud, label: "Tip", text: "Back up to survive a lost phone" },
+  { icon: ImageIcon, label: "Field note", text: "Fresh surfaces show the most" },
+  { icon: MapIcon, label: "Tip", text: "Open the map for nearby units" },
+  { icon: Crosshair, label: "Tip", text: "Weak GPS? Give it a few seconds" },
+  { icon: Keyboard, label: "Tip", text: "No signal? Type coordinates in" },
 ];
 const LOCATE_TIP_INTERVAL_MS = 7000;
 
@@ -160,12 +163,12 @@ function RotatingTipCard() {
       type="button"
       onClick={advance}
       aria-label="Field tip. Tap for the next one."
-      className="rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3 text-left w-full active:scale-[0.99] transition-transform"
+      className="h-[88px] rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3 text-left w-full active:scale-[0.99] transition-transform"
     >
       <Icon className="h-9 w-9 text-primary shrink-0" strokeWidth={1.75} />
       <div className="min-w-0">
         <div className="text-xs text-muted-foreground">{tip.label}</div>
-        <div className="text-sm font-bold mt-0.5">{tip.text}</div>
+        <div className="text-sm font-bold mt-0.5 leading-snug line-clamp-2">{tip.text}</div>
       </div>
     </button>
   );

@@ -1075,22 +1075,20 @@ export function MapView() {
             layout: {
               "text-field": ["get", "name"],
               "text-font": ["Noto Sans Regular"],
-              // Match the bundled basemap's own country labels (which cover
-              // North Africa / Europe / the Middle East by way of the low-zoom
-              // tiles kept when ghana.pmtiles was cut): uppercase, slightly
-              // larger, with letter spacing, so the whole continent reads as
-              // one consistent style instead of two. The basemap labels are
-              // Noto Sans Regular too, so the heavier look is casing and halo,
-              // not weight.
-              "text-size": 13,
-              "text-max-width": 8,
+              // Match the bundled basemap's own country labels exactly (the
+              // ones that cover North Africa / Europe / the Middle East because
+              // those low-zoom tiles were kept when ghana.pmtiles was cut), so
+              // the whole world view reads as one label style, not two. These
+              // are the real values pulled from the basemap's places_country
+              // layer: uppercase, gray fill, near-black halo, zoom-scaled size.
               "text-transform": "uppercase",
-              "text-letter-spacing": 0.05,
+              "text-size": ["interpolate", ["linear"], ["zoom"], 2, 12, 6, 18],
+              "text-max-width": 8,
             },
             paint: {
-              "text-color": "#3A342A",
-              "text-halo-color": "#F3EFE4",
-              "text-halo-width": 1.4,
+              "text-color": "#707070",
+              "text-halo-color": "#141414",
+              "text-halo-width": 1,
             },
           });
         }

@@ -33,6 +33,10 @@ function progressLabel(progress: BackupProgress): string {
       return progress.total > 0
         ? `Uploading photos and voice notes… ${progress.uploaded}/${progress.total}`
         : "Uploading…";
+    case "pruning":
+      return progress.total > 0
+        ? `Removing old media… ${progress.pruned}/${progress.total}`
+        : "Cleaning up…";
     case "manifest":
       return "Saving your observation list…";
   }
@@ -187,6 +191,8 @@ export function BackupPanel() {
                 {backupState.result.count} observation{backupState.result.count === 1 ? "" : "s"}{" "}
                 saved. {backupState.result.uploadedMedia} new photo/voice file
                 {backupState.result.uploadedMedia === 1 ? "" : "s"} uploaded.
+                {backupState.result.prunedMedia > 0 &&
+                  ` ${backupState.result.prunedMedia} old file${backupState.result.prunedMedia === 1 ? "" : "s"} removed.`}
               </div>
             </div>
           )}

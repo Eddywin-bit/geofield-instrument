@@ -151,12 +151,15 @@ async function uploadMedia(
   if (put.status < 200 || put.status >= 300) throw driveError(`media upload (${hash})`, put);
 }
 
-async function ensureManifestFile(token: string, backupFolderId: string): Promise<string> {
+async function ensureManifestFile(
+  token: string,
+  backupFolderId: string,
+): Promise<{ id: string; created: boolean }> {
   const cached = (await getBackupState()).manifestFileId;
-  if (cached) return cached;
+  if (cached) return { id: cached, created: false };
 
   const existing = await findFileId(token, MANIFEST_NAME, backupFolderId);
-  if (existing) return existing;
+  if (existing) return { id: existing, created: false };
 
   const create = await driveRequest("POST", DRIVE_FILES_URL, token, {
     json: { name: MANIFEST_NAME, parents: [backupFolderId], mimeType: "application/json" },
@@ -164,7 +167,7 @@ async function ensureManifestFile(token: string, backupFolderId: string): Promis
   if (create.status < 200 || create.status >= 300) throw driveError("manifest create", create);
   const id = (create.data as { id?: string } | null)?.id;
   if (!id) throw new Error("manifest.json was created but no id was returned.");
-  return id;
+  return { id, created: true };
 }
 
 async function uploadManifest(
@@ -177,11 +180,50 @@ async function uploadManifest(
   if (resp.status < 200 || resp.status >= 300) throw driveError("manifest upload", resp);
 }
 
+async function downloadManifest(token: string, manifestFileId: string): Promise<Manifest> {
+  const resp = await driveRequest("GET", `${DRIVE_FILES_URL}/${manifestFileId}?alt=media`, token);
+  if (resp.status < 200 || resp.status >= 300) throw driveError("manifest download", resp);
+  return resp.data as Manifest;
+}
+
+// Combines whatever is already backed up with what this device just built,
+// keyed by log id. A device with fewer local logs than the existing remote
+// manifest (a partial restore, a second phone that was never synced) can
+// then never erase observations that only exist in the remote manifest.
+// Local wins on an id collision.
+function mergeManifestLogs(
+  remote: ManifestLogEntry[],
+  local: ManifestLogEntry[],
+): ManifestLogEntry[] {
+  const byId = new Map<string, ManifestLogEntry>();
+  for (const entry of remote) byId.set(entry.id, entry);
+  for (const entry of local) byId.set(entry.id, entry);
+  return [...byId.values()];
+}
+
+// Every media file name referenced by a set of manifest logs, so pruning can
+// tell which Drive files are still needed and which are orphaned.
+function collectMediaNames(logs: ManifestLogEntry[]): Set<string> {
+  const names = new Set<string>();
+  for (const entry of logs) {
+    if (entry.photo) names.add(`${entry.photo.hash}.bin`);
+    if (entry.photos) for (const p of entry.photos) names.add(`${p.hash}.bin`);
+    if (entry.voice) names.add(`${entry.voice.hash}.bin`);
+  }
+  return names;
+}
+
+async function deleteFile(token: string, fileId: string): Promise<void> {
+  const resp = await driveRequest("DELETE", `${DRIVE_FILES_URL}/${fileId}`, token);
+  if (resp.status < 200 || resp.status >= 300) throw driveError("media delete", resp);
+}
+
 export type BackupProgress =
   | { phase: "signin" | "folders" | "hashing" | "manifest" }
-  | { phase: "uploading"; uploaded: number; total: number };
+  | { phase: "uploading"; uploaded: number; total: number }
+  | { phase: "pruning"; pruned: number; total: number };
 
-export type BackupResult = { count: number; uploadedMedia: number };
+export type BackupResult = { count: number; uploadedMedia: number; prunedMedia: number };
 
 export async function backupNow(onProgress?: (p: BackupProgress) => void): Promise<BackupResult> {
   onProgress?.({ phase: "signin" });
@@ -190,11 +232,30 @@ export async function backupNow(onProgress?: (p: BackupProgress) => void): Promi
   onProgress?.({ phase: "folders" });
   const backupFolder = await findOrCreateBackupFolder(accessToken);
   const mediaFolder = await findOrCreateFolder(accessToken, MEDIA_FOLDER_NAME, backupFolder.id);
+  const manifestFile = await ensureManifestFile(accessToken, backupFolder.id);
 
   onProgress?.({ phase: "hashing" });
   await hydrateLogs();
   const logs = loadLogs();
-  const { manifest, media } = await buildManifest(logs);
+  const { manifest: localManifest, media } = await buildManifest(logs);
+
+  let remoteManifest: Manifest | null = null;
+  if (!manifestFile.created) {
+    try {
+      remoteManifest = await downloadManifest(accessToken, manifestFile.id);
+    } catch {
+      // Treat an unreadable existing manifest (e.g. a previous run crashed
+      // between creating the file and writing its content) as if there were
+      // none, rather than blocking this backup.
+      remoteManifest = null;
+    }
+  }
+  const mergedLogs = mergeManifestLogs(remoteManifest?.logs ?? [], localManifest.logs);
+  const manifest: Manifest = {
+    version: MANIFEST_VERSION,
+    generatedAt: Date.now(),
+    logs: mergedLogs,
+  };
 
   const existing = await listFiles(accessToken, mediaFolder.id);
   const missing = [...media.entries()].filter(([hash]) => !existing.has(`${hash}.bin`));
@@ -207,19 +268,28 @@ export async function backupNow(onProgress?: (p: BackupProgress) => void): Promi
     onProgress?.({ phase: "uploading", uploaded, total: missing.length });
   }
 
-  onProgress?.({ phase: "manifest" });
-  const manifestFileId = await ensureManifestFile(accessToken, backupFolder.id);
-  await uploadManifest(accessToken, manifestFileId, manifest);
+  const needed = collectMediaNames(mergedLogs);
+  const orphaned = [...existing.entries()].filter(([name]) => !needed.has(name));
+  onProgress?.({ phase: "pruning", pruned: 0, total: orphaned.length });
+  let pruned = 0;
+  for (const [, fileId] of orphaned) {
+    await deleteFile(accessToken, fileId);
+    pruned++;
+    onProgress?.({ phase: "pruning", pruned, total: orphaned.length });
+  }
 
-  const lastBackup = { timestamp: Date.now(), count: logs.length };
+  onProgress?.({ phase: "manifest" });
+  await uploadManifest(accessToken, manifestFile.id, manifest);
+
+  const lastBackup = { timestamp: Date.now(), count: mergedLogs.length };
   await setBackupState({
     folderId: backupFolder.id,
     mediaFolderId: mediaFolder.id,
-    manifestFileId,
+    manifestFileId: manifestFile.id,
     lastBackup,
   });
 
-  return { count: logs.length, uploadedMedia: uploaded };
+  return { count: mergedLogs.length, uploadedMedia: uploaded, prunedMedia: pruned };
 }
 
 export type LastBackupStatus = { timestamp: number; count: number } | null;
@@ -227,12 +297,6 @@ export type LastBackupStatus = { timestamp: number; count: number } | null;
 export async function getLastBackupStatus(): Promise<LastBackupStatus> {
   const state = await getBackupState();
   return state.lastBackup ?? null;
-}
-
-async function downloadManifest(token: string, manifestFileId: string): Promise<Manifest> {
-  const resp = await driveRequest("GET", `${DRIVE_FILES_URL}/${manifestFileId}?alt=media`, token);
-  if (resp.status < 200 || resp.status >= 300) throw driveError("manifest download", resp);
-  return resp.data as Manifest;
 }
 
 export type BackupInfo = { count: number; timestamp: number };

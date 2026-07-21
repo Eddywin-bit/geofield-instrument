@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MyLogsRouteImport } from './routes/my-logs'
 import { Route as MapRouteImport } from './routes/map'
+import { Route as BackupRouteImport } from './routes/backup'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -25,6 +26,11 @@ const MyLogsRoute = MyLogsRouteImport.update({
 const MapRoute = MapRouteImport.update({
   id: '/map',
   path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BackupRoute = BackupRouteImport.update({
+  id: '/backup',
+  path: '/backup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogRoute = LogRouteImport.update({
@@ -66,6 +72,7 @@ const AboutRouteWithChildren = AboutRoute._addFileChildren(AboutRouteChildren)
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRouteWithChildren
+  '/backup': typeof BackupRoute
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRouteWithChildren
+  '/backup': typeof BackupRoute
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRouteWithChildren
+  '/backup': typeof BackupRoute
   '/log': typeof LogRoute
   '/map': typeof MapRoute
   '/my-logs': typeof MyLogsRoute
@@ -93,15 +102,16 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
+  fullPaths: '/' | '/about' | '/backup' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
-  id: '__root__' | '/' | '/about' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
+  to: '/' | '/about' | '/backup' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
+  id: '__root__' | '/' | '/about' | '/backup' | '/log' | '/map' | '/my-logs' | '/know/$unit' | '/about/$section'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRouteWithChildren
+  BackupRoute: typeof BackupRoute
   LogRoute: typeof LogRoute
   MapRoute: typeof MapRoute
   MyLogsRoute: typeof MyLogsRoute
@@ -122,6 +132,13 @@ declare module '@tanstack/react-router' {
       path: '/map'
       fullPath: '/map'
       preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/backup': {
+      id: '/backup'
+      path: '/backup'
+      fullPath: '/backup'
+      preLoaderRoute: typeof BackupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/log': {
@@ -165,6 +182,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRouteWithChildren,
+  BackupRoute: BackupRoute,
   LogRoute: LogRoute,
   MapRoute: MapRoute,
   MyLogsRoute: MyLogsRoute,

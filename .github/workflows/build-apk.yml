@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       versionName:
-        description: 'Optional override. Leave blank to use APP_VERSION from src/routes/about.tsx.'
+        description: 'Optional override. Leave blank to use APP_VERSION from src/lib/app-version.ts.'
         required: false
         default: ''
 
@@ -16,17 +16,17 @@ jobs:
       - uses: actions/checkout@v4
 
       # Single source of truth. The version a user reads in the About tab is the
-      # version stamped on the APK. src/routes/about.tsx owns it, nothing else.
+      # version stamped on the APK. src/lib/app-version.ts owns it, nothing else.
       - name: Resolve version from the app
         env:
           OVERRIDE: ${{ inputs.versionName }}
         run: |
           APP_VERSION="$OVERRIDE"
           if [ -z "$APP_VERSION" ]; then
-            APP_VERSION=$(sed -n 's/^const APP_VERSION = "\(.*\)";$/\1/p' src/routes/about.tsx)
+            APP_VERSION=$(sed -n 's/^const APP_VERSION = "\(.*\)";$/\1/p' src/lib/app-version.ts)
           fi
           if ! printf '%s' "$APP_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Could not resolve a valid version. Got '$APP_VERSION'. Check APP_VERSION in src/routes/about.tsx."
+            echo "::error::Could not resolve a valid version. Got '$APP_VERSION'. Check APP_VERSION in src/lib/app-version.ts."
             exit 1
           fi
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"

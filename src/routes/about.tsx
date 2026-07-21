@@ -3,6 +3,7 @@ import { AppLayout } from "../components/AppLayout";
 import { Building2, Cloud, Mail } from "lucide-react";
 import { GEOFIELD_MARK } from "../lib/logo";
 import { ABOUT_SECTIONS, CHANNEL, EDITION } from "../lib/about-sections";
+import { APP_VERSION } from "../lib/app-version";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -11,9 +12,6 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-// Single source of truth for the app version. The APK build workflow greps this
-// exact line, so keep the format `const APP_VERSION = "X.Y.Z";` on one line.
-const APP_VERSION = "0.6.4";
 const CONTACT_EMAIL = "ogstudios14@gmail.com"; // baked into every build; keep this address alive
 
 function AboutPage() {

@@ -7,7 +7,6 @@
 import { APP_VERSION } from "./app-version";
 
 const VERSION_URL = "https://eddywin-bit.github.io/geofield-assets/version.json";
-const DISMISSED_KEY = "geofield.update-dismissed-version";
 
 export type UpdateInfo = { version: string; url: string };
 
@@ -50,13 +49,16 @@ export function checkForUpdate(): Promise<UpdateInfo | null> {
   return cached;
 }
 
-export async function getDismissedVersion(): Promise<string | null> {
-  const { Preferences } = await import("@capacitor/preferences");
-  const { value } = await Preferences.get({ key: DISMISSED_KEY });
-  return value ?? null;
+// Session-only, on purpose: dismissing the banner should not silence it
+// forever. A plain module-level variable resets on every fresh app launch
+// (new JS context) but still survives AppLayout remounting on navigation
+// within the same running session.
+let dismissedVersion: string | null = null;
+
+export function getDismissedVersion(): string | null {
+  return dismissedVersion;
 }
 
-export async function dismissVersion(version: string): Promise<void> {
-  const { Preferences } = await import("@capacitor/preferences");
-  await Preferences.set({ key: DISMISSED_KEY, value: version });
+export function dismissVersion(version: string): void {
+  dismissedVersion = version;
 }

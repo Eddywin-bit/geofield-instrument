@@ -1036,22 +1036,84 @@ export function MapView() {
       }
     };
 
+    // ghana.pmtiles is extracted with GHANA_BOUNDS as its --bbox, but
+    // `pmtiles extract` keeps whole tiles at low zoom rather than clipping
+    // geometry, so whichever huge low-zoom tiles happen to overlap Ghana's
+    // small bbox come along in full - which is why Europe/North Africa show
+    // detailed borders/labels at continent zoom purely by tile-grid luck,
+    // while Southern/Eastern Africa (a different low-zoom tile that never
+    // touches Ghana's bbox) don't. This world-countries layer (Natural Earth
+    // 110m admin-0, public domain, name only) gives every country the same
+    // low-detail border+label at low zoom regardless of that luck, and is
+    // capped to maxzoom 6 so it steps aside once ghana.pmtiles' own accurate
+    // detail (Ghana, and incidentally its lucky-tile neighbors) takes over.
+    const worldCountriesRef: { current: GeoJSON.FeatureCollection | null } = { current: null };
+    const ensureWorldCountriesLayer = () => {
+      const data = worldCountriesRef.current;
+      if (!data) return;
+      try {
+        if (!map.getSource("world-countries")) {
+          map.addSource("world-countries", { type: "geojson", data });
+        }
+        if (!map.getLayer("world-countries-line")) {
+          map.addLayer({
+            id: "world-countries-line",
+            type: "line",
+            source: "world-countries",
+            maxzoom: 6,
+            paint: { "line-color": "#7A8290", "line-opacity": 0.5, "line-width": 0.6 },
+          });
+        }
+        if (!map.getLayer("world-countries-label")) {
+          map.addLayer({
+            id: "world-countries-label",
+            type: "symbol",
+            source: "world-countries",
+            maxzoom: 6,
+            layout: {
+              "text-field": ["get", "name"],
+              "text-font": ["Noto Sans Regular"],
+              "text-size": 12,
+              "text-max-width": 8,
+            },
+            paint: {
+              "text-color": "#3A342A",
+              "text-halo-color": "#F3EFE4",
+              "text-halo-width": 1.2,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn("[MapView] ensureWorldCountriesLayer failed", err);
+      }
+    };
+
     const applyAll = () => {
       const vectorBase = basemapReadyRef.current && !onlineRef.current;
       ensureWorldLandLayer();
+      ensureWorldCountriesLayer();
       if (!onlineRef.current && !basemapReadyRef.current && baseDataRef.current) {
         ensureBaseLayers(baseDataRef.current);
       }
       if (geoRef.current) ensureGeologyLayers(geoRef.current);
       ensureCapitalsLayer();
 
-      // Move world-land to the very bottom (just above "bg").
+      // Move world-land to the very bottom (just above "bg"), then
+      // world-countries' border/label right above that - context layers
+      // stay beneath everything Ghana-specific.
       if (map.getLayer("world-land")) {
         const styleLayers = (map.getStyle().layers ?? []) as LayerSpecification[];
         const firstOther = styleLayers.find(
           (l) => l.id !== "bg" && l.id !== "world-land",
         );
         if (firstOther) map.moveLayer("world-land", firstOther.id);
+      }
+      const contextLayerIds = ["bg", "world-land", "world-countries-line", "world-countries-label"];
+      for (const id of ["world-countries-line", "world-countries-label"]) {
+        if (!map.getLayer(id)) continue;
+        const styleLayers = (map.getStyle().layers ?? []) as LayerSpecification[];
+        const firstOther = styleLayers.find((l) => !contextLayerIds.includes(l.id));
+        if (firstOther) map.moveLayer(id, firstOther.id);
       }
 
 
@@ -1113,6 +1175,8 @@ export function MapView() {
         "base-roads",
         "base-regions",
         "world-land",
+        "world-countries-line",
+        "world-countries-label",
       ]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", placeLabelVisibility);
       }
@@ -1171,10 +1235,12 @@ export function MapView() {
         fetchJson("/data/ghana-regions.geojson").catch(() => null),
         fetchJson("/data/ghana-places.geojson").catch(() => null),
         fetchJson("/data/world-land.geojson").catch(() => null),
-      ]).then(([geo, roads, rivers, regions, places, worldLand]) => {
+        fetchJson("/data/world-countries.geojson").catch(() => null),
+      ]).then(([geo, roads, rivers, regions, places, worldLand, worldCountries]) => {
         if (mapRef.current !== map) return;
         if (geo) geoRef.current = geo;
         if (worldLand) worldLandRef.current = worldLand as GeoJSON.FeatureCollection;
+        if (worldCountries) worldCountriesRef.current = worldCountries as GeoJSON.FeatureCollection;
         baseDataRef.current = {
           roads: roads ?? undefined,
           rivers: rivers ?? undefined,

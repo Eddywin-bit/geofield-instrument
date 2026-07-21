@@ -227,6 +227,7 @@ export const ABOUT_SECTIONS: AboutSection[] = [
           <Credit name="Roads, rivers, towns" detail="© OpenStreetMap contributors · ODbL" />
           <Credit name="Vector tile build" detail="Protomaps" />
           <Credit name="World coastlines" detail="Natural Earth · public domain" />
+          <Credit name="World country borders" detail="Natural Earth · public domain" />
         </div>
         <div className="pt-1">
           <div className="label-instrument pb-1.5">Software</div>

@@ -9,20 +9,9 @@
 // app (report.ts, MapView.tsx), so the web build and SSR do not eagerly pull in
 // Capacitor native code.
 import { GOOGLE_WEB_CLIENT_ID, DRIVE_SCOPES, BACKUP_FOLDER_NAME } from "./backup-config";
-
-const DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
-const FOLDER_MIME = "application/vnd.google-apps.folder";
+import { findOrCreateFolder } from "./drive-client";
 
 let initialized = false;
-
-async function isNative(): Promise<boolean> {
-  try {
-    const { Capacitor } = await import("@capacitor/core");
-    return Capacitor.isNativePlatform();
-  } catch {
-    return false;
-  }
-}
 
 // Idempotent. Google is initialized in ONLINE mode: we mint a short-lived access
 // token from the cached session and hit the Drive REST API directly. No offline
@@ -65,76 +54,12 @@ export async function signInAndGetToken(): Promise<{ accessToken: string; email:
   return { accessToken: token, email: result.profile.email };
 }
 
-type DriveResponse = { status: number; data: unknown };
-
-// One Drive REST call. Native uses CapacitorHttp to avoid WebView CORS and get
-// reliable requests; web uses fetch.
-async function driveRequest(
-  method: "GET" | "POST",
-  url: string,
-  token: string,
-  body?: unknown,
-): Promise<DriveResponse> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-
-  if (await isNative()) {
-    const { CapacitorHttp } = await import("@capacitor/core");
-    const resp = await CapacitorHttp.request({
-      method,
-      url,
-      headers,
-      data: body,
-    });
-    return { status: resp.status, data: resp.data };
-  }
-
-  const resp = await fetch(url, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  let data: unknown = null;
-  try {
-    data = await resp.json();
-  } catch {
-    data = null;
-  }
-  return { status: resp.status, data };
-}
-
-function driveError(action: string, resp: DriveResponse): Error {
-  const d = resp.data as { error?: { message?: string } } | null;
-  const msg = d?.error?.message ? `: ${d.error.message}` : "";
-  return new Error(`Drive ${action} failed (HTTP ${resp.status})${msg}`);
-}
-
 // Finds the existing backup folder or creates it, returning its id. Uses the
 // user's own Drive; drive.file only exposes files this app created.
 export async function findOrCreateBackupFolder(
   token: string,
 ): Promise<{ id: string; created: boolean }> {
-  const q = `name='${BACKUP_FOLDER_NAME}' and mimeType='${FOLDER_MIME}' and trashed=false`;
-  const listUrl =
-    `${DRIVE_FILES_URL}?q=${encodeURIComponent(q)}` +
-    `&fields=${encodeURIComponent("files(id,name)")}&spaces=drive`;
-
-  const list = await driveRequest("GET", listUrl, token);
-  if (list.status < 200 || list.status >= 300) throw driveError("folder lookup", list);
-
-  const files = (list.data as { files?: Array<{ id: string }> } | null)?.files ?? [];
-  if (files.length > 0 && files[0]?.id) {
-    return { id: files[0].id, created: false };
-  }
-
-  const create = await driveRequest("POST", DRIVE_FILES_URL, token, {
-    name: BACKUP_FOLDER_NAME,
-    mimeType: FOLDER_MIME,
-  });
-  if (create.status < 200 || create.status >= 300) throw driveError("folder create", create);
-  const id = (create.data as { id?: string } | null)?.id;
-  if (!id) throw new Error("Drive folder was created but no id was returned.");
-  return { id, created: true };
+  return findOrCreateFolder(token, BACKUP_FOLDER_NAME);
 }
 
 export type AuthSelfTestResult = {

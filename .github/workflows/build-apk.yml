@@ -70,6 +70,32 @@ jobs:
       - name: Sync web assets into Android project
         run: ./node_modules/.bin/cap sync android
 
+      # capgo-capacitor-social-login's Google provider always pulls in
+      # com.google.androidbrowserhelper:androidbrowserhelper:2.5.0, which needs
+      # androidx.browser:browser:1.4.0 on the runtime classpath. Disabling the
+      # unused Apple provider (capacitor.config.ts) makes the plugin's own
+      # androidx.browser:browser:1.9.0 requirement compileOnly, so it never
+      # reaches the runtime classpath either. Android Gradle Plugin's
+      # "consistent resolution" then locks the compile classpath to whatever
+      # resolved on the runtime classpath (1.4.0), which conflicts with the
+      # compileOnly 1.9.0 requirement and fails the build. Forcing every
+      # configuration to the same version removes the skew; 1.4.0 is only a
+      # floor from androidbrowserhelper, not an exact pin, so 1.9.0 satisfies
+      # both.
+      - name: Force a single androidx.browser version (Gradle consistent-resolution fix)
+        run: |
+          test -f android/build.gradle || { echo "::error::android/build.gradle not found"; exit 1; }
+          cat >> android/build.gradle <<'EOF'
+
+          allprojects {
+              configurations.all {
+                  resolutionStrategy {
+                      force 'androidx.browser:browser:1.9.0'
+                  }
+              }
+          }
+          EOF
+
       # The web app's LOCATE flow calls a native "EnableLocation" plugin that
       # shows Google Play Services' one-tap "turn on location" dialog over the
       # app (SettingsClient + ResolvableApiException). Capacitor has no such

@@ -406,3 +406,73 @@ jobs:
           name: GeoField v${{ env.APP_VERSION }}
           files: GeoField-${{ env.APP_VERSION }}.apk
           fail_on_unmatched_files: true
+
+      # geofield-instrument is private, so GitHub Release assets require a
+      # signed-in, authorized GitHub account to download - no good for
+      # students installing the app. geofield-assets is a separate public
+      # repo (Pages already serves ghana.pmtiles from its main branch root),
+      # so publishing the APK there too gives a plain HTTPS download link
+      # with no GitHub account needed. Uses the Contents API (not a git
+      # clone) so this never has to pull the 92MB pmtiles blob just to write
+      # two small files. continue-on-error: the signed APK and GitHub
+      # Release above are the release of record; a hiccup publishing the
+      # mirror (token not set up yet, transient API error) shouldn't mark
+      # the whole build failed.
+      - name: Publish APK and version.json to geofield-assets (Pages)
+        continue-on-error: true
+        env:
+          ASSETS_TOKEN: ${{ secrets.ASSETS_DEPLOY_TOKEN }}
+          APP_VERSION: ${{ env.APP_VERSION }}
+        run: |
+          if [ -z "$ASSETS_TOKEN" ]; then
+            echo "::warning::ASSETS_DEPLOY_TOKEN is not set; skipping publish to geofield-assets."
+            exit 0
+          fi
+          cp "GeoField-${APP_VERSION}.apk" geofield.apk
+          python3 - <<'PY'
+          import base64, json, os, urllib.error, urllib.request
+
+          TOKEN = os.environ["ASSETS_TOKEN"]
+          VERSION = os.environ["APP_VERSION"]
+          REPO = "Eddywin-bit/geofield-assets"
+          APK_URL = "https://eddywin-bit.github.io/geofield-assets/geofield.apk"
+
+          def api(method, path, body=None):
+              req = urllib.request.Request(
+                  f"https://api.github.com/repos/{REPO}/{path}",
+                  data=json.dumps(body).encode() if body is not None else None,
+                  method=method,
+                  headers={
+                      "Authorization": f"Bearer {TOKEN}",
+                      "Accept": "application/vnd.github+json",
+                      "Content-Type": "application/json",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      return json.loads(resp.read() or b"{}")
+              except urllib.error.HTTPError as e:
+                  if e.code == 404:
+                      return None
+                  raise
+
+          def put_file(path, data, message):
+              # Overwriting an existing file requires its current blob sha;
+              # omit it entirely to create the file the first time.
+              existing = api("GET", f"contents/{path}?ref=main")
+              body = {
+                  "message": message,
+                  "content": base64.b64encode(data).decode(),
+                  "branch": "main",
+              }
+              if existing:
+                  body["sha"] = existing["sha"]
+              api("PUT", f"contents/{path}", body)
+              print(f"Published {path}")
+
+          with open("geofield.apk", "rb") as f:
+              put_file("geofield.apk", f.read(), f"Publish GeoField {VERSION} APK")
+
+          version_json = json.dumps({"version": VERSION, "url": APK_URL}, indent=2).encode() + b"\n"
+          put_file("version.json", version_json, f"Update version.json for GeoField {VERSION}")
+          PY

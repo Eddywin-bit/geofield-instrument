@@ -1,22 +1,58 @@
-import { useState } from "react";
-import { Cloud, Loader2, Check, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Cloud, Loader2, Check, X, UploadCloud } from "lucide-react";
 import { runAuthSelfTest, type AuthSelfTestResult } from "../lib/backup-auth";
 import { isBackupConfigured } from "../lib/backup-config";
+import {
+  backupNow,
+  getLastBackupStatus,
+  type BackupProgress,
+  type BackupResult,
+} from "../lib/backup";
 
 // Phase 0 UI: a single self-test that signs in with Google, gets a drive.file
 // token, and creates/finds the "GeoField Backups" folder in the user's own
 // Drive, showing the folder id. This exists so the Google OAuth setup can be
 // verified on the signed release APK before any backup/restore code is written.
-// Backup and restore actions are deliberately not here yet.
 type State =
   | { status: "idle" }
   | { status: "running" }
   | { status: "ok"; result: AuthSelfTestResult }
   | { status: "error"; message: string };
 
+// Phase 1 UI: manual "Back up now", uploading the observation manifest and
+// any new photos/voice notes to the same Drive folder. Restore comes later.
+type BackupState =
+  | { status: "idle" }
+  | { status: "running"; progress: BackupProgress }
+  | { status: "ok"; result: BackupResult }
+  | { status: "error"; message: string };
+
+function progressLabel(progress: BackupProgress): string {
+  switch (progress.phase) {
+    case "signin":
+      return "Signing in…";
+    case "folders":
+      return "Preparing your Drive folder…";
+    case "hashing":
+      return "Checking your observations…";
+    case "uploading":
+      return progress.total > 0
+        ? `Uploading photos and voice notes… ${progress.uploaded}/${progress.total}`
+        : "Uploading…";
+    case "manifest":
+      return "Saving your observation list…";
+  }
+}
+
 export function BackupPanel() {
   const [state, setState] = useState<State>({ status: "idle" });
+  const [backupState, setBackupState] = useState<BackupState>({ status: "idle" });
+  const [lastBackup, setLastBackup] = useState<{ timestamp: number; count: number } | null>(null);
   const configured = isBackupConfigured();
+
+  useEffect(() => {
+    void getLastBackupStatus().then(setLastBackup);
+  }, []);
 
   const run = async () => {
     if (state.status === "running") return;
@@ -26,6 +62,21 @@ export function BackupPanel() {
       setState({ status: "ok", result });
     } catch (err) {
       setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
+    }
+  };
+
+  const runBackup = async () => {
+    if (backupState.status === "running") return;
+    setBackupState({ status: "running", progress: { phase: "signin" } });
+    try {
+      const result = await backupNow((progress) => setBackupState({ status: "running", progress }));
+      setBackupState({ status: "ok", result });
+      setLastBackup(await getLastBackupStatus());
+    } catch (err) {
+      setBackupState({
+        status: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   };
 
@@ -117,8 +168,75 @@ export function BackupPanel() {
           )}
         </div>
 
+        {/* Back up now card */}
+        <div className="rounded-2xl bg-panel shadow-md shadow-black/5 p-4 space-y-3">
+          <div className="flex items-center gap-2.5">
+            <span className="h-9 w-9 rounded-full bg-primary/35 flex items-center justify-center shrink-0">
+              <UploadCloud className="h-5 w-5 text-foreground" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground">Back up now</div>
+              <div className="text-[11px] text-muted-foreground">
+                Upload your observations to your Drive backup folder
+              </div>
+            </div>
+          </div>
+
+          {lastBackup && (
+            <p className="text-xs text-foreground/85">
+              Last backed up: {lastBackup.count} observation{lastBackup.count === 1 ? "" : "s"},{" "}
+              {new Date(lastBackup.timestamp).toLocaleString()}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void runBackup()}
+            disabled={!configured || backupState.status === "running"}
+            className="w-full h-12 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-black/10 text-sm font-bold tracking-[0.06em] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-70"
+          >
+            {backupState.status === "running" ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                {progressLabel(backupState.progress)}
+              </>
+            ) : (
+              <>
+                <UploadCloud className="h-5 w-5" strokeWidth={2.4} />
+                Back up now
+              </>
+            )}
+          </button>
+
+          {backupState.status === "ok" && (
+            <div className="rounded-xl bg-success/10 p-3 space-y-1.5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-success">
+                <Check className="h-4 w-4" strokeWidth={3} />
+                Backed up
+              </div>
+              <div className="text-xs text-foreground/85">
+                {backupState.result.count} observation{backupState.result.count === 1 ? "" : "s"}{" "}
+                saved. {backupState.result.uploadedMedia} new photo/voice file
+                {backupState.result.uploadedMedia === 1 ? "" : "s"} uploaded.
+              </div>
+            </div>
+          )}
+
+          {backupState.status === "error" && (
+            <div className="rounded-xl bg-destructive/10 p-3 space-y-1.5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                <X className="h-4 w-4" strokeWidth={3} />
+                Backup failed
+              </div>
+              <p className="text-xs text-destructive/90 leading-snug break-words">
+                {backupState.message}
+              </p>
+            </div>
+          )}
+        </div>
+
         <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-          Setup test only. Backing up and restoring your observations will arrive in a later update.
+          Restoring your observations on a new phone will arrive in a later update.
         </p>
       </div>
     </div>

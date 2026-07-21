@@ -79,10 +79,12 @@ const BASEMAP_STYLE_URL = `pmtiles://${BASEMAP_FILE_NAME}`;
 const BASEMAP_CHUNK = 8 * 1024 * 1024;
 const BASEMAP_PART_PREFIX = "/basemap/ghana.pmtiles.part.";
 // A single sequential connection rarely saturates real WiFi/data bandwidth
-// (TLS handshake + slow-start repeated per chunk), so a handful of ranges
-// in flight at once downloads far faster on a fast link without meaningfully
-// raising peak memory (still a few chunks, not the whole 92 MB).
-const BASEMAP_FETCH_CONCURRENCY = 4;
+// (TLS handshake + slow-start repeated per chunk), so several ranges in
+// flight at once download far faster on a fast link. Field timing showed the
+// per-connection throughput (GitHub Pages) was the cap, not the phone, so 8
+// parallel fetches roughly double effective speed. Peak memory is still only
+// the chunks in flight (8 x 8 MB), not the whole 92 MB.
+const BASEMAP_FETCH_CONCURRENCY = 8;
 
 // Online map: OpenFreeMap's Liberty vector style. Vector renders crisp at any
 // zoom and screen density, where the previous CARTO raster tiles (256px PNGs)
@@ -236,14 +238,7 @@ async function writeAssembledBasemap(
   );
 }
 
-type BasemapDl = {
-  status: "idle" | "downloading" | "saving" | "error" | "done";
-  pct: number;
-  // TEMPORARY DIAGNOSTIC: per-phase timing readout, shown on the "done" chip
-  // so a field test reveals whether the network download or the on-device
-  // save phase dominates. Remove once the bottleneck is confirmed.
-  diag?: string;
-};
+type BasemapDl = { status: "idle" | "downloading" | "saving" | "error" | "done"; pct: number };
 
 /**
  * Module-level so the download outlives the component. Switching tabs unmounts
@@ -278,13 +273,6 @@ const basemapDl = (() => {
       }
       emit({ status: "downloading", pct: Math.min(99, Math.floor((done / partCount) * 100)) });
 
-      // TEMPORARY DIAGNOSTIC: measure network vs on-device-save wall-clock.
-      const tNetStart = Date.now();
-      const bytesThisRun = pendingIndices.reduce(
-        (sum, i) => sum + Math.min(BASEMAP_CHUNK, BASEMAP_SIZE - i * BASEMAP_CHUNK),
-        0,
-      );
-
       // Fetch the remaining chunks with limited concurrency instead of one at
       // a time (see BASEMAP_FETCH_CONCURRENCY). Fetch order does not need to
       // match assembly order: the assembly step below reads parts back by
@@ -308,10 +296,6 @@ const basemapDl = (() => {
         Array.from({ length: Math.min(BASEMAP_FETCH_CONCURRENCY, pendingIndices.length) }, fetchWorker),
       );
 
-      // TEMPORARY DIAGNOSTIC: network phase done.
-      const netSec = (Date.now() - tNetStart) / 1000;
-      const tAsmStart = Date.now();
-
       // Assemble. Blob parts stay disk-backed, so this does not load 92 MB into RAM.
       const parts: Blob[] = [];
       for (let i = 0; i < partCount; i++) {
@@ -323,9 +307,6 @@ const basemapDl = (() => {
       if (full.size !== BASEMAP_SIZE) {
         throw new Error(`size mismatch: got ${full.size}, expected ${BASEMAP_SIZE}`);
       }
-      // TEMPORARY DIAGNOSTIC: assemble phase done.
-      const asmSec = (Date.now() - tAsmStart) / 1000;
-      const tSaveStart = Date.now();
 
       // Assembled file goes to the durable store (Filesystem sandbox on
       // native). This is a separate, CPU-bound phase (base64 encode + bridge
@@ -342,17 +323,7 @@ const basemapDl = (() => {
       }
 
       pmProtocol.add(new PMTiles(new FileSource(new File([full], BASEMAP_FILE_NAME))));
-
-      // TEMPORARY DIAGNOSTIC: save phase done. Surface all three phases on the
-      // "done" chip and in logcat. netMbps reflects only bytes fetched this run
-      // (a resumed download skips already-present chunks).
-      const saveSec = (Date.now() - tSaveStart) / 1000;
-      const netMbps = netSec > 0 ? (bytesThisRun * 8) / netSec / 1_000_000 : 0;
-      const diag =
-        `net ${netSec.toFixed(1)}s (${netMbps.toFixed(1)} Mbps, ${Math.round(bytesThisRun / 1_000_000)} MB) ` +
-        `· asm ${asmSec.toFixed(1)}s · save ${saveSec.toFixed(1)}s`;
-      console.info("[MapView] basemap timing:", diag);
-      emit({ status: "done", pct: 100, diag });
+      emit({ status: "done", pct: 100 });
     } catch (err) {
       console.warn("[MapView] basemap download failed", err);
       // Completed chunks are deliberately kept. They are the resume point.
@@ -1797,21 +1768,13 @@ export function MapView() {
         </div>
       )}
       {!online && dl.status === "done" && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => basemapDl.dismissDone()}
-            className="whitespace-nowrap inline-flex items-center gap-1.5 rounded-full border border-success bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-success"
-          >
-            Base map downloaded ✓
-          </button>
-          {/* TEMPORARY DIAGNOSTIC readout: remove with the timing code. */}
-          {dl.diag && (
-            <span className="whitespace-nowrap rounded-full bg-background/85 backdrop-blur-md px-3 py-1 text-[9px] font-medium text-muted-foreground shadow-lg shadow-black/40">
-              {dl.diag}
-            </span>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => basemapDl.dismissDone()}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full border border-success bg-background/85 backdrop-blur-md px-4 py-2 text-[10px] font-semibold tracking-wider uppercase shadow-lg shadow-black/40 text-success"
+        >
+          Base map downloaded ✓
+        </button>
       )}
       {!online && dl.status === "error" && (
         <button

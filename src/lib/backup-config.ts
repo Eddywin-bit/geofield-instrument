@@ -15,7 +15,8 @@
 // work until this is set to the real value and the Android client is registered
 // against the release keystore SHA-1, which is why Phase 0 must be verified on the
 // signed release APK from GitHub Actions, not a debug build.
-export const GOOGLE_WEB_CLIENT_ID = "REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com";
+export const GOOGLE_WEB_CLIENT_ID =
+  "790811441556-gkdvu0qumv10ujnpnlegc7a85i4eugsc.apps.googleusercontent.com";
 
 // The Drive scope the app requests. drive.file is non-sensitive: the app can only
 // see and manage files it created, so publishing the consent screen does not trigger

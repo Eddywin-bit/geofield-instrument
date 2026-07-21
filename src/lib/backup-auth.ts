@@ -1,9 +1,6 @@
-// Phase 0 of cloud backup: Google Sign-In in isolation.
-//
-// Scope of this file for now: sign in with a personal Google account, obtain a
-// drive.file access token, and create (or find) the "GeoField Backups" folder in
-// the user's own Drive, reading its id back. No manifest, no media, no restore.
-// Those come in later phases once this is proven on the signed release APK.
+// Google Sign-In for cloud backup: sign in with a personal Google account,
+// obtain a drive.file access token, and create (or find) the "GeoField
+// Backups" folder in the user's own Drive.
 //
 // Every native plugin is loaded with a dynamic import, matching the rest of the
 // app (report.ts, MapView.tsx), so the web build and SSR do not eagerly pull in
@@ -60,19 +57,4 @@ export async function findOrCreateBackupFolder(
   token: string,
 ): Promise<{ id: string; created: boolean }> {
   return findOrCreateFolder(token, BACKUP_FOLDER_NAME);
-}
-
-export type AuthSelfTestResult = {
-  email: string | null;
-  folderId: string;
-  folderCreated: boolean;
-};
-
-// Phase 0 end-to-end check: sign in, get a token, ensure the backup folder, and
-// report its id. This is the only thing the Phase 0 UI runs, so it can be
-// verified on the signed release APK before any backup/restore code exists.
-export async function runAuthSelfTest(): Promise<AuthSelfTestResult> {
-  const { accessToken, email } = await signInAndGetToken();
-  const folder = await findOrCreateBackupFolder(accessToken);
-  return { email, folderId: folder.id, folderCreated: folder.created };
 }

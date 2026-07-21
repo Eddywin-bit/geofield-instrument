@@ -1125,7 +1125,10 @@ export function MapView() {
           if (
             l.id.startsWith("geology") ||
             l.id === "regional-capitals" ||
-            l.id === "regional-capitals-dot"
+            l.id === "regional-capitals-dot" ||
+            l.id === "world-land" ||
+            l.id === "world-countries-line" ||
+            l.id === "world-countries-label"
           ) {
             continue;
           }

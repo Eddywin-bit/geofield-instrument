@@ -363,6 +363,14 @@ const basemapDl = (() => {
 // so once ready, always ready for this app session.
 const basemapSession = { ready: false };
 
+// Last accepted GPS reading, kept at module scope so it survives leaving and
+// returning to the Map tab (MapView unmounts each time). Seeding the blue dot
+// from this on mount makes it appear instantly on tab switch instead of
+// blanking until the fresh watch delivers its first fix. It is only a seed:
+// the live watch overwrites it the moment a real reading lands, and the
+// accuracy circle reflects that it may be a few seconds stale.
+let lastMapPosition: { lat: number; lng: number; accuracy: number } | null = null;
+
 // Cross-launch, synchronously readable hint for whether the basemap file is
 // already on disk. basemapSession only survives tab switches within one JS
 // runtime; on a cold launch it resets to false, so the async disk read
@@ -734,7 +742,11 @@ export function MapView() {
   const firstRunRef = useRef(true);
   const [online, setOnline] = useState(false);
   const [popup, setPopup] = useState<Popup | null>(null);
-  const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  // Seeded from the module-level cache so the dot shows immediately on tab
+  // switch; null on a cold first open, where the watch fills it in.
+  const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(
+    () => lastMapPosition,
+  );
   // Direction arrow on the GPS marker. Null means "don't show a direction":
   // no reliable signal, not a guess. See the GPS watch effect for the
   // GPS-course-vs-compass selection rule.
@@ -1421,7 +1433,9 @@ export function MapView() {
         const rejectWindowMs = movingFast ? 2_000 : 15_000;
         if (prev && c.accuracy > prev.accuracy * 1.5 && now - prev.at < rejectWindowMs) return;
         gpsGateRef.current = { accuracy: c.accuracy, at: now };
-        setGps({ lat: c.latitude, lng: c.longitude, accuracy: c.accuracy });
+        const pos = { lat: c.latitude, lng: c.longitude, accuracy: c.accuracy };
+        lastMapPosition = pos;
+        setGps(pos);
 
         // Heading: GPS course between consecutive accepted fixes while moving
         // fast enough for that bearing to be reliable; device compass

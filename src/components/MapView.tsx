@@ -548,6 +548,13 @@ function buildPlacesFilter(existing: unknown, exclusion: unknown): unknown {
   return ["all", converted, exclusion];
 }
 
+// The zoom where the world context (Natural Earth borders + country labels)
+// hands off to the accurate Ghana tile. Below this, Natural Earth is the sole
+// world source; at/above it, the basemap's own borders and country labels take
+// over. The Natural Earth world-countries layers cap at this same zoom, so the
+// two never overlap.
+const WORLD_CONTEXT_MAXZOOM = 6;
+
 function buildBasemapLayers(): LayerSpecification[] {
   const capitalExclusion: unknown = [
     "!",
@@ -603,8 +610,22 @@ function buildBasemapLayers(): LayerSpecification[] {
           },
         } as LayerSpecification;
       }
+      // One uniform world source below Ghana-detail zoom. The Ghana tile
+      // incidentally carries coarse borders/country labels for nearby regions
+      // (the kept low-zoom tiles), which drew offset from - and stacked on top
+      // of - the Natural Earth world-countries layer, the "extra shapes" around
+      // small countries like Gambia. Gate the basemap's own borders and
+      // country/region labels to zoom >= 6 so that below that the world view is
+      // Natural Earth only; from 6 up, the accurate Ghana tile takes over.
+      if (l.type === "line" && srcLower === "boundaries") {
+        return {
+          ...l,
+          minzoom: Math.max((l as { minzoom?: number }).minzoom ?? 0, WORLD_CONTEXT_MAXZOOM),
+        } as LayerSpecification;
+      }
       if (l.type === "symbol") {
         const isPlaces = srcLayer === "places";
+        const isWorldPlaceLabel = l.id === "places_country" || l.id === "places_region";
         const existingFilter = (l as { filter?: unknown }).filter;
         const mergedFilter = isPlaces
           ? buildPlacesFilter(existingFilter, capitalExclusion)
@@ -614,6 +635,9 @@ function buildBasemapLayers(): LayerSpecification[] {
           : l.layout;
         return {
           ...l,
+          ...(isWorldPlaceLabel
+            ? { minzoom: Math.max((l as { minzoom?: number }).minzoom ?? 0, WORLD_CONTEXT_MAXZOOM) }
+            : {}),
           ...(mergedFilter !== undefined ? { filter: mergedFilter } : {}),
           ...(nextLayout ? { layout: nextLayout } : {}),
         } as LayerSpecification;
@@ -1139,7 +1163,7 @@ export function MapView() {
             id: "world-countries-line",
             type: "line",
             source: "world-countries",
-            maxzoom: 6,
+            maxzoom: WORLD_CONTEXT_MAXZOOM,
             paint: { "line-color": "#7A8290", "line-opacity": 0.5, "line-width": 0.6 },
           });
         }
@@ -1157,7 +1181,7 @@ export function MapView() {
             id: "world-countries-label",
             type: "symbol",
             source: "world-countries-labels",
-            maxzoom: 6,
+            maxzoom: WORLD_CONTEXT_MAXZOOM,
             layout: {
               "text-field": ["get", "name"],
               "text-font": ["Noto Sans Regular"],

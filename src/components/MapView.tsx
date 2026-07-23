@@ -476,6 +476,71 @@ function legacyToExpression(f: unknown): unknown[] | null {
   return null;
 }
 
+// One representative label point per country. Natural Earth countries are
+// MultiPolygons (Angola carries the Cabinda exclave, etc.), so labeling the
+// polygon source directly makes MapLibre place a label on every part - which
+// showed "ANGOLA" twice and crowded small neighbours together. Collapsing each
+// country to a single point at the centroid of its largest polygon gives one
+// clean label; a size-based sort key lets the bigger country win when two
+// labels still collide at wide zoom.
+function countryLabelPoints(fc: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
+  const ringArea = (ring: number[][]): number => {
+    let a = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      a += ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+    }
+    return Math.abs(a / 2);
+  };
+  const ringCentroid = (ring: number[][]): [number, number] => {
+    let x = 0,
+      y = 0,
+      a = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const f = ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+      x += (ring[j][0] + ring[i][0]) * f;
+      y += (ring[j][1] + ring[i][1]) * f;
+      a += f;
+    }
+    if (a === 0) {
+      const n = ring.length || 1;
+      const sx = ring.reduce((s, p) => s + p[0], 0);
+      const sy = ring.reduce((s, p) => s + p[1], 0);
+      return [sx / n, sy / n];
+    }
+    a *= 0.5;
+    return [x / (6 * a), y / (6 * a)];
+  };
+  const features: GeoJSON.Feature[] = [];
+  for (const f of fc.features) {
+    const name = (f.properties as { name?: string } | null)?.name;
+    if (!name) continue;
+    const g = f.geometry;
+    let outers: number[][][] = [];
+    if (g.type === "Polygon") outers = [g.coordinates[0] as number[][]];
+    else if (g.type === "MultiPolygon")
+      outers = (g.coordinates as number[][][][]).map((p) => p[0] as number[][]);
+    else continue;
+    let best: number[][] | null = null;
+    let bestArea = -1;
+    for (const ring of outers) {
+      const a = ringArea(ring);
+      if (a > bestArea) {
+        bestArea = a;
+        best = ring;
+      }
+    }
+    if (!best) continue;
+    const [lng, lat] = ringCentroid(best);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
+    features.push({
+      type: "Feature",
+      properties: { name, sort: -bestArea },
+      geometry: { type: "Point", coordinates: [lng, lat] },
+    });
+  }
+  return { type: "FeatureCollection", features };
+}
+
 function buildPlacesFilter(existing: unknown, exclusion: unknown): unknown {
   if (existing === undefined) return exclusion;
   const converted = legacyToExpression(existing);
@@ -1078,11 +1143,20 @@ export function MapView() {
             paint: { "line-color": "#7A8290", "line-opacity": 0.5, "line-width": 0.6 },
           });
         }
+        // Labels come from one-point-per-country geometry (see
+        // countryLabelPoints), not the polygons, so a multi-part country is
+        // labeled once instead of once per island/exclave.
+        if (!map.getSource("world-countries-labels")) {
+          map.addSource("world-countries-labels", {
+            type: "geojson",
+            data: countryLabelPoints(data),
+          });
+        }
         if (!map.getLayer("world-countries-label")) {
           map.addLayer({
             id: "world-countries-label",
             type: "symbol",
-            source: "world-countries",
+            source: "world-countries-labels",
             maxzoom: 6,
             layout: {
               "text-field": ["get", "name"],
@@ -1096,6 +1170,8 @@ export function MapView() {
               "text-transform": "uppercase",
               "text-size": ["interpolate", ["linear"], ["zoom"], 2, 12, 6, 18],
               "text-max-width": 8,
+              // Bigger country wins when two labels collide at wide zoom.
+              "symbol-sort-key": ["get", "sort"],
             },
             paint: {
               "text-color": "#707070",

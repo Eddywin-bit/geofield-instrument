@@ -6,6 +6,11 @@ on:
         description: 'Optional override. Leave blank to use APP_VERSION from src/lib/app-version.ts.'
         required: false
         default: ''
+      test_build:
+        description: 'Test build: publish only to geofield-test.apk on Pages. Does NOT touch the public geofield.apk, version.json, or the GitHub Release (students stay on the current version).'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   build:
@@ -399,7 +404,10 @@ jobs:
           path: GeoField-*.apk
           retention-days: 7
 
+      # Skipped for test builds: a test APK must never overwrite the stable
+      # release of record.
       - name: Publish APK to a GitHub Release
+        if: ${{ github.event.inputs.test_build != 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.APP_VERSION }}
@@ -423,17 +431,26 @@ jobs:
         env:
           ASSETS_TOKEN: ${{ secrets.ASSETS_DEPLOY_TOKEN }}
           APP_VERSION: ${{ env.APP_VERSION }}
+          TEST_BUILD: ${{ github.event.inputs.test_build }}
         run: |
           if [ -z "$ASSETS_TOKEN" ]; then
             echo "::warning::ASSETS_DEPLOY_TOKEN is not set; skipping publish to geofield-assets."
             exit 0
           fi
-          cp "GeoField-${APP_VERSION}.apk" geofield.apk
+          # Test build: publish ONLY geofield-test.apk. The public geofield.apk,
+          # version.json, and the GitHub Release are left untouched, so students
+          # on the current version see nothing change and get no update banner.
+          if [ "$TEST_BUILD" = "true" ]; then
+            cp "GeoField-${APP_VERSION}.apk" geofield-test.apk
+          else
+            cp "GeoField-${APP_VERSION}.apk" geofield.apk
+          fi
           python3 - <<'PY'
           import base64, json, os, urllib.error, urllib.request
 
           TOKEN = os.environ["ASSETS_TOKEN"]
           VERSION = os.environ["APP_VERSION"]
+          TEST = os.environ.get("TEST_BUILD") == "true"
           REPO = "Eddywin-bit/geofield-assets"
           APK_URL = "https://eddywin-bit.github.io/geofield-assets/geofield.apk"
 
@@ -470,9 +487,13 @@ jobs:
               api("PUT", f"contents/{path}", body)
               print(f"Published {path}")
 
-          with open("geofield.apk", "rb") as f:
-              put_file("geofield.apk", f.read(), f"Publish GeoField {VERSION} APK")
-
-          version_json = json.dumps({"version": VERSION, "url": APK_URL}, indent=2).encode() + b"\n"
-          put_file("version.json", version_json, f"Update version.json for GeoField {VERSION}")
+          if TEST:
+              # Isolated test channel only: no version.json, no geofield.apk.
+              with open("geofield-test.apk", "rb") as f:
+                  put_file("geofield-test.apk", f.read(), f"Publish GeoField {VERSION} TEST APK")
+          else:
+              with open("geofield.apk", "rb") as f:
+                  put_file("geofield.apk", f.read(), f"Publish GeoField {VERSION} APK")
+              version_json = json.dumps({"version": VERSION, "url": APK_URL}, indent=2).encode() + b"\n"
+              put_file("version.json", version_json, f"Update version.json for GeoField {VERSION}")
           PY

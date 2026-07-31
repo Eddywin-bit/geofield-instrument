@@ -1243,6 +1243,25 @@ export function MapView() {
           for (const id of ["geology-fill", "geology-line-soft", "geology-line"]) {
             if (map.getLayer(id)) map.moveLayer(id, beforeId);
           }
+          // Country names (world-countries-label) normally sit near the bottom
+          // of the stack, so any name that overhangs water gets clipped by a
+          // basemap fill painted above it. The basemap's water fill in
+          // particular sits well above the geology insertion point (its road
+          // layers come first), so lifting names only to beforeId still leaves
+          // enclosed seas - Black Sea, Baltic, North Sea - painting over
+          // names like GEORGIA, LATVIA, ENGLAND. Lift the names to just below
+          // the first basemap symbol instead: that clears every basemap fill
+          // (land AND water) yet stays under the basemap's own text labels, so
+          // names always lie on top of the sea without doubling those labels.
+          // The border line stays put - raising it too doubles the basemap's
+          // own borders at the tile seam (the old Gambia artefact).
+          if (map.getLayer("world-countries-label")) {
+            const symbolLayers = (map.getStyle().layers ?? []) as LayerSpecification[];
+            const firstBasemapSymbol = symbolLayers.find(
+              (l) => l.type === "symbol" && (l as { source?: string }).source === "basemap",
+            );
+            map.moveLayer("world-countries-label", firstBasemapSymbol?.id);
+          }
         }
         // Capitals sit above geology (moveLayer with no arg = top).
         for (const id of ["regional-capitals-dot", "regional-capitals"]) {

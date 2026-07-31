@@ -1243,6 +1243,19 @@ export function MapView() {
           for (const id of ["geology-fill", "geology-line-soft", "geology-line"]) {
             if (map.getLayer(id)) map.moveLayer(id, beforeId);
           }
+          // Country names (world-countries-label) normally sit near the bottom
+          // of the stack, just above world-land. But the offline Ghana tile
+          // pack drags in whole low-zoom tiles whose ocean fill covers the
+          // whole Atlantic, and that basemap water fill is painted above the
+          // name layer - so any name that overhangs the coast (SENEGAL,
+          // MOROCCO, GUINEA) gets clipped by the ocean. Lift only the names to
+          // the geology insertion point: above every basemap fill (including
+          // water), still below the basemap's roads and its own labels. The
+          // border line stays put - raising it too doubles the basemap's own
+          // borders at the tile seam (the old Gambia artefact).
+          if (map.getLayer("world-countries-label")) {
+            map.moveLayer("world-countries-label", beforeId);
+          }
         }
         // Capitals sit above geology (moveLayer with no arg = top).
         for (const id of ["regional-capitals-dot", "regional-capitals"]) {

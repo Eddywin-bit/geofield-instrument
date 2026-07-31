@@ -1244,17 +1244,23 @@ export function MapView() {
             if (map.getLayer(id)) map.moveLayer(id, beforeId);
           }
           // Country names (world-countries-label) normally sit near the bottom
-          // of the stack, just above world-land. But the offline Ghana tile
-          // pack drags in whole low-zoom tiles whose ocean fill covers the
-          // whole Atlantic, and that basemap water fill is painted above the
-          // name layer - so any name that overhangs the coast (SENEGAL,
-          // MOROCCO, GUINEA) gets clipped by the ocean. Lift only the names to
-          // the geology insertion point: above every basemap fill (including
-          // water), still below the basemap's roads and its own labels. The
-          // border line stays put - raising it too doubles the basemap's own
-          // borders at the tile seam (the old Gambia artefact).
+          // of the stack, so any name that overhangs water gets clipped by a
+          // basemap fill painted above it. The basemap's water fill in
+          // particular sits well above the geology insertion point (its road
+          // layers come first), so lifting names only to beforeId still leaves
+          // enclosed seas - Black Sea, Baltic, North Sea - painting over
+          // names like GEORGIA, LATVIA, ENGLAND. Lift the names to just below
+          // the first basemap symbol instead: that clears every basemap fill
+          // (land AND water) yet stays under the basemap's own text labels, so
+          // names always lie on top of the sea without doubling those labels.
+          // The border line stays put - raising it too doubles the basemap's
+          // own borders at the tile seam (the old Gambia artefact).
           if (map.getLayer("world-countries-label")) {
-            map.moveLayer("world-countries-label", beforeId);
+            const symbolLayers = (map.getStyle().layers ?? []) as LayerSpecification[];
+            const firstBasemapSymbol = symbolLayers.find(
+              (l) => l.type === "symbol" && (l as { source?: string }).source === "basemap",
+            );
+            map.moveLayer("world-countries-label", firstBasemapSymbol?.id);
           }
         }
         // Capitals sit above geology (moveLayer with no arg = top).

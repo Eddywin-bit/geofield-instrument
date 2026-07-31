@@ -175,6 +175,14 @@ function RotatingTipCard() {
   );
 }
 
+// Survives the Locate route unmounting on a tab switch. True while an explicit
+// LOCATE ME cycle is mid-flight with no committed fix yet. Without it, leaving
+// the tab stopped the acquisition and dropped the "locating" phase, so
+// returning showed idle LOCATE ME while no fix was in. A plain module var (same
+// pattern as the map's lastMapPosition): it resets on a fresh app launch, so a
+// cold start never auto-locates.
+let locateInFlight = false;
+
 function LocateScreen() {
   const [state, setState] = useState<"idle" | "locating" | "weak" | "found" | "error">("idle");
   const [fix, setFix] = useState<Fix | null>(null);
@@ -184,8 +192,15 @@ function LocateScreen() {
   const [showManual, setShowManual] = useState(false);
   const acqRef = useRef<Acquisition | null>(null);
   const stateRef = useRef(state);
+  const resumeRef = useRef(false);
   useEffect(() => {
     stateRef.current = state;
+  }, [state]);
+  // Mirror the in-flight phase into the module flag so a tab switch (which
+  // unmounts this screen) can be resumed on return. "weak" still has the
+  // acquisition running, so it counts as in-flight too.
+  useEffect(() => {
+    locateInFlight = state === "locating" || state === "weak";
   }, [state]);
 
   // Ambient reading for the GPS Accuracy stat card: without this, liveAccuracy
@@ -221,6 +236,12 @@ function LocateScreen() {
       setFix(saved);
       setLiveAccuracy(saved.manual ? null : saved.accuracy);
       setState("found");
+    } else if (locateInFlight) {
+      // A LOCATE ME cycle was still running when the user left the tab. Show the
+      // spinner again and restart acquisition (the previous cycle was stopped on
+      // unmount), so returning never sits on idle LOCATE ME with no fix coming.
+      setState("locating");
+      resumeRef.current = true;
     }
 
     return () => {
@@ -343,6 +364,16 @@ function LocateScreen() {
       },
     });
   };
+
+  // Runs once when the mount effect above flagged a resume: start a fresh
+  // acquisition for the restored "locating" phase. Kept out of the mount effect
+  // (which has no startCycle in its deps) and left dependency-array-free, so it
+  // fires right after the resume flag is set and no-ops on every later render.
+  useEffect(() => {
+    if (!resumeRef.current) return;
+    resumeRef.current = false;
+    startCycle();
+  });
 
   const locate = async () => {
     acqRef.current?.stop();

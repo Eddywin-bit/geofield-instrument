@@ -5,7 +5,6 @@ import {
   Crosshair,
   ChevronDown,
   ChevronRight,
-  Loader2,
   Keyboard,
   NotebookPen,
   X,
@@ -559,22 +558,23 @@ function LocateScreen() {
             disabled={state === "locating"}
             className="w-full rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-black/10 py-8 flex flex-col items-center justify-center gap-1.5 active:scale-[0.99] transition-transform disabled:opacity-80"
           >
-            {state === "locating" ? (
-              <>
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <span className="font-bold tracking-[0.2em] text-lg mt-1">
-                  {liveAccuracy === null ? "LOCATING…" : `ACQUIRING · ± ${liveAccuracy.toFixed(1)} M`}
-                </span>
-              </>
-            ) : (
-              <>
-                <RadarIcon />
-                <span className="font-bold tracking-[0.2em] text-lg mt-1">LOCATE ME</span>
-                <span className="text-xs font-medium text-primary-foreground/80">
-                  Tap to identify unit
-                </span>
-              </>
-            )}
+            {/* Same three rows in both states, only the wording changes. The
+                button used to drop the radar and the caption while locating,
+                so it collapsed to about half its height the instant it was
+                tapped and shoved everything below it up the screen. The radar
+                already sweeps, so it is the progress indicator: nothing needs
+                to be swapped in for one. */}
+            <RadarIcon />
+            <span className="font-bold tracking-[0.2em] text-lg mt-1">
+              {state === "locating"
+                ? liveAccuracy === null
+                  ? "LOCATING…"
+                  : `ACQUIRING · ± ${liveAccuracy.toFixed(1)} M`
+                : "LOCATE ME"}
+            </span>
+            <span className="text-xs font-medium text-primary-foreground/80">
+              {state === "locating" ? "Hold still for a better fix" : "Tap to identify unit"}
+            </span>
           </button>
           {state === "error" && error && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -699,13 +699,18 @@ function LocateScreen() {
             </div>
           )}
           {state !== "weak" && (
-            <div className="pt-1 flex justify-center">
+            <div className="pt-1">
+              {/* Matches the idle screen's manual-entry button. As a small
+                  dotted underline it read as a page footer rather than the
+                  real alternative to a GPS fix that it is. */}
               <button
                 onClick={() => setShowManual(true)}
-                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 decoration-dotted"
+                className="w-full h-14 rounded-2xl border border-primary/70 bg-panel shadow-sm text-foreground text-sm font-semibold tracking-wide hover:bg-primary/10 flex items-center justify-center gap-2.5"
               >
-                <Keyboard className="h-3.5 w-3.5" />
-                Enter coordinates manually
+                <span className="h-7 w-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                  <Keyboard className="h-4 w-4 text-primary" />
+                </span>
+                ENTER COORDINATES MANUALLY
               </button>
             </div>
           )}

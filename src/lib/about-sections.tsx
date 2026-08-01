@@ -258,6 +258,12 @@ export const ABOUT_SECTIONS: AboutSection[] = [
           <Credit name="Lucide icons" detail="ISC" />
           <Credit name="Noto Sans" detail="SIL Open Font License 1.1" />
         </div>
+        <div className="pt-1">
+          <div className="label-instrument pb-1.5">Backup</div>
+          <Credit name="Google Drive API" detail="Backups are stored in your own Drive" />
+          <Credit name="Capacitor Social Login" detail="MPL-2.0" />
+          <Credit name="Capacitor Preferences" detail="MIT" />
+        </div>
         <Body>
           Unit descriptions were compiled with the assistance of Google Gemini Pro Deep Research,
           drawing on the literature listed below. Where the research found nothing to support a

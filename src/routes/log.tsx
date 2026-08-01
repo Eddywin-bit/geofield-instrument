@@ -369,6 +369,12 @@ function LogScreen() {
     setTimeout(() => navigate({ to: "/my-logs" }), 400);
   };
 
+  // While the fix is still coming in there is no unit yet, and the ctx default
+  // of "Unmapped" would state a conclusion the app has not reached: the row
+  // read "Unmapped" for a moment and then corrected itself to the real unit.
+  // Say what is actually happening instead, matching the Locate card's wording.
+  const unitDisplay = locating && ctx.lat === null && ctx.lng === null ? "Identifying…" : ctx.unit;
+
   const positionDisplay =
     ctx.lat !== null && ctx.lng !== null
       ? `${formatCoord(ctx.lat)} ${ctx.lat >= 0 ? "N" : "S"} · ${formatCoord(ctx.lng)} ${ctx.lng >= 0 ? "E" : "W"}`
@@ -466,7 +472,7 @@ function LogScreen() {
 
       {/* Auto-attached context */}
       <div className="mx-4 rounded-2xl bg-panel shadow-md shadow-black/5 divide-y divide-border">
-        <Row icon={<Hexagon className="h-4 w-4 text-primary" />} label="Unit" value={ctx.unit} />
+        <Row icon={<Hexagon className="h-4 w-4 text-primary" />} label="Unit" value={unitDisplay} />
         <Row
           icon={<MapPin className="h-4 w-4 text-primary" />}
           label="Position"

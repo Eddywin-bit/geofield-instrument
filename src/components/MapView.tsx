@@ -1700,8 +1700,9 @@ export function MapView() {
         lastMapPosition = pos;
         setGps(pos);
 
-        // Heading is the direction of travel whenever the holder is actually
-        // travelling, and the compass only when they are not.
+        // Heading, in order of how much it can be trusted: the receiver's own
+        // Doppler course, then a bearing across enough travelled ground, then
+        // the compass once the holder has genuinely stopped.
         //
         // This used to require movingFast, which is 1.8 m/s, above walking
         // pace. Walking therefore always fell through to the compass, and the
@@ -1720,7 +1721,25 @@ export function MapView() {
         const anchorFresh = !!anchor && now - anchor.at <= HEADING_MAX_FIX_AGE_MS;
         let nextHeading: number | null = null;
 
-        if (anchorFresh && haversineMeters(anchor, cur) >= HEADING_MIN_FIX_DISTANCE_M) {
+        // Best source first: the receiver's own course over ground. GNSS gets
+        // this from Doppler shift rather than by comparing positions, so it is
+        // right immediately and does not need any distance travelled. Gated on
+        // speed because standing still has no course, and platforms variously
+        // report null, 0, or noise then. Zero is a legitimate heading (north),
+        // so speed is the gate rather than the value.
+        const deviceCourse =
+          typeof c.heading === "number" &&
+          Number.isFinite(c.heading) &&
+          speedMps !== null &&
+          speedMps > GPS_MOVING_SPEED_MPS
+            ? ((c.heading % 360) + 360) % 360
+            : null;
+
+        if (deviceCourse !== null) {
+          nextHeading = deviceCourse;
+          travelHeadingRef.current = { heading: deviceCourse, at: now };
+          prevFixRef.current = { lat: cur.lat, lng: cur.lng, at: now };
+        } else if (anchorFresh && haversineMeters(anchor, cur) >= HEADING_MIN_FIX_DISTANCE_M) {
           nextHeading = bearingDegrees(anchor, cur);
           travelHeadingRef.current = { heading: nextHeading, at: now };
           prevFixRef.current = { lat: cur.lat, lng: cur.lng, at: now };

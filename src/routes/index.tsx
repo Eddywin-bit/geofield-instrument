@@ -237,17 +237,31 @@ function RadarIcon() {
 }
 
 function LocateScreen() {
-  const [state, setState] = useState<"idle" | "locating" | "weak" | "found" | "error">("idle");
-  const [fix, setFix] = useState<Fix | null>(null);
-  const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null);
+  // Decide what this screen shows BEFORE the first paint. Restoring the fix (or
+  // the in-flight spinner) from an effect meant the first frame always drew the
+  // idle LOCATE ME screen and only then snapped to the real state, so coming
+  // back to the tab flashed the wrong screen for a moment. A useState
+  // initializer runs during that first render, so the correct screen is the
+  // only one ever painted. It also settles the ordering the old code fought:
+  // the sync effect below cannot clear locateInFlight before this is read.
+  const [initial] = useState<{ fix: Fix | null; state: "idle" | "locating" | "found" }>(() => {
+    // Restore unless the 30-minute staleness guard says a new observation
+    // should not silently reuse the saved fix.
+    const saved = readCurrentFix();
+    if (saved && !isFixStale(saved)) return { fix: saved, state: "found" };
+    if (locateInFlight) return { fix: null, state: "locating" };
+    return { fix: null, state: "idle" };
+  });
+  const [state, setState] = useState<"idle" | "locating" | "weak" | "found" | "error">(
+    initial.state,
+  );
+  const [fix, setFix] = useState<Fix | null>(initial.fix);
+  const [liveAccuracy, setLiveAccuracy] = useState<number | null>(
+    initial.fix ? (initial.fix.manual ? null : initial.fix.accuracy) : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [errorAction, setErrorAction] = useState<"location-settings" | "app-settings" | null>(null);
   const [showManual, setShowManual] = useState(false);
-  // Snapshot the module flag on the very first render, before any effect runs.
-  // The sync effect below has [state] deps, so on a fresh mount it fires with
-  // state === "idle" and would reset locateInFlight to false before the mount
-  // effect could read it. Capturing here (render time) beats that ordering.
-  const [resumeArmed] = useState(() => locateInFlight);
   const acqRef = useRef<Acquisition | null>(null);
   const stateRef = useRef(state);
   const resumeRef = useRef(false);
@@ -284,28 +298,17 @@ function LocateScreen() {
     // Native only: ask Android for the location permission up front, otherwise
     // navigator.geolocation silently times out with no dialog.
     void ensureLocationPermission();
-    // Coming back from another screen must land on the fix the user already
-    // acquired, not a blank screen. Restore unless the 30-minute staleness
-    // guard says a new observation should not silently reuse it.
-    const saved = readCurrentFix();
-    if (saved && !isFixStale(saved)) {
-      setFix(saved);
-      setLiveAccuracy(saved.manual ? null : saved.accuracy);
-      setState("found");
-    } else if (resumeArmed) {
-      // A LOCATE ME cycle was still running when the user left the tab. Show the
-      // spinner again and restart acquisition (the previous cycle was stopped on
-      // unmount), so returning never sits on idle LOCATE ME with no fix coming.
-      setState("locating");
-      resumeRef.current = true;
-    }
+    // The restored fix (or the resumed spinner) is already on screen from the
+    // initial state above, so nothing to paint here. A resumed cycle only needs
+    // its acquisition restarted, since unmounting stopped the previous one.
+    if (initial.state === "locating") resumeRef.current = true;
 
     return () => {
       acqRef.current?.stop();
     };
-    // resumeArmed is captured once (useState initializer, no setter) so it never
+    // initial is captured once (useState initializer, no setter) so it never
     // changes; this still runs mount-only, it just satisfies exhaustive-deps.
-  }, [resumeArmed]);
+  }, [initial]);
 
   // Auto-dismiss transient GPS errors. An error that carries an action the user
   // must take (location switched off, permission denied) stays until they act.

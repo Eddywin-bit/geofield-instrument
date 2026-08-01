@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppLayout } from "../components/AppLayout";
-import { Building2, Cloud, Mail } from "lucide-react";
+import { Cloud, Mail } from "lucide-react";
+import { EON_MARK } from "../lib/eon-mark";
 import { GEOFIELD_MARK } from "../lib/logo";
 import { ABOUT_SECTIONS, CHANNEL, EDITION } from "../lib/about-sections";
 import { APP_VERSION } from "../lib/app-version";
@@ -110,11 +111,13 @@ function AboutPage() {
           <h2 className="label-instrument px-1 pb-1">Built by</h2>
           <div className="bg-panel border border-border rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-lg border border-border bg-panel-2 flex items-center justify-center shrink-0">
-                <Building2 className="h-4 w-4 text-primary" />
-              </div>
+              <img
+                src={EON_MARK}
+                alt="Eon Studios"
+                className="h-10 w-10 rounded-lg border border-border shrink-0 object-cover"
+              />
               <div className="min-w-0">
-                <div className="text-sm font-bold text-foreground">Eon Designs</div>
+                <div className="text-sm font-bold text-foreground">Eon Studios</div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">Accra, Ghana</div>
                 <div className="mt-2 pt-2 border-t border-border/60">
                   <div className="text-sm font-semibold text-foreground">Edwin Gyasi Owusu</div>
@@ -137,7 +140,7 @@ function AboutPage() {
             v{APP_VERSION}
             {CHANNEL ? ` · ${CHANNEL}` : ""} · {EDITION}
           </p>
-          <p className="text-[11px] text-muted-foreground">&copy; 2026 Eon Designs</p>
+          <p className="text-[11px] text-muted-foreground">&copy; 2026 Eon Studios</p>
         </footer>
       </div>
     </AppLayout>

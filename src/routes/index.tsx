@@ -180,6 +180,16 @@ function RotatingTipCard() {
 // cold start never auto-locates.
 let locateInFlight = false;
 
+// The partly-built fix from that in-flight cycle: the coordinates already on
+// screen when the tab was left. Restoring the phase alone was not enough,
+// because with no fix the screen still painted the big LOCATE ME button first
+// and only swapped to the acquiring card when the next GPS reading landed, so
+// coming back jumped between two whole layouts. Keeping the working fix here
+// means the same card that was on screen is the one that comes back. Null when
+// the cycle had not produced a reading yet, which is exactly when the button
+// with its spinner is the correct thing to show.
+let inFlightFix: Fix | null = null;
+
 // Animated radar used as the LOCATE ME icon: a dark amber dish with range
 // rings, a crosshair, faint outer rings, and a sweep beam that rotates around
 // the dish. Built from CSS/SVG (no image asset) so it stays crisp at any size;
@@ -249,7 +259,7 @@ function LocateScreen() {
     // should not silently reuse the saved fix.
     const saved = readCurrentFix();
     if (saved && !isFixStale(saved)) return { fix: saved, state: "found" };
-    if (locateInFlight) return { fix: null, state: "locating" };
+    if (locateInFlight) return { fix: inFlightFix, state: "locating" };
     return { fix: null, state: "idle" };
   });
   const [state, setState] = useState<"idle" | "locating" | "weak" | "found" | "error">(
@@ -274,6 +284,11 @@ function LocateScreen() {
   useEffect(() => {
     locateInFlight = state === "locating" || state === "weak";
   }, [state]);
+  // Keep the module copy in step with whatever the card is showing, so a tab
+  // switch mid-cycle can bring the same card straight back.
+  useEffect(() => {
+    inFlightFix = fix;
+  }, [fix]);
 
   // Ambient reading for the GPS Accuracy stat card: without this, liveAccuracy
   // only had a value during the few seconds an explicit LOCATE ME cycle was

@@ -3,5 +3,5 @@
 // line. Lives in its own module (not src/routes/about.tsx) so it can be
 // imported without a cycle: about.tsx renders AppLayout, and AppLayout's
 // update-check banner needs this value too.
-const APP_VERSION = "0.6.13";
+const APP_VERSION = "0.6.14";
 export { APP_VERSION };

@@ -7,6 +7,7 @@ import { Protocol, PMTiles, FileSource } from "pmtiles";
 import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { startPositionWatch, startCompassWatch } from "../lib/geo-acquire";
+import { createPositionSmoother, metresBetween } from "../lib/gps-smooth";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
@@ -26,6 +27,22 @@ const LOCATION_ARROW_BLUE = "#49A1EA";
 // together relative to their own error to trust a bearing between them, so
 // the compass is used instead. ~6.5 km/h: brisk walk/jog, comfortably below
 // any vehicle speed.
+// Dot tween. Comfortably shorter than the ~2.5s tracking interval so the
+// marker always settles before the next reading, and long enough that the eye
+// reads travel rather than a jump.
+const GPS_TWEEN_MS = 900;
+// Past this the filter has reseeded somewhere new rather than tracked a walk,
+// so easing across it would drag the dot over ground nobody covered.
+const GPS_TWEEN_MAX_METRES = 150;
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 const HEADING_GPS_SPEED_MPS = 1.8;
 // A GPS-course bearing needs the two fixes to actually be far enough apart
 // that GPS error isn't the dominant component of the vector between them.
@@ -871,6 +888,29 @@ export function MapView() {
   basemapReadyRef.current = basemapReady;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsGateRef = useRef<{ accuracy: number; at: number } | null>(null);
+  const smootherRef = useRef(createPositionSmoother());
+  // Where the marker is drawn right now, which trails the smoothed target
+  // while the tween runs. Kept in a ref, not state: it changes every frame and
+  // nothing renders from it.
+  const drawnRef = useRef<{ lat: number; lng: number } | null>(null);
+  const tweenRef = useRef<number | null>(null);
+
+  // Sustained GNSS polling is only worth its battery while the map is actually
+  // being looked at. Backgrounding the app pauses it; coming back resumes and
+  // reseeds the filter, since a fix from before the gap says nothing about
+  // where the holder is now.
+  const [trackingOn, setTrackingOn] = useState(
+    typeof document === "undefined" ? true : !document.hidden,
+  );
+  useEffect(() => {
+    const onVis = () => {
+      const visible = !document.hidden;
+      if (!visible) smootherRef.current.reset();
+      setTrackingOn(visible);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
   // Last *accepted* GPS-watch fix, kept for GPS-course bearing between
   // consecutive fixes. Independent of gpsGateRef, which only gates accept/reject.
   const prevFixRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
@@ -1554,7 +1594,13 @@ export function MapView() {
         const rejectWindowMs = movingFast ? 2_000 : 15_000;
         if (prev && c.accuracy > prev.accuracy * 1.5 && now - prev.at < rejectWindowMs) return;
         gpsGateRef.current = { accuracy: c.accuracy, at: now };
-        const pos = { lat: c.latitude, lng: c.longitude, accuracy: c.accuracy };
+        // Smooth the drawn position, keep the reported accuracy raw. The gate
+        // above only picks which readings to use; this decides where the dot
+        // actually sits, weighting each accepted reading by how tight it says
+        // it is. The circle still shows the true uncertainty, so the display
+        // never claims to be more certain than the phone is.
+        const smoothed = smootherRef.current.push(c.latitude, c.longitude, c.accuracy, now);
+        const pos = { lat: smoothed.lat, lng: smoothed.lng, accuracy: c.accuracy };
         lastMapPosition = pos;
         setGps(pos);
 
@@ -1586,9 +1632,20 @@ export function MapView() {
         const msg = typeof code === "number" ? geoErrMsg(code) : err.message;
         if (msg) showToast(msg);
       },
+      undefined,
+      // Sustained tracking. The bare Android watch yields roughly one reading
+      // every 10s; at walking pace that is ~14m of ground between updates, so
+      // the dot froze and then jumped, and no smoothing downstream can invent
+      // the positions in between. Pumping keeps readings coming every ~2.5s.
+      // pumpMaxMs null removes the 90s cap the LOCATE cycle uses, because
+      // tracking has to last as long as the map is open, not 90 seconds.
+      { pump: true, pumpMaxMs: null },
     );
     return () => watch.stop();
-  }, []);
+    // trackingOn restarts the watch: leaving the map running while the app is
+    // backgrounded would poll GNSS every 2.5s for nothing, which is the real
+    // battery cost of the faster rate.
+  }, [trackingOn]);
 
   // Compass fallback for heading at or below walking pace, where GPS course
   // between fixes is unreliable. Independent of the GPS cadence: orientation
@@ -1672,8 +1729,46 @@ export function MapView() {
       gpsMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([gps.lng, gps.lat])
         .addTo(map);
+    }
+
+    // Glide to the new position instead of teleporting. Even with readings
+    // every 2.5s a hard jump reads as the dot flicking about; easing over a
+    // fraction of that gap makes the same data look like movement. Purely
+    // presentational, and the tween is always shorter than the interval so the
+    // dot has settled before the next reading lands.
+    const target = { lat: gps.lat, lng: gps.lng };
+    const from = drawnRef.current;
+    if (tweenRef.current !== null) {
+      cancelAnimationFrame(tweenRef.current);
+      tweenRef.current = null;
+    }
+
+    const place = (lat: number, lng: number) => {
+      drawnRef.current = { lat, lng };
+      gpsMarkerRef.current?.setLngLat([lng, lat]);
+      accuracyMarkerRef.current?.setLngLat([lng, lat]);
+    };
+
+    const skipTween =
+      !from ||
+      prefersReducedMotion() ||
+      // Beyond this the filter has reseeded somewhere new, so sliding would
+      // draw a path the holder never walked.
+      metresBetween(from.lat, from.lng, target.lat, target.lng) > GPS_TWEEN_MAX_METRES;
+
+    if (skipTween) {
+      place(target.lat, target.lng);
     } else {
-      gpsMarkerRef.current.setLngLat([gps.lng, gps.lat]);
+      const start = performance.now();
+      const step = (nowMs: number) => {
+        const t = Math.min(1, (nowMs - start) / GPS_TWEEN_MS);
+        // easeOutCubic: covers most of the distance early, then settles, which
+        // reads as momentum rather than a linear slide.
+        const e = 1 - Math.pow(1 - t, 3);
+        place(from.lat + (target.lat - from.lat) * e, from.lng + (target.lng - from.lng) * e);
+        tweenRef.current = t < 1 ? requestAnimationFrame(step) : null;
+      };
+      tweenRef.current = requestAnimationFrame(step);
     }
 
     const metersPerPixel =
@@ -1691,12 +1786,24 @@ export function MapView() {
         .setLngLat([gps.lng, gps.lat])
         .addTo(map);
     } else {
+      // Size only. Position is the tween's job, so the circle stays centred on
+      // the dot instead of the two racing each other to the new fix. The
+      // radius is the raw reported accuracy: smoothing moves where the dot is
+      // drawn, it does not make the fix more certain than it was.
       const el = accuracyMarkerRef.current.getElement();
       el.style.width = `${diameterPx}px`;
       el.style.height = `${diameterPx}px`;
-      accuracyMarkerRef.current.setLngLat([gps.lng, gps.lat]);
     }
   }, [gps]);
+
+  // Stop a tween still in flight when the map goes away, so it cannot call
+  // setLngLat on a removed marker.
+  useEffect(
+    () => () => {
+      if (tweenRef.current !== null) cancelAnimationFrame(tweenRef.current);
+    },
+    [],
+  );
 
   // Show/rotate the heading arrow. Separate from the marker-position effect
   // above: heading and bearing change on their own schedules (GPS course or

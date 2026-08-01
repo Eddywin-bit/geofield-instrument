@@ -42,7 +42,7 @@ export function startPositionWatch(
   onReading: (coords: AcquireCoords) => void,
   onError: (err: GeolocationPositionError | Error) => void,
   onStarted?: () => void,
-  opts?: { pump?: boolean },
+  opts?: { pump?: boolean; pumpMaxMs?: number | null },
 ): PositionWatch {
   if (Capacitor.isNativePlatform()) {
     let stopped = false;
@@ -121,12 +121,21 @@ export function startPositionWatch(
         // ~50s. During an active LOCATE cycle, pump one-shot high-accuracy
         // requests every 2.5s into the same stream. Bounded at 90s and torn
         // down with the watch, so it can never become a battery drain.
+        //
+        // pumpMaxMs overrides that bound; null means run until the watch is
+        // stopped. Live map tracking needs it: at one reading per 10s a walker
+        // covers ~14m between updates, so the dot sat still and then jumped,
+        // which no amount of smoothing downstream can fix. The caller owns the
+        // battery tradeoff by stopping the watch when the map is not on screen.
+        // Omitting the field keeps the original 90s bound, so the LOCATE cycle
+        // is unchanged.
         if (opts?.pump) {
+          const pumpMaxMs = opts.pumpMaxMs === undefined ? 90_000 : opts.pumpMaxMs;
           const pumpStarted = Date.now();
           let inFlight = false;
           pumpTimer = setInterval(() => {
             if (stopped || inFlight) return;
-            if (Date.now() - pumpStarted > 90_000) {
+            if (pumpMaxMs !== null && Date.now() - pumpStarted > pumpMaxMs) {
               if (pumpTimer !== null) clearInterval(pumpTimer);
               pumpTimer = null;
               return;

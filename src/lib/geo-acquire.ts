@@ -25,7 +25,18 @@ export type AcquireHandlers = {
 
 export type Acquisition = { stop: () => void };
 
-export type PositionWatch = { stop: () => void };
+export type PositionWatch = {
+  stop: () => void;
+  /**
+   * Change how often the native pump polls, between polls. Live map tracking
+   * uses this to poll hard while the holder is walking and back off while they
+   * stand still, which is where most of a field day is spent. No-op on web and
+   * when the pump is not running.
+   */
+  setPumpIntervalMs: (ms: number) => void;
+};
+
+const DEFAULT_PUMP_INTERVAL_MS = 2_500;
 
 /**
  * The only place in the app that decides where position readings come from.
@@ -42,12 +53,13 @@ export function startPositionWatch(
   onReading: (coords: AcquireCoords) => void,
   onError: (err: GeolocationPositionError | Error) => void,
   onStarted?: () => void,
-  opts?: { pump?: boolean },
+  opts?: { pump?: boolean; pumpMaxMs?: number | null },
 ): PositionWatch {
   if (Capacitor.isNativePlatform()) {
     let stopped = false;
     let release: (() => void) | null = null;
-    let pumpTimer: ReturnType<typeof setInterval> | null = null;
+    let pumpTimer: ReturnType<typeof setTimeout> | null = null;
+    let pumpIntervalMs = DEFAULT_PUMP_INTERVAL_MS;
 
     void (async () => {
       try {
@@ -121,14 +133,33 @@ export function startPositionWatch(
         // ~50s. During an active LOCATE cycle, pump one-shot high-accuracy
         // requests every 2.5s into the same stream. Bounded at 90s and torn
         // down with the watch, so it can never become a battery drain.
+        //
+        // pumpMaxMs overrides that bound; null means run until the watch is
+        // stopped. Live map tracking needs it: at one reading per 10s a walker
+        // covers ~14m between updates, so the dot sat still and then jumped,
+        // which no amount of smoothing downstream can fix. The caller owns the
+        // battery tradeoff by stopping the watch when the map is not on screen.
+        // Omitting the field keeps the original 90s bound, so the LOCATE cycle
+        // is unchanged.
         if (opts?.pump) {
+          const pumpMaxMs = opts.pumpMaxMs === undefined ? 90_000 : opts.pumpMaxMs;
           const pumpStarted = Date.now();
           let inFlight = false;
-          pumpTimer = setInterval(() => {
-            if (stopped || inFlight) return;
-            if (Date.now() - pumpStarted > 90_000) {
-              if (pumpTimer !== null) clearInterval(pumpTimer);
-              pumpTimer = null;
+
+          // Self-rescheduling rather than setInterval, so the cadence can be
+          // changed between polls (see setPumpIntervalMs). It also means a slow
+          // fix can never stack requests: the next poll is only scheduled once
+          // the previous one has settled.
+          const schedule = () => {
+            if (stopped) return;
+            pumpTimer = setTimeout(tick, pumpIntervalMs);
+          };
+          const tick = () => {
+            pumpTimer = null;
+            if (stopped) return;
+            if (pumpMaxMs !== null && Date.now() - pumpStarted > pumpMaxMs) return;
+            if (inFlight) {
+              schedule();
               return;
             }
             inFlight = true;
@@ -151,8 +182,10 @@ export function startPositionWatch(
               })
               .finally(() => {
                 inFlight = false;
+                schedule();
               });
-          }, 2_500);
+          };
+          schedule();
         }
       } catch (err) {
         onError(err as Error);
@@ -163,18 +196,23 @@ export function startPositionWatch(
       stop: () => {
         stopped = true;
         if (pumpTimer !== null) {
-          clearInterval(pumpTimer);
+          clearTimeout(pumpTimer);
           pumpTimer = null;
         }
         release?.();
         release = null;
+      },
+      // Takes effect from the next poll. Floored so a caller cannot turn this
+      // into a request storm.
+      setPumpIntervalMs: (ms: number) => {
+        pumpIntervalMs = Math.max(1_000, ms);
       },
     };
   }
 
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     onError(new Error("Geolocation not available"));
-    return { stop: () => {} };
+    return { stop: () => {}, setPumpIntervalMs: () => {} };
   }
 
   const id = navigator.geolocation.watchPosition(
@@ -192,6 +230,8 @@ export function startPositionWatch(
 
   return {
     stop: () => navigator.geolocation.clearWatch(id),
+    // Web's watchPosition already streams at its own cadence; there is no pump.
+    setPumpIntervalMs: () => {},
   };
 }
 

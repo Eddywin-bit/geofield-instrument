@@ -804,6 +804,42 @@ export function MapView() {
   const headingArrowRef = useRef<HTMLDivElement | null>(null);
   const reapplyGeologyRef = useRef<(() => void) | null>(null);
   const attributionRef = useRef<maplibregl.AttributionControl | null>(null);
+
+  // Mount exactly one attribution control, collapsed to its ⓘ button.
+  //
+  // Duplicates were possible because the style-swap effect adds the control
+  // from a `once("style.load")` callback: if the effect ran twice before the
+  // first callback fired, attributionRef was still null on the second run, so
+  // nothing got removed and both callbacks then added a control. Only the last
+  // one was tracked, leaving the earlier bar stranded on the map forever.
+  // Sweeping the DOM for any stray control before adding makes that
+  // unrepresentable no matter how the callbacks interleave.
+  //
+  // Attribution itself stays: OpenStreetMap's ODbL and the OpenFreeMap and
+  // OpenMapTiles terms all require crediting on the map. Compact and closed is
+  // the accepted form of that, a small ⓘ the reader taps to see the credits,
+  // so it costs one icon of screen instead of a banner across the top.
+  const mountAttribution = (map: maplibregl.Map) => {
+    if (attributionRef.current) {
+      try {
+        map.removeControl(attributionRef.current);
+      } catch {
+        /* already gone with the old style */
+      }
+      attributionRef.current = null;
+    }
+    for (const stray of map.getContainer().querySelectorAll(".maplibregl-ctrl-attrib")) {
+      stray.parentElement?.removeChild(stray);
+    }
+    const control = new maplibregl.AttributionControl({ compact: true });
+    attributionRef.current = control;
+    map.addControl(control, "top-left");
+    // Start closed. MapLibre renders the control as a <details>; clearing the
+    // open state leaves just the ⓘ, and tapping it still expands the credits.
+    const el = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+    el?.removeAttribute("open");
+    el?.classList.remove("maplibregl-compact-show");
+  };
   const firstRunRef = useRef(true);
   const [online, setOnline] = useState(false);
   const [popup, setPopup] = useState<Popup | null>(null);
@@ -877,8 +913,7 @@ export function MapView() {
         // as broken, not as "zoomed out".
         minZoom: 1.3,
       });
-      attributionRef.current = new maplibregl.AttributionControl({ compact: true });
-      map.addControl(attributionRef.current, "top-left");
+      mountAttribution(map);
       map.addControl(new maplibregl.ScaleControl({ maxWidth: 96, unit: "metric" }), "bottom-left");
     } catch (err) {
       console.warn("[MapView] map construction failed", err);
@@ -1402,22 +1437,13 @@ export function MapView() {
     const map = mapRef.current;
     if (!map) return;
     setPopup(null);
-    if (attributionRef.current) {
-      try {
-        map.removeControl(attributionRef.current);
-      } catch {
-        /* ignore */
-      }
-      attributionRef.current = null;
-    }
     // MapLibre accepts a style URL directly. Online gets Liberty (vector);
     // offline keeps our locally built style. The style.load handler below
     // re-adds attribution and re-applies our layers either way, and applyAll
     // already hides geology and capitals while online.
     map.setStyle(online ? ONLINE_STYLE_URL : buildStyle(false, basemapReady), { diff: false });
     map.once("style.load", () => {
-      attributionRef.current = new maplibregl.AttributionControl({ compact: true });
-      map.addControl(attributionRef.current, "top-left");
+      mountAttribution(map);
       reapplyGeologyRef.current?.();
     });
   }, [online, basemapReady]);

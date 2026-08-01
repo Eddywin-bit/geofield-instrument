@@ -4,6 +4,7 @@
 import type { ReactNode } from "react";
 import {
   BookOpen,
+  Cloud,
   Crosshair,
   Database,
   FileText,
@@ -115,6 +116,11 @@ export const ABOUT_SECTIONS: AboutSection[] = [
           title="Map"
           text="The full geological map with an offline base map of Ghana's roads, rivers and towns."
         />
+        <Row
+          icon={Cloud}
+          title="Back up"
+          text="Copy your observations to your own Google Drive, so a lost phone does not lose your work."
+        />
       </div>
     ),
   },
@@ -133,6 +139,10 @@ export const ABOUT_SECTIONS: AboutSection[] = [
           The Map tab offers two views. Offline draws Ghana from a base map stored on your phone,
           alongside the geology. Online fetches live street tiles and needs data. Offline is the
           field mode.
+        </Body>
+        <Body>
+          Backing up and restoring are the only things that need a connection. Log all day in the
+          field with no signal, then back up when you are back on Wi-Fi.
         </Body>
       </div>
     ),
@@ -195,13 +205,22 @@ export const ABOUT_SECTIONS: AboutSection[] = [
     slug: "privacy",
     icon: ScrollText,
     title: "Privacy",
-    subtitle: "Your logs stay on your phone",
+    subtitle: "Nothing leaves your phone unless you back it up",
     content: (
       <div className="space-y-3">
         <Body>
-          GeoField has no account, no tracking and no analytics. Your notes, photos, voice memos and
-          coordinates are stored on your device only. Nothing is uploaded, and nothing is deleted
-          unless you delete it.
+          GeoField has no tracking and no analytics. Your notes, photos, voice memos and coordinates
+          are stored on your device, and nothing is deleted unless you delete it.
+        </Body>
+        <Body>
+          Backup is the one time your logs leave the phone, and only when you tap Back up now. They
+          go to your own Google Drive, into a folder named GeoField Backups. There is no GeoField
+          server and no one else receives a copy. GeoField can only see the files it created in your
+          Drive, nothing else you keep there.
+        </Body>
+        <Body>
+          Signing in is optional. Identifying units and recording logs work exactly the same without
+          it.
         </Body>
         <Body>
           Location is read only while you are using the app, and only to identify your unit and

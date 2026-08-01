@@ -42,6 +42,23 @@ const GPS_MOVING_SPEED_MPS = 0.7;
 // set above the noise floor so jitter alone cannot look like walking.
 const GPS_MOVING_STEP_M = 10;
 const GPS_IDLE_AFTER_MS = 20_000;
+// How long a good fix outranks a much worse one while the holder is standing
+// still. Long, because a fix does not decay if nobody moved: the only reason
+// to accept a downgrade is that the good source is genuinely gone.
+const GPS_STILL_HOLD_MS = 90_000;
+// Holding out while actually walking, for the seconds after movement was last
+// seen. Short, because ground is being covered and a slightly worse fresh fix
+// beats an accurate one from where the walk began.
+const GPS_WALKING_HOLD_MS = 4_000;
+// After this many consecutive worse readings, reception has really changed
+// rather than blipped, so accept rather than freeze the dot indefinitely.
+// Deliberately small: it is the backstop for the case detection cannot see,
+// slow walking while accuracy is poor enough to hide the displacement, and it
+// caps how long the dot can sit still while its owner does not.
+const GPS_MAX_CONSECUTIVE_REJECTS = 4;
+// Displacement is only believed as movement from readings at least this tight.
+// Looser than this and the jump could be the error, not the holder.
+const GPS_STEP_TRUST_ACCURACY_M = 30;
 
 const HEADING_GPS_SPEED_MPS = 1.8;
 // A GPS-course bearing needs the two fixes to actually be far enough apart
@@ -900,6 +917,7 @@ export function MapView() {
   const lastRawRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastMovedAtRef = useRef(0);
   const pumpMsRef = useRef(GPS_PUMP_FAST_MS);
+  const rejectedRunRef = useRef(0);
   // Where the marker is drawn right now, which trails the smoothed target
   // while the tween runs. Kept in a ref, not state: it changes every frame and
   // nothing renders from it.
@@ -1584,6 +1602,7 @@ export function MapView() {
     lastRawRef.current = null;
     lastMovedAtRef.current = Date.now();
     pumpMsRef.current = GPS_PUMP_FAST_MS;
+    rejectedRunRef.current = 0;
     const watch = startPositionWatch(
       (c) => {
         const now = Date.now();
@@ -1595,6 +1614,34 @@ export function MapView() {
         // instantly stop just because one interleaved reading lacked speed.
         const movingFast = speedMps !== null ? speedMps > HEADING_GPS_SPEED_MPS : movingFastRef.current;
         movingFastRef.current = movingFast;
+
+        // Movement is judged BEFORE the gate below, and from every reading
+        // including the ones the gate goes on to reject. Doing it after was a
+        // deadlock: the gate holds a good fix, the holder walks into worse
+        // reception, every new reading is rejected, so nothing ever updates
+        // the movement state and the gate keeps rejecting. Simulated at 3 of 8
+        // fixes accepted while walking away, meaning a stuck dot.
+        const lastRaw = lastRawRef.current;
+        const step = lastRaw ? haversineMeters(lastRaw, { lat: c.latitude, lng: c.longitude }) : 0;
+        // Displacement only counts as evidence when the reading is tight
+        // enough for the jump to mean something. A 100m fix can land 100m away
+        // with nobody moving, and treating that as a walk would unlock the
+        // gate for exactly the readings it exists to keep out.
+        const stepped =
+          !!lastRaw &&
+          c.accuracy <= GPS_STEP_TRUST_ACCURACY_M &&
+          step > Math.max(GPS_MOVING_STEP_M, c.accuracy);
+        lastRawRef.current = { lat: c.latitude, lng: c.longitude };
+        const moving = (speedMps !== null && speedMps > GPS_MOVING_SPEED_MPS) || stepped;
+        if (moving) lastMovedAtRef.current = now;
+
+        // Adapt the poll rate from the same signal.
+        const idle = now - lastMovedAtRef.current > GPS_IDLE_AFTER_MS;
+        const wantMs = idle ? GPS_PUMP_IDLE_MS : GPS_PUMP_FAST_MS;
+        if (wantMs !== pumpMsRef.current) {
+          pumpMsRef.current = wantMs;
+          watchRef.current?.setPumpIntervalMs(wantMs);
+        }
 
         // The fused provider interleaves coarse network fixes with fine GNSS
         // fixes; rendering every raw reading makes the dot teleport. Accept a
@@ -1608,8 +1655,33 @@ export function MapView() {
         // slightly-worse fix replace it almost immediately instead of waiting
         // for one that beats the old fix on accuracy, which could be many
         // seconds and many metres away.
-        const rejectWindowMs = movingFast ? 2_000 : 15_000;
-        if (prev && c.accuracy > prev.accuracy * 1.5 && now - prev.at < rejectWindowMs) return;
+        //
+        // Standing still is the opposite case, and 15s was far too short for
+        // it. Reported from a room: a 9m GNSS fix, then a 100m one seconds
+        // later, and the dot jumps across the street. Those are not one source
+        // degrading, they are the fused provider alternating between GNSS and
+        // a Wi-Fi/cell fix. A fix does not go stale if the holder has not
+        // moved, so an old accurate reading beats a fresh coarse one and there
+        // is no reason to accept the downgrade after 15s. Hold it far longer
+        // while stationary, which is in practice "ignore the network fixes"
+        // without losing them as a fallback.
+        // Three regimes, not two. The old code only shortened the window for
+        // vehicle speed, so a walker leaving good reception got the full 15s
+        // hold and the dot stuck to the spot they set off from. Walking covers
+        // ground, so recency has to win there too, just less aggressively than
+        // in a car.
+        const rejectWindowMs = movingFast ? 2_000 : idle ? GPS_STILL_HOLD_MS : GPS_WALKING_HOLD_MS;
+        const worse = !!prev && c.accuracy > prev.accuracy * 1.5;
+        // Safety valve: a run of consecutive worse readings means reception
+        // genuinely changed (walked indoors), not one blip, so stop holding
+        // out for a good fix that is not coming back and take what there is.
+        if (worse && rejectedRunRef.current < GPS_MAX_CONSECUTIVE_REJECTS) {
+          if (prev && now - prev.at < rejectWindowMs) {
+            rejectedRunRef.current += 1;
+            return;
+          }
+        }
+        rejectedRunRef.current = 0;
         gpsGateRef.current = { accuracy: c.accuracy, at: now };
         // Draw the reading as measured. A Kalman filter sat here briefly and
         // was removed after two field regressions: tuned tight it dragged the
@@ -1622,26 +1694,6 @@ export function MapView() {
         const pos = { lat: c.latitude, lng: c.longitude, accuracy: c.accuracy };
         lastMapPosition = pos;
         setGps(pos);
-
-        // Adapt the poll rate. Judged on the raw reading, not the smoothed one:
-        // the filter deliberately damps movement, so asking it whether the
-        // holder is walking would be asking the wrong witness. Displacement
-        // backs up speed because the fused provider's coarser readings often
-        // omit it entirely.
-        const lastRaw = lastRawRef.current;
-        const stepped =
-          lastRaw !== null &&
-          haversineMeters(lastRaw, { lat: c.latitude, lng: c.longitude }) > GPS_MOVING_STEP_M;
-        lastRawRef.current = { lat: c.latitude, lng: c.longitude };
-        const moving = (speedMps !== null && speedMps > GPS_MOVING_SPEED_MPS) || stepped;
-
-        if (moving) lastMovedAtRef.current = now;
-        const idle = now - lastMovedAtRef.current > GPS_IDLE_AFTER_MS;
-        const wantMs = idle ? GPS_PUMP_IDLE_MS : GPS_PUMP_FAST_MS;
-        if (wantMs !== pumpMsRef.current) {
-          pumpMsRef.current = wantMs;
-          watchRef.current?.setPumpIntervalMs(wantMs);
-        }
 
         // Heading: GPS course between consecutive accepted fixes while moving
         // fast enough for that bearing to be reliable; device compass

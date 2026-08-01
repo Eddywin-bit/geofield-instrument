@@ -15,6 +15,13 @@ export type AcquireCoords = {
   // Doppler-derived on native/most browsers). Null when unavailable, never
   // estimated here so callers can tell "known stationary" from "unknown".
   speed: number | null;
+  // Course over ground in degrees clockwise from true north, when the platform
+  // reports one. GNSS derives this from Doppler shift rather than by comparing
+  // positions, so it is accurate immediately and needs no travelled baseline.
+  // Only meaningful while actually moving: standing still there is no course,
+  // and platforms variously return null, 0, or noise. Callers must gate it on
+  // speed. Null when unavailable, never estimated here.
+  heading: number | null;
 };
 
 export type AcquireHandlers = {
@@ -99,6 +106,7 @@ export function startPositionWatch(
               longitude: pos.coords.longitude,
               accuracy: pos.coords.accuracy,
               speed: pos.coords.speed,
+              heading: pos.coords.heading,
             });
           })
           .catch(() => {
@@ -118,6 +126,7 @@ export function startPositionWatch(
               longitude: pos.coords.longitude,
               accuracy: pos.coords.accuracy,
               speed: pos.coords.speed,
+              heading: pos.coords.heading,
             });
           },
         );
@@ -175,6 +184,7 @@ export function startPositionWatch(
                   longitude: pos.coords.longitude,
                   accuracy: pos.coords.accuracy,
                   speed: pos.coords.speed,
+                  heading: pos.coords.heading,
                 });
               })
               .catch(() => {
@@ -222,6 +232,7 @@ export function startPositionWatch(
         longitude: pos.coords.longitude,
         accuracy: pos.coords.accuracy,
         speed: pos.coords.speed,
+        heading: pos.coords.heading,
       }),
     (err) => onError(err),
     { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 },

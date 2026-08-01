@@ -880,6 +880,12 @@ export function MapView() {
   const [basemapProbed, setBasemapProbed] = useState(basemapSession.ready);
   const [dl, setDl] = useState<BasemapDl>(basemapDl.get());
   const [toast, setToast] = useState<string | null>(null);
+  // Pause live tracking while the 92MB basemap is coming down or being written.
+  // Both phases are main-thread heavy (base64 encoding, filesystem writes), and
+  // a dot updating four times faster with a tween running most of the time is
+  // pure competition for the work the user is actually waiting on. Nobody is
+  // watching the dot on the download screen.
+  const downloadBusy = dl.status === "downloading" || dl.status === "saving";
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
   const onlineRef = useRef(online);
@@ -899,18 +905,19 @@ export function MapView() {
   // being looked at. Backgrounding the app pauses it; coming back resumes and
   // reseeds the filter, since a fix from before the gap says nothing about
   // where the holder is now.
-  const [trackingOn, setTrackingOn] = useState(
+  const [mapVisible, setMapVisible] = useState(
     typeof document === "undefined" ? true : !document.hidden,
   );
   useEffect(() => {
     const onVis = () => {
       const visible = !document.hidden;
       if (!visible) smootherRef.current.reset();
-      setTrackingOn(visible);
+      setMapVisible(visible);
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
+  const trackingActive = mapVisible && !downloadBusy;
   // Last *accepted* GPS-watch fix, kept for GPS-course bearing between
   // consecutive fixes. Independent of gpsGateRef, which only gates accept/reject.
   const prevFixRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
@@ -1567,6 +1574,9 @@ export function MapView() {
 
   // Watch GPS. Uses the fused provider on native; navigator.geolocation on web.
   useEffect(() => {
+    // Without this guard the effect merely restarted the watch whenever the
+    // flag flipped, so pausing never actually paused anything.
+    if (!trackingActive) return;
     const watch = startPositionWatch(
       (c) => {
         const now = Date.now();
@@ -1642,10 +1652,7 @@ export function MapView() {
       { pump: true, pumpMaxMs: null },
     );
     return () => watch.stop();
-    // trackingOn restarts the watch: leaving the map running while the app is
-    // backgrounded would poll GNSS every 2.5s for nothing, which is the real
-    // battery cost of the faster rate.
-  }, [trackingOn]);
+  }, [trackingActive]);
 
   // Compass fallback for heading at or below walking pace, where GPS course
   // between fixes is unreliable. Independent of the GPS cadence: orientation

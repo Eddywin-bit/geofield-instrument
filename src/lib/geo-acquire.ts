@@ -25,7 +25,18 @@ export type AcquireHandlers = {
 
 export type Acquisition = { stop: () => void };
 
-export type PositionWatch = { stop: () => void };
+export type PositionWatch = {
+  stop: () => void;
+  /**
+   * Change how often the native pump polls, between polls. Live map tracking
+   * uses this to poll hard while the holder is walking and back off while they
+   * stand still, which is where most of a field day is spent. No-op on web and
+   * when the pump is not running.
+   */
+  setPumpIntervalMs: (ms: number) => void;
+};
+
+const DEFAULT_PUMP_INTERVAL_MS = 2_500;
 
 /**
  * The only place in the app that decides where position readings come from.
@@ -47,7 +58,8 @@ export function startPositionWatch(
   if (Capacitor.isNativePlatform()) {
     let stopped = false;
     let release: (() => void) | null = null;
-    let pumpTimer: ReturnType<typeof setInterval> | null = null;
+    let pumpTimer: ReturnType<typeof setTimeout> | null = null;
+    let pumpIntervalMs = DEFAULT_PUMP_INTERVAL_MS;
 
     void (async () => {
       try {
@@ -133,11 +145,21 @@ export function startPositionWatch(
           const pumpMaxMs = opts.pumpMaxMs === undefined ? 90_000 : opts.pumpMaxMs;
           const pumpStarted = Date.now();
           let inFlight = false;
-          pumpTimer = setInterval(() => {
-            if (stopped || inFlight) return;
-            if (pumpMaxMs !== null && Date.now() - pumpStarted > pumpMaxMs) {
-              if (pumpTimer !== null) clearInterval(pumpTimer);
-              pumpTimer = null;
+
+          // Self-rescheduling rather than setInterval, so the cadence can be
+          // changed between polls (see setPumpIntervalMs). It also means a slow
+          // fix can never stack requests: the next poll is only scheduled once
+          // the previous one has settled.
+          const schedule = () => {
+            if (stopped) return;
+            pumpTimer = setTimeout(tick, pumpIntervalMs);
+          };
+          const tick = () => {
+            pumpTimer = null;
+            if (stopped) return;
+            if (pumpMaxMs !== null && Date.now() - pumpStarted > pumpMaxMs) return;
+            if (inFlight) {
+              schedule();
               return;
             }
             inFlight = true;
@@ -160,8 +182,10 @@ export function startPositionWatch(
               })
               .finally(() => {
                 inFlight = false;
+                schedule();
               });
-          }, 2_500);
+          };
+          schedule();
         }
       } catch (err) {
         onError(err as Error);
@@ -172,18 +196,23 @@ export function startPositionWatch(
       stop: () => {
         stopped = true;
         if (pumpTimer !== null) {
-          clearInterval(pumpTimer);
+          clearTimeout(pumpTimer);
           pumpTimer = null;
         }
         release?.();
         release = null;
+      },
+      // Takes effect from the next poll. Floored so a caller cannot turn this
+      // into a request storm.
+      setPumpIntervalMs: (ms: number) => {
+        pumpIntervalMs = Math.max(1_000, ms);
       },
     };
   }
 
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     onError(new Error("Geolocation not available"));
-    return { stop: () => {} };
+    return { stop: () => {}, setPumpIntervalMs: () => {} };
   }
 
   const id = navigator.geolocation.watchPosition(
@@ -201,6 +230,8 @@ export function startPositionWatch(
 
   return {
     stop: () => navigator.geolocation.clearWatch(id),
+    // Web's watchPosition already streams at its own cadence; there is no pump.
+    setPumpIntervalMs: () => {},
   };
 }
 

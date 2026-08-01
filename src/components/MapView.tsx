@@ -6,7 +6,7 @@ import { Navigation2, Crosshair, ChevronDown, Layers, Loader2, Minus, Plus, X } 
 import { Protocol, PMTiles, FileSource } from "pmtiles";
 import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
-import { startPositionWatch, startCompassWatch } from "../lib/geo-acquire";
+import { startPositionWatch, startCompassWatch, type PositionWatch } from "../lib/geo-acquire";
 import { createPositionSmoother, metresBetween } from "../lib/gps-smooth";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
@@ -30,6 +30,20 @@ const LOCATION_ARROW_BLUE = "#49A1EA";
 // Dot tween. Comfortably shorter than the ~2.5s tracking interval so the
 // marker always settles before the next reading, and long enough that the eye
 // reads travel rather than a jump.
+// Adaptive tracking cadence. Walking gets the fast rate; standing still does
+// not need it, and a field day is mostly standing still at outcrops. The
+// asymmetry is deliberate: speed up on the first hint of movement, only slow
+// down after sustained stillness, so the cost of guessing wrong is one slow
+// interval at the start of a walk rather than a dot that lags the whole way.
+const GPS_PUMP_FAST_MS = 2_500;
+const GPS_PUMP_IDLE_MS = 6_000;
+// Below walking pace on purpose, so ambling still counts as moving.
+const GPS_MOVING_SPEED_MPS = 0.7;
+// Fallback when the provider omits speed: real displacement between fixes,
+// set above the noise floor so jitter alone cannot look like walking.
+const GPS_MOVING_STEP_M = 10;
+const GPS_IDLE_AFTER_MS = 20_000;
+
 const GPS_TWEEN_MS = 900;
 // Past this the filter has reseeded somewhere new rather than tracked a walk,
 // so easing across it would drag the dot over ground nobody covered.
@@ -895,6 +909,12 @@ export function MapView() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsGateRef = useRef<{ accuracy: number; at: number } | null>(null);
   const smootherRef = useRef(createPositionSmoother());
+  // Adaptive-cadence bookkeeping. Refs, not state: these change on every
+  // reading and drive a side effect, never a render.
+  const watchRef = useRef<PositionWatch | null>(null);
+  const lastRawRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastMovedAtRef = useRef(0);
+  const pumpMsRef = useRef(GPS_PUMP_FAST_MS);
   // Where the marker is drawn right now, which trails the smoothed target
   // while the tween runs. Kept in a ref, not state: it changes every frame and
   // nothing renders from it.
@@ -1577,6 +1597,12 @@ export function MapView() {
     // Without this guard the effect merely restarted the watch whenever the
     // flag flipped, so pausing never actually paused anything.
     if (!trackingActive) return;
+    // Start every session at the fast rate and treat the holder as just having
+    // moved. Resuming into idle mode would mean a slow first fix at exactly the
+    // moment the map is reopened, which is when it is most likely being read.
+    lastRawRef.current = null;
+    lastMovedAtRef.current = Date.now();
+    pumpMsRef.current = GPS_PUMP_FAST_MS;
     const watch = startPositionWatch(
       (c) => {
         const now = Date.now();
@@ -1613,6 +1639,26 @@ export function MapView() {
         const pos = { lat: smoothed.lat, lng: smoothed.lng, accuracy: c.accuracy };
         lastMapPosition = pos;
         setGps(pos);
+
+        // Adapt the poll rate. Judged on the raw reading, not the smoothed one:
+        // the filter deliberately damps movement, so asking it whether the
+        // holder is walking would be asking the wrong witness. Displacement
+        // backs up speed because the fused provider's coarser readings often
+        // omit it entirely.
+        const lastRaw = lastRawRef.current;
+        const stepped =
+          lastRaw !== null &&
+          metresBetween(lastRaw.lat, lastRaw.lng, c.latitude, c.longitude) > GPS_MOVING_STEP_M;
+        lastRawRef.current = { lat: c.latitude, lng: c.longitude };
+        const moving = (speedMps !== null && speedMps > GPS_MOVING_SPEED_MPS) || stepped;
+
+        if (moving) lastMovedAtRef.current = now;
+        const idle = now - lastMovedAtRef.current > GPS_IDLE_AFTER_MS;
+        const wantMs = idle ? GPS_PUMP_IDLE_MS : GPS_PUMP_FAST_MS;
+        if (wantMs !== pumpMsRef.current) {
+          pumpMsRef.current = wantMs;
+          watchRef.current?.setPumpIntervalMs(wantMs);
+        }
 
         // Heading: GPS course between consecutive accepted fixes while moving
         // fast enough for that bearing to be reliable; device compass
@@ -1651,7 +1697,11 @@ export function MapView() {
       // tracking has to last as long as the map is open, not 90 seconds.
       { pump: true, pumpMaxMs: null },
     );
-    return () => watch.stop();
+    watchRef.current = watch;
+    return () => {
+      watchRef.current = null;
+      watch.stop();
+    };
   }, [trackingActive]);
 
   // Compass fallback for heading at or below walking pace, where GPS course

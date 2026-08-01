@@ -20,12 +20,24 @@
 
 export type SmoothedPosition = { lat: number; lng: number };
 
-// Process noise in metres per second: how far the holder might drift between
-// readings. Higher tracks harder and reacts faster, lower is smoother but
-// lags. 3 m/s sits above walking pace (~1.4 m/s), which keeps the dot honest
-// when you actually move while still absorbing a single wild fix. This is the
-// dial to turn if the dot ever feels sluggish or twitchy in the field.
-const PROCESS_NOISE_MPS = 3;
+// Process noise in metres per second: how much the holder might plausibly have
+// moved between readings. It sets the balance between trusting the estimate and
+// trusting the next fix, and no single value serves both cases, because the two
+// cases want opposite things. Measured at 2.5s updates:
+//
+//   q     walking lag (25m acc)   wander while still   60m spike moves dot
+//   1.5          large                   1.4m                 1.5m
+//   3           16.7m                    2.8m                 2.5m
+//   10           5.5m                    8.6m                 9.1m
+//
+// A fixed 3 was the original mistake: it looked fine against an optimistic 6m
+// accuracy but over-damps at the 15 to 40m a phone actually reports under tree
+// cover, leaving the dot trailing metres behind a walker. So the caller drives
+// it from the same movement detection that drives the poll rate: loose while
+// moving so the dot keeps up, tight while still so it sits rock steady and
+// swallows spikes. That is where each behaviour is actually wanted.
+export const PROCESS_NOISE_MOVING_MPS = 10;
+export const PROCESS_NOISE_STILL_MPS = 1.5;
 
 // A jump beyond this is not noise, it is a different place: the app was
 // resumed across town, or the fused provider handed over from a stale network
@@ -49,11 +61,14 @@ export type PositionSmoother = {
   push: (lat: number, lng: number, accuracyM: number, atMs: number) => SmoothedPosition;
   /** Drop all history, so the next reading is taken at face value. */
   reset: () => void;
+  /** Retune between readings as the holder starts and stops moving. */
+  setProcessNoiseMps: (mps: number) => void;
 };
 
 export function createPositionSmoother(
-  processNoiseMps: number = PROCESS_NOISE_MPS,
+  initialProcessNoiseMps: number = PROCESS_NOISE_MOVING_MPS,
 ): PositionSmoother {
+  let processNoiseMps = initialProcessNoiseMps;
   let lat = 0;
   let lng = 0;
   // Negative marks "no estimate yet", which is why this is not `null`: it also
@@ -71,6 +86,9 @@ export function createPositionSmoother(
   return {
     reset: () => {
       variance = -1;
+    },
+    setProcessNoiseMps: (mps: number) => {
+      processNoiseMps = Math.max(0.1, mps);
     },
     push: (nextLat, nextLng, accuracyM, atMs) => {
       // A phone reporting 0 m would make the gain 1 and the filter a no-op;

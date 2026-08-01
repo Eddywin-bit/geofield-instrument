@@ -7,7 +7,12 @@ import { Protocol, PMTiles, FileSource } from "pmtiles";
 import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { startPositionWatch, startCompassWatch, type PositionWatch } from "../lib/geo-acquire";
-import { createPositionSmoother, metresBetween } from "../lib/gps-smooth";
+import {
+  createPositionSmoother,
+  metresBetween,
+  PROCESS_NOISE_MOVING_MPS,
+  PROCESS_NOISE_STILL_MPS,
+} from "../lib/gps-smooth";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
@@ -1603,6 +1608,7 @@ export function MapView() {
     lastRawRef.current = null;
     lastMovedAtRef.current = Date.now();
     pumpMsRef.current = GPS_PUMP_FAST_MS;
+    smootherRef.current.setProcessNoiseMps(PROCESS_NOISE_MOVING_MPS);
     const watch = startPositionWatch(
       (c) => {
         const now = Date.now();
@@ -1658,6 +1664,11 @@ export function MapView() {
         if (wantMs !== pumpMsRef.current) {
           pumpMsRef.current = wantMs;
           watchRef.current?.setPumpIntervalMs(wantMs);
+          // Retune the filter with the same signal. Loose while moving so the
+          // dot keeps up, tight while still so it stops wandering.
+          smootherRef.current.setProcessNoiseMps(
+            idle ? PROCESS_NOISE_STILL_MPS : PROCESS_NOISE_MOVING_MPS,
+          );
         }
 
         // Heading: GPS course between consecutive accepted fixes while moving

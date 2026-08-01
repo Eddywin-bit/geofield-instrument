@@ -5,7 +5,6 @@ import {
   Crosshair,
   ChevronDown,
   ChevronRight,
-  MapPin,
   Loader2,
   Keyboard,
   NotebookPen,
@@ -14,11 +13,9 @@ import {
   Cloud,
   Map as MapIcon,
   Image as ImageIcon,
-  Mic,
   type LucideIcon,
 } from "lucide-react";
-import { hydrateLogs, loadLogs, displayRef, formatCoord, formatTime, type LogEntry } from "../lib/logs-store";
-import { colorForUnit } from "../lib/unit-colors";
+import { hydrateLogs, loadLogs, formatCoord } from "../lib/logs-store";
 import { loadGeology, findUnitAt, unitByName, nearbyUnits, type GeoUnit } from "../lib/geology";
 import { requestLocationEnable } from "../lib/enable-location";
 import {
@@ -175,6 +172,14 @@ function RotatingTipCard() {
   );
 }
 
+// Survives the Locate route unmounting on a tab switch. True while an explicit
+// LOCATE ME cycle is mid-flight with no committed fix yet. Without it, leaving
+// the tab stopped the acquisition and dropped the "locating" phase, so
+// returning showed idle LOCATE ME while no fix was in. A plain module var (same
+// pattern as the map's lastMapPosition): it resets on a fresh app launch, so a
+// cold start never auto-locates.
+let locateInFlight = false;
+
 function LocateScreen() {
   const [state, setState] = useState<"idle" | "locating" | "weak" | "found" | "error">("idle");
   const [fix, setFix] = useState<Fix | null>(null);
@@ -182,10 +187,22 @@ function LocateScreen() {
   const [error, setError] = useState<string | null>(null);
   const [errorAction, setErrorAction] = useState<"location-settings" | "app-settings" | null>(null);
   const [showManual, setShowManual] = useState(false);
+  // Snapshot the module flag on the very first render, before any effect runs.
+  // The sync effect below has [state] deps, so on a fresh mount it fires with
+  // state === "idle" and would reset locateInFlight to false before the mount
+  // effect could read it. Capturing here (render time) beats that ordering.
+  const [resumeArmed] = useState(() => locateInFlight);
   const acqRef = useRef<Acquisition | null>(null);
   const stateRef = useRef(state);
+  const resumeRef = useRef(false);
   useEffect(() => {
     stateRef.current = state;
+  }, [state]);
+  // Mirror the in-flight phase into the module flag so a tab switch (which
+  // unmounts this screen) can be resumed on return. "weak" still has the
+  // acquisition running, so it counts as in-flight too.
+  useEffect(() => {
+    locateInFlight = state === "locating" || state === "weak";
   }, [state]);
 
   // Ambient reading for the GPS Accuracy stat card: without this, liveAccuracy
@@ -221,12 +238,20 @@ function LocateScreen() {
       setFix(saved);
       setLiveAccuracy(saved.manual ? null : saved.accuracy);
       setState("found");
+    } else if (resumeArmed) {
+      // A LOCATE ME cycle was still running when the user left the tab. Show the
+      // spinner again and restart acquisition (the previous cycle was stopped on
+      // unmount), so returning never sits on idle LOCATE ME with no fix coming.
+      setState("locating");
+      resumeRef.current = true;
     }
 
     return () => {
       acqRef.current?.stop();
     };
-  }, []);
+    // resumeArmed is captured once (useState initializer, no setter) so it never
+    // changes; this still runs mount-only, it just satisfies exhaustive-deps.
+  }, [resumeArmed]);
 
   // Auto-dismiss transient GPS errors. An error that carries an action the user
   // must take (location switched off, permission denied) stays until they act.
@@ -236,7 +261,6 @@ function LocateScreen() {
     return () => clearTimeout(t);
   }, [error, errorAction]);
   const allLogs = loadLogs();
-  const recent = allLogs.slice(0, 3);
 
   const resolveAndCommit = async (best: AcquireCoords, manual = false) => {
     try {
@@ -344,6 +368,16 @@ function LocateScreen() {
     });
   };
 
+  // Runs once when the mount effect above flagged a resume: start a fresh
+  // acquisition for the restored "locating" phase. Kept out of the mount effect
+  // (which has no startCycle in its deps) and left dependency-array-free, so it
+  // fires right after the resume flag is set and no-ops on every later render.
+  useEffect(() => {
+    if (!resumeRef.current) return;
+    resumeRef.current = false;
+    startCycle();
+  });
+
   const locate = async () => {
     acqRef.current?.stop();
     setError(null);
@@ -434,7 +468,10 @@ function LocateScreen() {
         <div className="px-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3">
-              <Crosshair className="h-9 w-9 text-success shrink-0" strokeWidth={1.75} />
+              <Crosshair
+                className={`h-9 w-9 text-success shrink-0 ${state === "locating" ? "animate-spin" : ""}`}
+                strokeWidth={1.75}
+              />
               <div className="min-w-0">
                 <div className="text-xs text-muted-foreground">GPS Accuracy</div>
                 <div
@@ -617,29 +654,8 @@ function LocateScreen() {
 
 
 
-      <div className="mt-8 px-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="label-instrument">Recent Activity</span>
-          {recent.length > 0 ? (
-            <Link to="/my-logs" className="text-xs font-semibold text-primary">
-              View all
-            </Link>
-          ) : (
-            <span className="mono text-[11px] text-muted-foreground">{recent.length}</span>
-          )}
-        </div>
-        <div className="space-y-2">
-          {recent.map((l) => (
-            <RecentRow key={l.id} log={l} />
-          ))}
-          {recent.length === 0 && (
-            <div className="text-xs text-muted-foreground px-1">No observations yet.</div>
-          )}
-        </div>
-      </div>
-
       {allLogs.length === 0 && (
-        <div className="mt-4 px-4 pb-2">
+        <div className="mt-8 px-4 pb-2">
           <div className="relative rounded-2xl bg-panel shadow-md shadow-black/5 p-4 overflow-hidden">
             <div className="absolute top-2 right-6 h-10 w-10 rounded-full bg-primary/10 pointer-events-none" />
             <div className="relative flex items-start gap-3">
@@ -790,65 +806,3 @@ function Collapsible({
     </div>
   );
 }
-
-function RecentRow({ log }: { log: LogEntry }) {
-  const effectivePhotos: string[] = log.photos ?? (log.photo ? [log.photo] : []);
-  const stripeColor = colorForUnit(log.unit, log.belt);
-  const hasPosition = log.lat !== null && log.lng !== null && log.accuracy !== null;
-  return (
-    <Link
-      to="/my-logs"
-      search={{ open: log.id }}
-      className="flex items-stretch rounded-2xl bg-panel shadow-md shadow-black/5 overflow-hidden active:bg-panel-2 hover:bg-panel-2 transition-colors"
-    >
-      <div className="w-1.5 shrink-0" style={{ backgroundColor: stripeColor }} />
-      <div className="flex-1 p-3 min-w-0 flex items-start gap-3">
-        <div className="h-14 w-14 rounded-md bg-panel-2 border border-border flex items-center justify-center shrink-0 overflow-hidden">
-          {effectivePhotos.length > 0 ? (
-            <img src={effectivePhotos[0]} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <ImageIcon className="h-5 w-5 text-muted-foreground" />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-bold truncate">{log.unit}</div>
-            <MapPin className="h-4 w-4 text-primary shrink-0" />
-          </div>
-          <div className="text-xs text-muted-foreground truncate mt-0.5">{log.belt}</div>
-          <div className="mono text-[10px] text-muted-foreground/80 mt-1 tracking-wide">
-            {displayRef(log)}
-          </div>
-          {log.note ? (
-            <div className="text-xs mt-1 line-clamp-1 text-foreground/90">{log.note}</div>
-          ) : (
-            <div className="text-xs mt-1 italic text-muted-foreground/70">(no note)</div>
-          )}
-          <div className="flex items-center justify-between mt-1.5">
-            <div className="flex items-center gap-3">
-              {effectivePhotos.length > 0 && (
-                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <ImageIcon className="h-3 w-3" /> Photo
-                </span>
-              )}
-              {log.hasVoice && (
-                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <Mic className="h-3 w-3 text-primary" /> Voice
-                </span>
-              )}
-              {hasPosition && (
-                <span className="mono text-[10px] text-muted-foreground">
-                  ± {log.accuracy!.toFixed(1)} m
-                </span>
-              )}
-            </div>
-            <span className="mono text-[11px] text-muted-foreground shrink-0">
-              {formatTime(log.timestamp)}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-

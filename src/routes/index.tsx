@@ -190,6 +190,11 @@ function LocateScreen() {
   const [error, setError] = useState<string | null>(null);
   const [errorAction, setErrorAction] = useState<"location-settings" | "app-settings" | null>(null);
   const [showManual, setShowManual] = useState(false);
+  // Snapshot the module flag on the very first render, before any effect runs.
+  // The sync effect below has [state] deps, so on a fresh mount it fires with
+  // state === "idle" and would reset locateInFlight to false before the mount
+  // effect could read it. Capturing here (render time) beats that ordering.
+  const [resumeArmed] = useState(() => locateInFlight);
   const acqRef = useRef<Acquisition | null>(null);
   const stateRef = useRef(state);
   const resumeRef = useRef(false);
@@ -236,7 +241,7 @@ function LocateScreen() {
       setFix(saved);
       setLiveAccuracy(saved.manual ? null : saved.accuracy);
       setState("found");
-    } else if (locateInFlight) {
+    } else if (resumeArmed) {
       // A LOCATE ME cycle was still running when the user left the tab. Show the
       // spinner again and restart acquisition (the previous cycle was stopped on
       // unmount), so returning never sits on idle LOCATE ME with no fix coming.
@@ -247,7 +252,9 @@ function LocateScreen() {
     return () => {
       acqRef.current?.stop();
     };
-  }, []);
+    // resumeArmed is captured once (useState initializer, no setter) so it never
+    // changes; this still runs mount-only, it just satisfies exhaustive-deps.
+  }, [resumeArmed]);
 
   // Auto-dismiss transient GPS errors. An error that carries an action the user
   // must take (location switched off, permission denied) stays until they act.
@@ -465,7 +472,10 @@ function LocateScreen() {
         <div className="px-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3">
-              <Crosshair className="h-9 w-9 text-success shrink-0" strokeWidth={1.75} />
+              <Crosshair
+                className={`h-9 w-9 text-success shrink-0 ${state === "locating" ? "animate-spin" : ""}`}
+                strokeWidth={1.75}
+              />
               <div className="min-w-0">
                 <div className="text-xs text-muted-foreground">GPS Accuracy</div>
                 <div

@@ -67,6 +67,10 @@ const HEADING_MIN_FIX_DISTANCE_M = 8;
 // Discard a prior fix this old rather than derive a bearing across a gap
 // that may no longer reflect the current direction of travel.
 const HEADING_MAX_FIX_AGE_MS = 20_000;
+// How long a course from travel keeps describing the arrow without fresh
+// evidence. Covers the gap between bearings while walking, and expires soon
+// enough after a stop that the compass takes over while it still matters.
+const HEADING_TRAVEL_HOLD_MS = 12_000;
 // Ignore a compass reading once it's this stale; if there's been no orientation
 // event in a while, the user hasn't necessarily moved but the sensor may be gone.
 const HEADING_MAX_COMPASS_AGE_MS = 5_000;
@@ -940,6 +944,7 @@ export function MapView() {
   // Last *accepted* GPS-watch fix, kept for GPS-course bearing between
   // consecutive fixes. Independent of gpsGateRef, which only gates accept/reject.
   const prevFixRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
+  const travelHeadingRef = useRef<{ heading: number; at: number } | null>(null);
   // Latest raw compass reading plus when it arrived, for staleness checks.
   const compassRef = useRef<{ heading: number; at: number } | null>(null);
   const movingFastRef = useRef(false);
@@ -1695,28 +1700,49 @@ export function MapView() {
         lastMapPosition = pos;
         setGps(pos);
 
-        // Heading: GPS course between consecutive accepted fixes while moving
-        // fast enough for that bearing to be reliable; device compass
-        // otherwise. Never a guess: no reliable signal means no heading, and
-        // the marker effect hides the arrow rather than showing one.
+        // Heading is the direction of travel whenever the holder is actually
+        // travelling, and the compass only when they are not.
+        //
+        // This used to require movingFast, which is 1.8 m/s, above walking
+        // pace. Walking therefore always fell through to the compass, and the
+        // compass reports where the phone is pointed rather than where its
+        // owner is going: carried at your side or angled toward you, the arrow
+        // points behind you while you walk forward. Reported from the field.
+        //
+        // The anchor is also held rather than reset every reading. Re-anchoring
+        // each time left a baseline of one poll interval, about 3.5m at walking
+        // pace, under the 8m this needs for a bearing that means anything, so
+        // even without the speed gate it would still have fallen back. Holding
+        // it lets the distance accumulate over a few readings, then the bearing
+        // is taken and the anchor moves up.
         const cur = { lat: c.latitude, lng: c.longitude };
-        const prevFix = prevFixRef.current;
+        const anchor = prevFixRef.current;
+        const anchorFresh = !!anchor && now - anchor.at <= HEADING_MAX_FIX_AGE_MS;
         let nextHeading: number | null = null;
-        if (
-          movingFast &&
-          prevFix &&
-          now - prevFix.at <= HEADING_MAX_FIX_AGE_MS &&
-          haversineMeters(prevFix, cur) >= HEADING_MIN_FIX_DISTANCE_M
-        ) {
-          nextHeading = bearingDegrees(prevFix, cur);
+
+        if (anchorFresh && haversineMeters(anchor, cur) >= HEADING_MIN_FIX_DISTANCE_M) {
+          nextHeading = bearingDegrees(anchor, cur);
+          travelHeadingRef.current = { heading: nextHeading, at: now };
+          prevFixRef.current = { lat: cur.lat, lng: cur.lng, at: now };
         } else {
+          // Not enough travel yet. Keep the anchor so the distance can build;
+          // only drop it once it is too old to describe the current movement.
+          if (!anchorFresh) prevFixRef.current = { lat: cur.lat, lng: cur.lng, at: now };
+          // A course only lands every few readings, since 8m takes about three
+          // polls at walking pace. Falling straight back to the compass in
+          // between made the arrow alternate between the way the holder walks
+          // and the way the phone happens to point. Keep the last travel
+          // course until it goes stale, and only then ask the compass, which
+          // is the right answer once someone has genuinely stopped.
+          const travel = travelHeadingRef.current;
           const compass = compassRef.current;
-          if (compass && now - compass.at <= HEADING_MAX_COMPASS_AGE_MS) {
+          if (travel && now - travel.at <= HEADING_TRAVEL_HOLD_MS) {
+            nextHeading = travel.heading;
+          } else if (compass && now - compass.at <= HEADING_MAX_COMPASS_AGE_MS) {
             nextHeading = compass.heading;
           }
         }
         setHeading(nextHeading);
-        prevFixRef.current = { lat: cur.lat, lng: cur.lng, at: now };
       },
       (err) => {
         const code = (err as GeolocationPositionError).code;

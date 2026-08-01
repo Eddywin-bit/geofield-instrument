@@ -180,6 +180,62 @@ function RotatingTipCard() {
 // cold start never auto-locates.
 let locateInFlight = false;
 
+// Animated radar used as the LOCATE ME icon: a dark amber dish with range
+// rings, a crosshair, faint outer rings, and a sweep beam that rotates around
+// the dish. Built from CSS/SVG (no image asset) so it stays crisp at any size;
+// the sweep pauses under prefers-reduced-motion.
+function RadarIcon() {
+  return (
+    <div className="relative flex h-[92px] w-[92px] items-center justify-center">
+      {/* Faint outer rings */}
+      <span className="absolute h-[92px] w-[92px] rounded-full border border-white/15" />
+      <span className="absolute h-[84px] w-[84px] rounded-full border border-white/25" />
+      {/* Dish */}
+      <div
+        className="relative h-[74px] w-[74px] overflow-hidden rounded-full"
+        style={{
+          background: "radial-gradient(circle at 50% 42%, #4a3208 0%, #241706 55%, #0b0702 100%)",
+          boxShadow:
+            "inset 0 2px 5px rgba(255,222,150,0.30), inset 0 -8px 14px rgba(0,0,0,0.65), 0 3px 8px rgba(0,0,0,0.40)",
+        }}
+      >
+        {/* Range rings + crosshair */}
+        <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
+          <g fill="none" stroke="rgba(255,196,96,0.4)">
+            <circle cx="50" cy="50" r="45" strokeWidth="1" />
+            <circle cx="50" cy="50" r="30" strokeWidth="1" strokeOpacity="0.7" />
+            <circle cx="50" cy="50" r="15" strokeWidth="1" strokeOpacity="0.5" />
+            <line x1="50" y1="5" x2="50" y2="95" strokeWidth="1" strokeOpacity="0.45" />
+            <line x1="5" y1="50" x2="95" y2="50" strokeWidth="1" strokeOpacity="0.45" />
+          </g>
+        </svg>
+        {/* Rotating sweep beam */}
+        <div
+          className="absolute inset-0 rounded-full animate-spin motion-reduce:animate-none"
+          style={{
+            animationDuration: "2.6s",
+            background:
+              "conic-gradient(from 0deg, rgba(255,214,130,0.65) 0deg, rgba(255,214,130,0.14) 24deg, rgba(255,214,130,0) 60deg, rgba(255,214,130,0) 360deg)",
+          }}
+        />
+        {/* Centre blip */}
+        <span
+          className="absolute left-1/2 top-1/2 h-[5px] w-[5px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{ background: "#ffe1a3", boxShadow: "0 0 6px 1px rgba(255,205,120,0.9)" }}
+        />
+        {/* Glass gloss */}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle at 32% 22%, rgba(255,255,255,0.30), rgba(255,255,255,0) 45%)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function LocateScreen() {
   const [state, setState] = useState<"idle" | "locating" | "weak" | "found" | "error">("idle");
   const [fix, setFix] = useState<Fix | null>(null);
@@ -465,10 +521,7 @@ function LocateScreen() {
         <div className="px-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-panel shadow-md shadow-black/5 p-3.5 flex items-center gap-3">
-              <Crosshair
-                className={`h-9 w-9 text-success shrink-0 ${state === "locating" ? "animate-spin" : ""}`}
-                strokeWidth={1.75}
-              />
+              <Crosshair className="h-9 w-9 text-success shrink-0" strokeWidth={1.75} />
               <div className="min-w-0">
                 <div className="text-xs text-muted-foreground">GPS Accuracy</div>
                 <div
@@ -497,9 +550,7 @@ function LocateScreen() {
               </>
             ) : (
               <>
-                <div className="h-14 w-14 rounded-full bg-background/20 flex items-center justify-center">
-                  <Crosshair className="h-7 w-7" strokeWidth={2.5} />
-                </div>
+                <RadarIcon />
                 <span className="font-bold tracking-[0.2em] text-lg mt-1">LOCATE ME</span>
                 <span className="text-xs font-medium text-primary-foreground/80">
                   Tap to identify unit

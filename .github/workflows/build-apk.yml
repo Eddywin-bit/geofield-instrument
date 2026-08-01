@@ -267,7 +267,11 @@ jobs:
           mark = Image.open(io.BytesIO(base64.b64decode(m.group(1)))).convert("RGBA")
 
           CANVAS = 1024
-          OBSIDIAN = (0x12, 0x14, 0x17, 255)
+          # White launcher background. The mark's crescent and waves are
+          # transparent cutouts, so whatever sits behind shows through them;
+          # white here turns the whole square and those cutouts white, leaving
+          # only the orange pin.
+          ICON_BG = (0xFF, 0xFF, 0xFF, 255)
 
           def canvas_with_mark(height_fraction, background):
               h = round(CANVAS * height_fraction)
@@ -279,11 +283,11 @@ jobs:
 
           # Adaptive foreground. 84% survives the 16.7% inset and the circular mask.
           canvas_with_mark(0.84, (0, 0, 0, 0)).save("assets/icon-foreground.png")
-          # Adaptive background. Flat obsidian.
-          Image.new("RGBA", (CANVAS, CANVAS), OBSIDIAN).save("assets/icon-background.png")
+          # Adaptive background. Flat white.
+          Image.new("RGBA", (CANVAS, CANVAS), ICON_BG).save("assets/icon-background.png")
           # Legacy square icon. No inset is applied to this one, so it needs its
           # own margin for launchers that mask it into a circle.
-          canvas_with_mark(0.62, OBSIDIAN).save("assets/icon.png")
+          canvas_with_mark(0.62, ICON_BG).save("assets/icon.png")
 
           for name in ("icon-foreground.png", "icon-background.png", "icon.png"):
               im = Image.open("assets/" + name)
@@ -292,15 +296,15 @@ jobs:
 
       - name: Generate app icons and splash from the GeoField mark
         run: |
-          # Icon background stays obsidian deliberately: the launcher icon is
-          # fixed brand identity on the home screen/app drawer, not in-app
+          # Icon background is white and fixed for both themes: the launcher
+          # icon is brand identity on the home screen/app drawer, not in-app
           # chrome, so it doesn't follow the light/dark theme. The splash
           # background does, since it's what's on screen for the moment
           # before the WebView paints - the same "avoid a flash of the wrong
           # theme" reasoning as capacitor.config.ts's backgroundColor.
           ./node_modules/.bin/capacitor-assets generate --android \
-            --iconBackgroundColor '#121417' \
-            --iconBackgroundColorDark '#121417' \
+            --iconBackgroundColor '#FFFFFF' \
+            --iconBackgroundColorDark '#FFFFFF' \
             --splashBackgroundColor '#F9FAFB' \
             --splashBackgroundColorDark '#F9FAFB'
           find android/app/src/main/res -name "ic_launcher*" | head -20

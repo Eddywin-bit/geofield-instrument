@@ -242,6 +242,142 @@ jobs:
           print("EnableLocation plugin injected, MainActivity patched, play-services-location added.")
           PY
 
+      # In-app update: the update banner downloads the new APK inside the app
+      # and hands it to Android's package installer, instead of kicking the user
+      # to the browser. Capacitor has no install API, so ApkInstaller is a small
+      # native plugin injected here (android/ is regenerated every build). It
+      # fires an ACTION_VIEW install intent through a FileProvider content:// URI
+      # (a file:// URI is rejected from Android 7 on). REQUEST_INSTALL_PACKAGES
+      # is added in the permissions step; the FileProvider + its paths resource
+      # are written below. Android still shows its own install confirmation.
+      - name: Inject ApkInstaller native plugin (in-app update install)
+        run: |
+          python3 - <<'PY'
+          import pathlib, sys, textwrap
+
+          pkg_dir = pathlib.Path("android/app/src/main/java/com/eondesigns/geofield")
+          if not pkg_dir.is_dir():
+              sys.exit(f"::error::{pkg_dir} not found; has the package name changed?")
+
+          plugin = pkg_dir / "ApkInstallerPlugin.java"
+          plugin.write_text(textwrap.dedent('''\
+              package com.eondesigns.geofield;
+
+              import android.content.Intent;
+              import android.net.Uri;
+              import android.os.Build;
+              import android.provider.Settings;
+              import androidx.core.content.FileProvider;
+              import com.getcapacitor.JSObject;
+              import com.getcapacitor.Plugin;
+              import com.getcapacitor.PluginCall;
+              import com.getcapacitor.PluginMethod;
+              import com.getcapacitor.annotation.CapacitorPlugin;
+              import java.io.File;
+
+              @CapacitorPlugin(name = "ApkInstaller")
+              public class ApkInstallerPlugin extends Plugin {
+
+                private boolean canInstallPackages() {
+                  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true;
+                  return getContext().getPackageManager().canRequestPackageInstalls();
+                }
+
+                @PluginMethod
+                public void canInstall(PluginCall call) {
+                  JSObject o = new JSObject();
+                  o.put("granted", canInstallPackages());
+                  call.resolve(o);
+                }
+
+                @PluginMethod
+                public void install(PluginCall call) {
+                  String path = call.getString("path");
+                  if (path == null || path.isEmpty()) {
+                    call.reject("No update file path provided");
+                    return;
+                  }
+                  File apk = new File(getContext().getCacheDir(), path);
+                  if (!apk.exists()) {
+                    call.reject("Update file not found");
+                    return;
+                  }
+                  if (!canInstallPackages()) {
+                    // Not yet allowed to install unknown apps. Open the per-app
+                    // settings toggle; the user grants it and taps Update again.
+                    try {
+                      Intent settings = new Intent(
+                          Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                          Uri.parse("package:" + getContext().getPackageName()));
+                      settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                      getContext().startActivity(settings);
+                    } catch (Exception ignored) {}
+                    JSObject o = new JSObject();
+                    o.put("status", "needs-permission");
+                    call.resolve(o);
+                    return;
+                  }
+                  try {
+                    Uri uri = FileProvider.getUriForFile(
+                        getContext(),
+                        getContext().getPackageName() + ".updateprovider",
+                        apk);
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setDataAndType(uri, "application/vnd.android.package-archive");
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    getContext().startActivity(intent);
+                    JSObject o = new JSObject();
+                    o.put("status", "installing");
+                    call.resolve(o);
+                  } catch (Exception e) {
+                    call.reject("Could not open installer: " + e.getMessage());
+                  }
+                }
+              }
+              '''))
+
+          # Register the plugin next to EnableLocation in MainActivity.onCreate.
+          main = pkg_dir / "MainActivity.java"
+          src = main.read_text()
+          anchor = "registerPlugin(EnableLocationPlugin.class);"
+          if anchor not in src:
+              sys.exit("::error::EnableLocation registration not found; step order changed?")
+          if "ApkInstallerPlugin.class" not in src:
+              src = src.replace(anchor, anchor + "\n        registerPlugin(ApkInstallerPlugin.class);", 1)
+              main.write_text(src)
+
+          # FileProvider so the installer can read the cached APK by content:// URI.
+          manifest = pathlib.Path("android/app/src/main/AndroidManifest.xml")
+          mx = manifest.read_text()
+          if "updateprovider" not in mx:
+              provider = textwrap.dedent('''\
+                  <provider
+                          android:name="androidx.core.content.FileProvider"
+                          android:authorities="com.eondesigns.geofield.updateprovider"
+                          android:exported="false"
+                          android:grantUriPermissions="true">
+                          <meta-data
+                              android:name="android.support.FILE_PROVIDER_PATHS"
+                              android:resource="@xml/update_paths" />
+                      </provider>
+                  ''')
+              mx = mx.replace("</application>", "    " + provider + "    </application>", 1)
+              manifest.write_text(mx)
+
+          # The paths resource: cache-path maps to context.getCacheDir(), where
+          # app-update.ts writes the APK (Filesystem Directory.Cache).
+          xml_dir = pathlib.Path("android/app/src/main/res/xml")
+          xml_dir.mkdir(parents=True, exist_ok=True)
+          (xml_dir / "update_paths.xml").write_text(textwrap.dedent('''\
+              <?xml version="1.0" encoding="utf-8"?>
+              <paths xmlns:android="http://schemas.android.com/apk/res/android">
+                  <cache-path name="updates" path="." />
+              </paths>
+              '''))
+
+          print("ApkInstaller plugin injected, MainActivity registered, FileProvider added.")
+          PY
+
 
 
       # @capacitor/assets insets the foreground 16.7% on every side. Source art
@@ -321,6 +457,10 @@ jobs:
             "android.permission.RECORD_AUDIO",
             "android.permission.MODIFY_AUDIO_SETTINGS",
             "android.permission.INTERNET",
+            # In-app update: hand the downloaded APK to Android's package
+            # installer (ApkInstaller plugin). Without this the install intent
+            # is blocked. The user still confirms in Android's own dialog.
+            "android.permission.REQUEST_INSTALL_PACKAGES",
           ]
           add = "".join(
             f'    <uses-permission android:name="{n}" />\n'

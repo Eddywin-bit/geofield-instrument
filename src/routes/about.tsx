@@ -13,7 +13,7 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-const CONTACT_EMAIL = "ogstudios14@gmail.com"; // baked into every build; keep this address alive
+const CONTACT_EMAIL = "oegyasi@st.knust.edu.gh"; // baked into every build; keep this address alive
 
 function AboutPage() {
   // /about/$section registers as a route with /about as its parent (any
@@ -119,12 +119,6 @@ function AboutPage() {
               <div className="min-w-0">
                 <div className="text-sm font-bold text-foreground">Eon Studios</div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">Accra, Ghana</div>
-                <div className="mt-2 pt-2 border-t border-border/60">
-                  <div className="text-sm font-semibold text-foreground">Edwin Gyasi Owusu</div>
-                  <div className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                    Founder and lead. Geological Engineering, KNUST.
-                  </div>
-                </div>
               </div>
             </div>
           </div>

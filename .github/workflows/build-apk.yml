@@ -559,6 +559,23 @@ jobs:
           files: GeoField-${{ env.APP_VERSION }}.apk
           fail_on_unmatched_files: true
 
+      # Cross-repo publish credential. geofield-assets is a separate repo, so
+      # the build's built-in GITHUB_TOKEN cannot write to it. Rather than a
+      # personal access token (which expires and silently freezes the mirror,
+      # exactly what happened once), mint a short-lived installation token from
+      # a GitHub App scoped to just geofield-assets. The App's private key does
+      # not expire, so the mirror credential never needs a manual refresh.
+      # Requires two repo secrets, ASSETS_APP_ID and ASSETS_APP_PRIVATE_KEY,
+      # from a GitHub App installed on geofield-assets with Contents: write.
+      - name: Mint a geofield-assets token from the GitHub App
+        id: assets_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ASSETS_APP_ID }}
+          private-key: ${{ secrets.ASSETS_APP_PRIVATE_KEY }}
+          owner: Eddywin-bit
+          repositories: geofield-assets
+
       # geofield-instrument is private, so GitHub Release assets require a
       # signed-in, authorized GitHub account to download - no good for
       # students installing the app. geofield-assets is a separate public
@@ -566,21 +583,15 @@ jobs:
       # so publishing the APK there too gives a plain HTTPS download link
       # with no GitHub account needed. Uses the Contents API (not a git
       # clone) so this never has to pull the 92MB pmtiles blob just to write
-      # two small files. continue-on-error: the signed APK and GitHub
-      # Release above are the release of record; a hiccup publishing the
-      # mirror (token not set up yet, transient API error) shouldn't mark
-      # the whole build failed.
+      # two small files. No continue-on-error, on purpose: a failed mirror
+      # publish must fail the build loudly. Letting it pass silently is how an
+      # expired token once froze the mirror behind a green build.
       - name: Publish APK and version.json to geofield-assets (Pages)
-        continue-on-error: true
         env:
-          ASSETS_TOKEN: ${{ secrets.ASSETS_DEPLOY_TOKEN }}
+          ASSETS_TOKEN: ${{ steps.assets_token.outputs.token }}
           APP_VERSION: ${{ env.APP_VERSION }}
           TEST_BUILD: ${{ github.event.inputs.test_build }}
         run: |
-          if [ -z "$ASSETS_TOKEN" ]; then
-            echo "::warning::ASSETS_DEPLOY_TOKEN is not set; skipping publish to geofield-assets."
-            exit 0
-          fi
           # Test build: publish ONLY geofield-test.apk. The public geofield.apk,
           # version.json, and the GitHub Release are left untouched, so students
           # on the current version see nothing change and get no update banner.

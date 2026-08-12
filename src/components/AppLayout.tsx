@@ -10,6 +10,7 @@ import {
   getDismissedVersion,
   type UpdateInfo,
 } from "../lib/update-check";
+import { canInAppInstall, downloadUpdate, installUpdate } from "../lib/app-update";
 import { SplashScreen } from "./SplashScreen";
 
 /**
@@ -74,8 +75,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
 // once. Dismissal is session-only too: it survives navigation within the
 // same run but resets on the next app launch, so the banner comes back if
 // the user still hasn't updated.
+// "idle" shows the offer; "downloading"/"installing" run the native flow;
+// "needs-permission" means Android's "install unknown apps" toggle is off (the
+// plugin opened that settings screen); "error" means the download failed.
+type UpdatePhase = "idle" | "downloading" | "installing" | "needs-permission" | "error";
+
 function UpdateBanner() {
   const [info, setInfo] = useState<UpdateInfo | null>(null);
+  const [phase, setPhase] = useState<UpdatePhase>("idle");
+  const [pct, setPct] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,27 +99,75 @@ function UpdateBanner() {
 
   if (!info) return null;
 
+  const native = canInAppInstall();
+  const busy = phase === "downloading" || phase === "installing";
+
+  // Native android: download in-app with a progress readout, then hand the APK
+  // to Android's installer. Web (and any non-android platform) keeps the plain
+  // browser-download link, which is all the PWA can do.
+  const runUpdate = async () => {
+    try {
+      setPct(0);
+      setPhase("downloading");
+      const path = await downloadUpdate(info.url, setPct);
+      setPhase("installing");
+      const status = await installUpdate(path);
+      // "installing": Android's confirm dialog is now up, nothing more to do.
+      // "needs-permission": the plugin opened the settings screen; prompt the
+      // user to grant it and tap Update again.
+      setPhase(status === "needs-permission" ? "needs-permission" : "installing");
+    } catch {
+      setPhase("error");
+    }
+  };
+
+  let message = `GeoField v${info.version} is available.`;
+  if (phase === "downloading") message = `Downloading update ${pct}%`;
+  else if (phase === "installing") message = "Opening installer...";
+  else if (phase === "needs-permission") message = "Allow installs, then tap Update.";
+  else if (phase === "error") message = "Download failed. Check your connection.";
+
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-primary/15 border-b border-border text-xs">
+    <div className="relative flex items-center gap-2 px-4 py-2 bg-primary/15 border-b border-border text-xs">
       <DownloadCloud className="h-4 w-4 text-primary shrink-0" />
-      <span className="flex-1 text-foreground/90">GeoField v{info.version} is available.</span>
-      <a
-        href={info.url}
-        className="font-semibold text-primary underline underline-offset-2 shrink-0"
-      >
-        Download
-      </a>
-      <button
-        type="button"
-        onClick={() => {
-          setInfo(null);
-          dismissVersion(info.version);
-        }}
-        aria-label="Dismiss"
-        className="shrink-0"
-      >
-        <X className="h-3.5 w-3.5 text-muted-foreground" />
-      </button>
+      <span className="flex-1 text-foreground/90">{message}</span>
+      {native ? (
+        !busy && (
+          <button
+            type="button"
+            onClick={() => void runUpdate()}
+            className="font-semibold text-primary underline underline-offset-2 shrink-0"
+          >
+            {phase === "error" ? "Retry" : "Update"}
+          </button>
+        )
+      ) : (
+        <a
+          href={info.url}
+          className="font-semibold text-primary underline underline-offset-2 shrink-0"
+        >
+          Download
+        </a>
+      )}
+      {!busy && (
+        <button
+          type="button"
+          onClick={() => {
+            setInfo(null);
+            dismissVersion(info.version);
+          }}
+          aria-label="Dismiss"
+          className="shrink-0"
+        >
+          <X className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+      )}
+      {phase === "downloading" && (
+        <span
+          className="absolute bottom-0 left-0 h-[2px] bg-primary transition-[width] duration-200"
+          style={{ width: `${pct}%` }}
+        />
+      )}
     </div>
   );
 }
@@ -126,7 +182,6 @@ function StatusBar() {
     </div>
   );
 }
-
 
 function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

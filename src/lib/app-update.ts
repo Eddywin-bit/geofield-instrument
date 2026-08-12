@@ -34,6 +34,11 @@ const ApkInstaller = registerPlugin<ApkInstallerPlugin>("ApkInstaller");
 // lands, and Android "Clear Cache" won't leave stale APKs sitting around.
 const APK_PATH = "geofield-update.apk";
 
+// Raw bytes per Filesystem write. Kept small (about 1.3 MB as base64 per bridge
+// call) so a large single write cannot truncate the file, the failure that made
+// Android reject the downloaded APK with "problem parsing the package".
+const WRITE_CHUNK = 1_000_000;
+
 /**
  * True only where the native install path exists: an Android Capacitor build.
  * On the web PWA (and any non-Android platform) the banner falls back to the
@@ -87,11 +92,39 @@ export async function downloadUpdate(
   const blob = new Blob(chunks as BlobPart[], {
     type: "application/vnd.android.package-archive",
   });
-  const b64 = await blobToBase64(blob);
+
   const { Filesystem, Directory } = await import("@capacitor/filesystem");
-  // writeFile overwrites, so a leftover file from a cancelled earlier attempt
-  // self-heals here rather than appending.
-  await Filesystem.writeFile({ path: APK_PATH, data: b64, directory: Directory.Cache });
+  // Write in small slices, not one big call. A single writeFile of the whole
+  // ~12 MB base64 string overruns the Capacitor bridge on mid-range phones and
+  // lands a TRUNCATED file, which Android then rejects with "problem parsing
+  // the package". This mirrors the basemap downloader's proven chunked append:
+  // each slice is encoded and written on its own, so peak memory and bridge
+  // payload stay around one small chunk. The first writeFile overwrites any
+  // leftover from a cancelled earlier attempt; the rest append.
+  for (let offset = 0, first = true; offset < blob.size; offset += WRITE_CHUNK, first = false) {
+    const slice = blob.slice(offset, Math.min(offset + WRITE_CHUNK, blob.size));
+    const b64 = await blobToBase64(slice);
+    if (first) {
+      await Filesystem.writeFile({ path: APK_PATH, data: b64, directory: Directory.Cache });
+    } else {
+      await Filesystem.appendFile({ path: APK_PATH, data: b64, directory: Directory.Cache });
+    }
+  }
+
+  // Guard against a short write. If the file on disk is not exactly what we
+  // downloaded, it is a corrupt APK, so delete it and fail loudly (the banner
+  // shows Retry) rather than handing the installer a truncated file and getting
+  // the cryptic parse error.
+  const stat = await Filesystem.stat({ path: APK_PATH, directory: Directory.Cache });
+  if (typeof stat.size === "number" && stat.size !== received) {
+    try {
+      await Filesystem.deleteFile({ path: APK_PATH, directory: Directory.Cache });
+    } catch {
+      /* ignore */
+    }
+    throw new Error(`update write size mismatch: got ${stat.size}, expected ${received}`);
+  }
+
   onProgress?.(100);
   return APK_PATH;
 }

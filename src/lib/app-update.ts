@@ -138,3 +138,55 @@ export async function installUpdate(path: string): Promise<"installing" | "needs
   const res = await ApkInstaller.install({ path });
   return res.status;
 }
+
+export type UpdatePhase = "idle" | "downloading" | "installing" | "needs-permission" | "error";
+export type UpdateState = { phase: UpdatePhase; pct: number };
+
+/**
+ * Module-level so a running download outlives the banner. AppLayout (and the
+ * banner inside it) remounts on every tab change, since it wraps each route
+ * rather than persisting across them. Component-local state would therefore
+ * reset the download the instant the user navigates away, which is exactly
+ * what happened. This singleton keeps the download running and its progress
+ * intact across navigation; the banner just subscribes and reflects it. Same
+ * shape as the basemap downloader's module-level controller.
+ */
+export const updateController = (() => {
+  let state: UpdateState = { phase: "idle", pct: 0 };
+  const listeners = new Set<(s: UpdateState) => void>();
+  let inFlight = false;
+
+  const emit = (next: UpdateState) => {
+    state = next;
+    for (const l of listeners) l(state);
+  };
+
+  return {
+    // Stable identities so useSyncExternalStore does not resubscribe each render.
+    getSnapshot: (): UpdateState => state,
+    subscribe: (fn: (s: UpdateState) => void): (() => void) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+    async run(url: string): Promise<void> {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        emit({ phase: "downloading", pct: 0 });
+        const path = await downloadUpdate(url, (pct) => emit({ phase: "downloading", pct }));
+        emit({ phase: "installing", pct: 100 });
+        const status = await installUpdate(path);
+        // "installing": Android's confirm dialog is up. "needs-permission": the
+        // plugin opened the install-unknown-apps screen; prompt a retry.
+        emit({
+          phase: status === "needs-permission" ? "needs-permission" : "installing",
+          pct: 100,
+        });
+      } catch {
+        emit({ phase: "error", pct: 0 });
+      } finally {
+        inFlight = false;
+      }
+    },
+  };
+})();

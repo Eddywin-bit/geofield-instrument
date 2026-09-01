@@ -114,11 +114,9 @@ function UpdateBanner() {
   else if (phase === "needs-permission") message = "Allow installs, then tap Update again.";
   else if (phase === "error") message = "Download failed. Check your connection.";
 
-  // Sits just above the bottom nav as a fixed bar, so it reads as a live status
-  // strip rather than pushing the header down. z-40 keeps it over the nav.
   return (
-    <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-3 px-4 py-3.5 bg-primary/15 border-t border-border text-sm backdrop-blur-sm">
-      <DownloadCloud className="h-5 w-5 text-primary shrink-0" />
+    <div className="relative flex items-center gap-2 px-4 py-2 bg-primary/15 border-b border-border text-xs">
+      <DownloadCloud className="h-4 w-4 text-primary shrink-0" />
       <span className="flex-1 text-foreground/90">{message}</span>
       {native ? (
         !busy && (
@@ -148,12 +146,12 @@ function UpdateBanner() {
           aria-label="Dismiss"
           className="shrink-0"
         >
-          <X className="h-4 w-4 text-muted-foreground" />
+          <X className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
       {phase === "downloading" && (
         <span
-          className="absolute bottom-0 left-0 h-1 bg-primary transition-[width] duration-200"
+          className="absolute bottom-0 left-0 h-[2px] bg-primary transition-[width] duration-200"
           style={{ width: `${pct}%` }}
         />
       )}

@@ -57,6 +57,24 @@ jobs:
         # rather than failing the whole APK build on a lockfile mismatch.
         run: bun install --frozen-lockfile || bun install
 
+      # capacitor-assets (icon/splash generation) loads sharp, whose native
+      # binary (sharp-linux-x64.node) is fetched by a postinstall script. bun
+      # skips lifecycle scripts unless the package is trusted; sharp is now in
+      # package.json trustedDependencies, but this guard makes the build robust
+      # regardless of bun/runner-cache state: if sharp still cannot load, run
+      # its own install script to fetch the prebuilt binary, then verify. A hard
+      # failure here beats the icon step crashing mid-build.
+      - name: Ensure sharp native binary (capacitor-assets needs it)
+        run: |
+          if node -e "require('sharp')" 2>/dev/null; then
+            echo "sharp loads fine"
+          else
+            echo "sharp binary missing after install; fetching the prebuilt binary"
+            ( cd node_modules/sharp && npm run install )
+            node -e "require('sharp')" || { echo "::error::sharp still not loadable"; exit 1; }
+            echo "sharp repaired"
+          fi
+
       - name: Build web assets (SPA mode, no nitro)
         env:
           CAPACITOR_BUILD: '1'

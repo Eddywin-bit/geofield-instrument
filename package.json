@@ -2,6 +2,7 @@
   "name": "tanstack_start_ts",
   "version": "1.0.0",
   "private": true,
+  "trustedDependencies": ["sharp"],
   "sideEffects": false,
   "type": "module",
   "scripts": {

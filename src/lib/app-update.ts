@@ -49,7 +49,7 @@ export function canInAppInstall(): boolean {
  */
 export async function downloadUpdate(
   url: string,
-  onProgress?: (pct: number) => void,
+  onProgress?: (pct: number | null, bytes: number) => void,
 ): Promise<string> {
   const { Filesystem, Directory } = await import("@capacitor/filesystem");
   let expectedBytes = 0;
@@ -57,8 +57,15 @@ export async function downloadUpdate(
     if (event.url !== url) return;
     if (event.contentLength > 0) {
       expectedBytes = event.contentLength;
-      onProgress?.(Math.min(99, Math.floor((event.bytes / event.contentLength) * 100)));
     }
+    // Native HTTP responses may omit Content-Length. Still report received
+    // bytes so the UI does not sit at 0% throughout a successful download.
+    onProgress?.(
+      event.contentLength > 0
+        ? Math.min(99, Math.floor((event.bytes / event.contentLength) * 100))
+        : null,
+      event.bytes,
+    );
   });
   try {
     await Filesystem.downloadFile({
@@ -72,7 +79,7 @@ export async function downloadUpdate(
     if (stat.size <= 0 || (expectedBytes > 0 && stat.size !== expectedBytes)) {
       throw new Error("The update download was incomplete. Please try again.");
     }
-    onProgress?.(100);
+    onProgress?.(100, stat.size);
     return APK_PATH;
   } catch (error) {
     try {
@@ -97,7 +104,12 @@ export async function installUpdate(path: string): Promise<"installing" | "needs
 }
 
 export type UpdatePhase = "idle" | "downloading" | "installing" | "needs-permission" | "error";
-export type UpdateState = { phase: UpdatePhase; pct: number; error?: string };
+export type UpdateState = {
+  phase: UpdatePhase;
+  pct: number | null;
+  bytes?: number;
+  error?: string;
+};
 
 /**
  * Module-level so a running download outlives the banner. AppLayout (and the
@@ -132,8 +144,10 @@ export const updateController = (() => {
       try {
         if (!prepared || prepared.url !== url) {
           prepared = null;
-          emit({ phase: "downloading", pct: 0 });
-          const path = await downloadUpdate(url, (pct) => emit({ phase: "downloading", pct }));
+          emit({ phase: "downloading", pct: null, bytes: 0 });
+          const path = await downloadUpdate(url, (pct, bytes) =>
+            emit({ phase: "downloading", pct, bytes }),
+          );
           prepared = { url, path };
         }
         emit({ phase: "installing", pct: 100 });

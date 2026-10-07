@@ -83,7 +83,7 @@ function UpdateBanner() {
   // survives this banner remounting on every tab change (AppLayout wraps each
   // route). Subscribing keeps the progress showing across navigation instead
   // of resetting the moment the user switches tabs.
-  const { phase, pct, error } = useSyncExternalStore(
+  const { phase, pct, bytes = 0, error } = useSyncExternalStore(
     updateController.subscribe,
     updateController.getSnapshot,
   );
@@ -109,14 +109,23 @@ function UpdateBanner() {
   const busy = phase === "downloading";
 
   let message = `GeoField v${info.version} is available.`;
-  if (phase === "downloading") message = `Downloading update ${pct}%`;
+  if (phase === "downloading") {
+    if (bytes === 0) message = "Connecting...";
+    else if (pct !== null && pct > 0) message = `Downloading update ${pct}%`;
+    else {
+      const size = bytes >= 1_048_576
+        ? `${(bytes / 1_048_576).toFixed(1)} MB`
+        : `${Math.ceil(bytes / 1024)} KB`;
+      message = `Downloading update (${size})`;
+    }
+  }
   else if (phase === "installing") message = "Opening installer...";
   else if (phase === "needs-permission") message = "Allow installs, then tap Update again.";
   else if (phase === "error") message = error ?? "Update failed. Please try again.";
 
   return (
     <div className="relative flex items-center gap-2 px-4 py-2 bg-primary/15 border-b border-border text-xs">
-      <DownloadCloud className="h-4 w-4 text-primary shrink-0" />
+      <DownloadCloud className={`h-4 w-4 text-primary shrink-0${busy ? " animate-pulse" : ""}`} />
       <span className="flex-1 text-foreground/90">{message}</span>
       {native ? (
         !busy && (
@@ -149,7 +158,7 @@ function UpdateBanner() {
           <X className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
-      {phase === "downloading" && (
+      {phase === "downloading" && pct !== null && (
         <span
           className="absolute bottom-0 left-0 h-[2px] bg-primary transition-[width] duration-200"
           style={{ width: `${pct}%` }}

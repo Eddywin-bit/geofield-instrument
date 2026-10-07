@@ -52,6 +52,21 @@ test("incomplete native download is deleted and never installed", async () => {
   expect(remove).toHaveBeenCalledTimes(1);
 });
 
+test("downloads report bytes when the server omits Content-Length", async () => {
+  downloadFile.mockImplementationOnce(async ({ url }: { url: string }) => {
+    progress({ url, bytes: 40, contentLength: 0 });
+    progress({ url, bytes: 100, contentLength: 0 });
+    return { path: "/cache/geofield-update.apk" };
+  });
+  const report = mock(() => {});
+  await downloadUpdate("https://example.com/no-length.apk", report);
+  expect(report.mock.calls).toEqual([
+    [null, 40],
+    [null, 100],
+    [100, 100],
+  ]);
+});
+
 test("permission and cancelled-installer retries reuse the downloaded APK", async () => {
   install.mockResolvedValueOnce({ status: "needs-permission" });
   const url = "https://example.com/permission.apk";

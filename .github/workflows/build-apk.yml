@@ -1,5 +1,7 @@
 name: Build APK
 on:
+  push:
+    branches: [codex/fix-native-update-install]
   workflow_dispatch:
     inputs:
       versionName:

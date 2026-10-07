@@ -83,7 +83,7 @@ function UpdateBanner() {
   // survives this banner remounting on every tab change (AppLayout wraps each
   // route). Subscribing keeps the progress showing across navigation instead
   // of resetting the moment the user switches tabs.
-  const { phase, pct } = useSyncExternalStore(
+  const { phase, pct, error } = useSyncExternalStore(
     updateController.subscribe,
     updateController.getSnapshot,
   );
@@ -112,7 +112,7 @@ function UpdateBanner() {
   if (phase === "downloading") message = `Downloading update ${pct}%`;
   else if (phase === "installing") message = "Opening installer...";
   else if (phase === "needs-permission") message = "Allow installs, then tap Update again.";
-  else if (phase === "error") message = "Download failed. Check your connection.";
+  else if (phase === "error") message = error ?? "Update failed. Please try again.";
 
   return (
     <div className="relative flex items-center gap-2 px-4 py-2 bg-primary/15 border-b border-border text-xs">

@@ -284,7 +284,9 @@ jobs:
           plugin.write_text(textwrap.dedent('''\
               package com.eondesigns.geofield;
 
+              import android.content.ClipData;
               import android.content.Intent;
+              import android.content.pm.PackageInfo;
               import android.net.Uri;
               import android.os.Build;
               import android.provider.Settings;
@@ -323,6 +325,13 @@ jobs:
                     call.reject("Update file not found");
                     return;
                   }
+                  PackageInfo archive = getContext().getPackageManager()
+                      .getPackageArchiveInfo(apk.getAbsolutePath(), 0);
+                  if (archive == null || !getContext().getPackageName().equals(archive.packageName)) {
+                    apk.delete();
+                    call.reject("The downloaded update is invalid. Please try again.");
+                    return;
+                  }
                   if (!canInstallPackages()) {
                     // Not yet allowed to install unknown apps. Open the per-app
                     // settings toggle; the user grants it and taps Update again.
@@ -345,6 +354,9 @@ jobs:
                         apk);
                     Intent intent = new Intent(Intent.ACTION_VIEW);
                     intent.setDataAndType(uri, "application/vnd.android.package-archive");
+                    // Include the URI in ClipData so read permission propagates
+                    // through installer activities on manufacturer Android builds.
+                    intent.setClipData(ClipData.newRawUri("GeoField update", uri));
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
                     getContext().startActivity(intent);
                     JSObject o = new JSObject();

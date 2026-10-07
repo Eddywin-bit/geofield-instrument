@@ -34,11 +34,6 @@ const ApkInstaller = registerPlugin<ApkInstallerPlugin>("ApkInstaller");
 // lands, and Android "Clear Cache" won't leave stale APKs sitting around.
 const APK_PATH = "geofield-update.apk";
 
-// Raw bytes per Filesystem write. Kept small (about 1.3 MB as base64 per bridge
-// call) so a large single write cannot truncate the file, the failure that made
-// Android reject the downloaded APK with "problem parsing the package".
-const WRITE_CHUNK = 1_000_000;
-
 /**
  * True only where the native install path exists: an Android Capacitor build.
  * On the web PWA (and any non-Android platform) the banner falls back to the
@@ -48,85 +43,47 @@ export function canInAppInstall(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("read failed"));
-    reader.onload = () => {
-      const res = typeof reader.result === "string" ? reader.result : "";
-      const comma = res.indexOf(",");
-      resolve(comma >= 0 ? res.slice(comma + 1) : res);
-    };
-    reader.readAsDataURL(blob);
-  });
-}
-
 /**
- * Streams the APK from `url` (the geofield-assets Pages mirror) to the Cache
- * directory, reporting 0-100 as it goes. GitHub Pages sends Content-Length and
- * Access-Control-Allow-Origin: * (the same reason update-check.ts can read
- * version.json cross-origin), so the byte count and body are both available.
- * Returns the relative path to hand to installUpdate.
+ * Download directly to Android's cache. APK bytes stay in native code instead
+ * of passing through WebView blobs, base64 conversion, and bridge writes.
  */
 export async function downloadUpdate(
   url: string,
   onProgress?: (pct: number) => void,
 ): Promise<string> {
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-
-  const total = Number(res.headers.get("Content-Length")) || 0;
-  const reader = res.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-    chunks.push(value);
-    received += value.length;
-    // Cap streamed progress at 99; the writeFile below is the final step.
-    if (total > 0) onProgress?.(Math.min(99, Math.floor((received / total) * 100)));
-  }
-
-  const blob = new Blob(chunks as BlobPart[], {
-    type: "application/vnd.android.package-archive",
-  });
-
   const { Filesystem, Directory } = await import("@capacitor/filesystem");
-  // Write in small slices, not one big call. A single writeFile of the whole
-  // ~12 MB base64 string overruns the Capacitor bridge on mid-range phones and
-  // lands a TRUNCATED file, which Android then rejects with "problem parsing
-  // the package". This mirrors the basemap downloader's proven chunked append:
-  // each slice is encoded and written on its own, so peak memory and bridge
-  // payload stay around one small chunk. The first writeFile overwrites any
-  // leftover from a cancelled earlier attempt; the rest append.
-  for (let offset = 0, first = true; offset < blob.size; offset += WRITE_CHUNK, first = false) {
-    const slice = blob.slice(offset, Math.min(offset + WRITE_CHUNK, blob.size));
-    const b64 = await blobToBase64(slice);
-    if (first) {
-      await Filesystem.writeFile({ path: APK_PATH, data: b64, directory: Directory.Cache });
-    } else {
-      await Filesystem.appendFile({ path: APK_PATH, data: b64, directory: Directory.Cache });
+  let expectedBytes = 0;
+  const listener = await Filesystem.addListener("progress", (event) => {
+    if (event.url !== url) return;
+    if (event.contentLength > 0) {
+      expectedBytes = event.contentLength;
+      onProgress?.(Math.min(99, Math.floor((event.bytes / event.contentLength) * 100)));
     }
-  }
-
-  // Guard against a short write. If the file on disk is not exactly what we
-  // downloaded, it is a corrupt APK, so delete it and fail loudly (the banner
-  // shows Retry) rather than handing the installer a truncated file and getting
-  // the cryptic parse error.
-  const stat = await Filesystem.stat({ path: APK_PATH, directory: Directory.Cache });
-  if (typeof stat.size === "number" && stat.size !== received) {
+  });
+  try {
+    await Filesystem.downloadFile({
+      url,
+      path: APK_PATH,
+      directory: Directory.Cache,
+      progress: true,
+      headers: { "Cache-Control": "no-cache" },
+    });
+    const stat = await Filesystem.stat({ path: APK_PATH, directory: Directory.Cache });
+    if (stat.size <= 0 || (expectedBytes > 0 && stat.size !== expectedBytes)) {
+      throw new Error("The update download was incomplete. Please try again.");
+    }
+    onProgress?.(100);
+    return APK_PATH;
+  } catch (error) {
     try {
       await Filesystem.deleteFile({ path: APK_PATH, directory: Directory.Cache });
     } catch {
-      /* ignore */
+      // A failed connection may not have created a file.
     }
-    throw new Error(`update write size mismatch: got ${stat.size}, expected ${received}`);
+    throw error;
+  } finally {
+    await listener.remove();
   }
-
-  onProgress?.(100);
-  return APK_PATH;
 }
 
 /**
@@ -140,7 +97,7 @@ export async function installUpdate(path: string): Promise<"installing" | "needs
 }
 
 export type UpdatePhase = "idle" | "downloading" | "installing" | "needs-permission" | "error";
-export type UpdateState = { phase: UpdatePhase; pct: number };
+export type UpdateState = { phase: UpdatePhase; pct: number; error?: string };
 
 /**
  * Module-level so a running download outlives the banner. AppLayout (and the
@@ -155,6 +112,7 @@ export const updateController = (() => {
   let state: UpdateState = { phase: "idle", pct: 0 };
   const listeners = new Set<(s: UpdateState) => void>();
   let inFlight = false;
+  let prepared: { url: string; path: string } | null = null;
 
   const emit = (next: UpdateState) => {
     state = next;
@@ -172,18 +130,27 @@ export const updateController = (() => {
       if (inFlight) return;
       inFlight = true;
       try {
-        emit({ phase: "downloading", pct: 0 });
-        const path = await downloadUpdate(url, (pct) => emit({ phase: "downloading", pct }));
+        if (!prepared || prepared.url !== url) {
+          prepared = null;
+          emit({ phase: "downloading", pct: 0 });
+          const path = await downloadUpdate(url, (pct) => emit({ phase: "downloading", pct }));
+          prepared = { url, path };
+        }
         emit({ phase: "installing", pct: 100 });
-        const status = await installUpdate(path);
+        const status = await installUpdate(prepared.path);
         // "installing": Android's confirm dialog is up. "needs-permission": the
         // plugin opened the install-unknown-apps screen; prompt a retry.
         emit({
           phase: status === "needs-permission" ? "needs-permission" : "installing",
           pct: 100,
         });
-      } catch {
-        emit({ phase: "error", pct: 0 });
+      } catch (error) {
+        prepared = null;
+        emit({
+          phase: "error",
+          pct: 0,
+          error: error instanceof Error ? error.message : "Update failed. Please try again.",
+        });
       } finally {
         inFlight = false;
       }

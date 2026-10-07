@@ -15,7 +15,9 @@ class UpdateProviderTest(unittest.TestCase):
         workflow = (root / ".github/workflows/build-apk.yml").read_text()
         step = workflow.split("- name: Inject ApkInstaller native plugin", 1)[1]
         step = step.split("\n      - ", 1)[0]
-        script = textwrap.dedent(step.split("<<'PY'\n", 1)[1]).rsplit("\nPY", 1)[0]
+        script = textwrap.dedent(
+            step.split("<<'PY'\n", 1)[1].split("\n          PY", 1)[0]
+        )
         with tempfile.TemporaryDirectory() as directory:
             fixture = Path(directory)
             package = fixture / "android/app/src/main/java/com/eondesigns/geofield"

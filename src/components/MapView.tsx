@@ -8,6 +8,7 @@ import { layers as basemapLayers, namedFlavor } from "@protomaps/basemaps";
 import { loadGeology, type GeoData } from "../lib/geology";
 import { startPositionWatch, startCompassWatch, type PositionWatch } from "../lib/geo-acquire";
 import { UNIT_COLORS, LEGEND } from "../lib/unit-colors";
+import { locationZoom, withOnlineLandmarks } from "../lib/online-map-style";
 
 const GHANA_BOUNDS: [number, number, number, number] = [-3.26, 4.74, 1.19, 11.18];
 const OCEAN = "#C7DCEA";
@@ -124,7 +125,7 @@ const BASEMAP_PART_PREFIX = "/basemap/ghana.pmtiles.part.";
 // the chunks in flight (8 x 8 MB), not the whole 92 MB.
 const BASEMAP_FETCH_CONCURRENCY = 8;
 
-// Online map: OpenFreeMap's Liberty vector style. Vector renders crisp at any
+// Online map: OpenFreeMap's Bright vector style. Vector renders crisp at any
 // zoom and screen density, where the previous CARTO raster tiles (256px PNGs)
 // went blurry past their native zoom on high-DPI phones and loaded slowly.
 // Keyless, no usage limits, ships its own labels, sprite, glyphs and OSM
@@ -1508,11 +1509,14 @@ export function MapView() {
     const map = mapRef.current;
     if (!map) return;
     setPopup(null);
-    // MapLibre accepts a style URL directly. Online gets Liberty (vector);
+    // MapLibre accepts a style URL directly. Online gets Bright (vector);
     // offline keeps our locally built style. The style.load handler below
     // re-adds attribution and re-applies our layers either way, and applyAll
     // already hides geology and capitals while online.
-    map.setStyle(online ? ONLINE_STYLE_URL : buildStyle(false, basemapReady), { diff: false });
+    map.setStyle(online ? ONLINE_STYLE_URL : buildStyle(false, basemapReady), {
+      diff: false,
+      transformStyle: (_previous, next) => (online ? withOnlineLandmarks(next) : next),
+    });
     map.once("style.load", () => {
       mountAttribution(map);
       reapplyGeologyRef.current?.();
@@ -1970,7 +1974,10 @@ export function MapView() {
     }
     if (gpsRef.current) {
       const g = gpsRef.current;
-      map.flyTo({ center: [g.lng, g.lat], zoom: Math.max(map.getZoom(), 12) });
+      map.flyTo({
+        center: [g.lng, g.lat],
+        zoom: locationZoom(map.getZoom(), onlineRef.current),
+      });
       return;
     }
     map.fitBounds(GHANA_BOUNDS, { padding: 20 });

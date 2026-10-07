@@ -51,6 +51,9 @@ jobs:
           distribution: 'temurin'
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The legacy 'tools' package is no longer available in the SDK repository.
+          packages: platform-tools
 
       - name: Install dependencies
         # Fall back to a non-frozen install if the lockfile lags package.json,
